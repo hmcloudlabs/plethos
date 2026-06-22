@@ -1,0 +1,20 @@
+[project]
+name = "controller"
+version = "0.1.0"
+description = "KOPF-based Kubernetes operator for the VClusterClaim CRD"
+requires-python = ">=3.12"
+dependencies = [
+    "shared",
+    "kopf>=1.37",
+    "kubernetes>=30",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+shared = { workspace = true }
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

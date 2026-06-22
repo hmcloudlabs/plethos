@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vkube-portal
+  namespace: vkube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vkube-portal
+  template:
+    metadata:
+      labels:
+        app: vkube-portal
+    spec:
+      containers:
+        - name: portal
+          image: vkube-portal:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000

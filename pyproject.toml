@@ -1,0 +1,29 @@
+[tool.uv.workspace]
+members = ["components/portal", "components/controller", "components/shared"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["components/portal/src", "components/controller/src", "components/shared/src"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[[tool.pyright.executionEnvironments]]
+root = "components/portal"
+extraPaths = ["components/portal/src"]
+
+[[tool.pyright.executionEnvironments]]
+root = "components/controller"
+extraPaths = ["components/controller/src"]
+
+[[tool.pyright.executionEnvironments]]
+root = "components/shared"
+extraPaths = ["components/shared/src"]

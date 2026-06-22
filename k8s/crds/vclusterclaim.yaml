@@ -1,0 +1,91 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vclusterclaims.vkube.cs.hm.edu
+spec:
+  group: vkube.cs.hm.edu
+  names:
+    kind: VClusterClaim
+    plural: vclusterclaims
+    singular: vclusterclaim
+    shortNames: ["vcc"]
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: [name, ownerSub, ownerEmail]
+            properties:
+              name:
+                type: string
+                maxLength: 63
+                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: name is immutable
+              ownerSub:
+                type: string
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: ownerSub is immutable
+              ownerEmail:
+                type: string
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: ownerEmail is immutable
+              desiredState:
+                type: string
+                enum: [Running, Sleeping]
+                default: Running
+              accessRules:
+                type: array
+                items:
+                  type: object
+                  required: [subject, role]
+                  properties:
+                    subject:
+                      type: object
+                      required: [sub, email]
+                      properties:
+                        sub:
+                          type: string
+                        email:
+                          type: string
+                    role:
+                      type: string
+                      enum: [admin, viewer]
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum: [Pending, Provisioning, Ready, Sleeping, Waking, Error, Deleting]
+              message:
+                type: string
+              observedGeneration:
+                type: integer
+                format: int64
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Cluster
+      type: string
+      jsonPath: .spec.name
+    - name: Owner
+      type: string
+      jsonPath: .spec.ownerEmail
+    - name: Desired
+      type: string
+      jsonPath: .spec.desiredState
+    - name: Phase
+      type: string
+      jsonPath: .status.phase
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp

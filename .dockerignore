@@ -1,0 +1,14 @@
+# Keep the build context small and reproducible.
+.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+.ruff_cache/
+.git/
+.gitignore
+
+# Not needed inside images
+**/tests/
+components/portal/dev/
+k8s/
+*.md

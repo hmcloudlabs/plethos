@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vkube-controller
+  namespace: vkube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vkube-controller
+  template:
+    metadata:
+      labels:
+        app: vkube-controller
+    spec:
+      serviceAccountName: vkube-controller
+      containers:
+        - name: controller
+          image: vkube-controller:latest
+          imagePullPolicy: IfNotPresent

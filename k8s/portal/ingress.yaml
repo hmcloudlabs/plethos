@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vkube-portal
+  namespace: vkube
+spec:
+  rules:
+    - host: vkube.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vkube-portal
+                port:
+                  number: 80
