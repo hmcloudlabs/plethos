@@ -9,7 +9,7 @@ spec:
     plural: vclusterclaims
     singular: vclusterclaim
     shortNames: ["vcc"]
-  scope: Cluster
+  scope: Namespaced
   versions:
   - name: v1alpha1
     served: true

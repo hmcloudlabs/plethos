@@ -4,7 +4,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-# CRD identity — must match k8s/crds/vclusterclaim.yaml.
 GROUP = "vkube.cs.hm.edu"
 VERSION = "v1alpha1"
 KIND = "VClusterClaim"

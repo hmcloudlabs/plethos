@@ -12,9 +12,7 @@ def test_spec_parses_k8s_shaped_data():
             "name": "dev",
             "ownerSub": "abc-123",
             "ownerEmail": "owner@hm.edu",
-            "accessRules": [
-                {"subject": {"sub": "u-1", "email": "u1@hm.edu"}, "role": "admin"}
-            ],
+            "accessRules": [{"subject": {"sub": "u-1", "email": "u1@hm.edu"}, "role": "admin"}],
         }
     )
     assert spec.name == "dev"

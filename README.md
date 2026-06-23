@@ -26,11 +26,15 @@ uv add --package shared <pkg>
 
 ## Run
 
+### Portal:
 ```bash
 # portal  -> http://localhost:8000
 uv run uvicorn main:app --reload --app-dir components/portal/src
+```
 
-# controller (uses current kubeconfig)
+### Controller:
+Please refer to the [components/controller/README.md](components/controller/README.md) on how to prepare your K8s cluster.
+```bash
 uv run kopf run components/controller/src/main.py --verbose
 ```
 
