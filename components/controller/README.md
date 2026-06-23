@@ -11,7 +11,7 @@ A Kopf-based Kubernetes controller that provisions virtual clusters (using Loft 
 ## Setup
 Create a namespace where the `VClusterClaim` resources will live:
 ```bash
-kubectl create namespace vcluster-system
+kubectl create namespace vkube-system
 ```
 
 Apply the `VClusterClaim` CRD:
@@ -34,14 +34,14 @@ kubectl apply -f components/controller/tests/resources/test-vcluster-claim.yaml
 
 You should the controller starting to setup the vCluster. You can check the status of the reconsilation:
 ```bash
-kubectl get vcc -n vcluster-system -w
+kubectl get vcc -n vkube-system -w
 ```
 
 ## Configuration
 
 | Environment Variable | Default | Description |
 |---|---|---|
-| `VCLUSTERCLAIMS_NAMESPACE` | `vcluster-system` | Namespace where claims live |
+| `VCLUSTERCLAIMS_NAMESPACE` | `vkube-system` | Namespace where claims live |
 
 ## Phases
 

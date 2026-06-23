@@ -2,7 +2,7 @@ apiVersion: vkube.cs.hm.edu/v1alpha1
 kind: VClusterClaim
 metadata:
   name: test-cluster
-  namespace: vcluster-system
+  namespace: vkube-system
 spec:
   name: test-cluster
   ownerSub: "f5b136c3-e6c9-403e-a30d-0254ae8f1175"
