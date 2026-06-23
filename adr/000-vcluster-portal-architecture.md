@@ -12,7 +12,7 @@ informed:
 
 Currently, the vCluster portal has the following architecture:
 
-![portal-architecture](adr/images/portal-architecture.png)
+![portal-architecture](./images/portal-architecture.png)
 
 As shown in the figure, there are currently four main components (next to the K8s cluster itself) that make up the platform:
 - the `vcluster-api` service: This works as a proxy for delegating different vCluster CRUD operations to the Kubernetes API
