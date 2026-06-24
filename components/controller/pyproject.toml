@@ -18,3 +18,11 @@ shared = { workspace = true }
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+env = [
+    "VCLUSTERCLAIMS_NAMESPACE=e2e-testing-namespace"
+]
+
+[dependency-groups]
+dev = [
+    "pytest-env>=1.6.0",
+]
