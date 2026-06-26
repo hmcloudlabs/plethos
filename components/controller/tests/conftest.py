@@ -106,24 +106,36 @@ def resource_name(run_id, request):
     Keeps names distinct across runs and across tests within the same run.
     """
     safe_test_name = request.node.name.replace("_", "-")[:20]
-    return f"test-{safe_test_name}-{run_id}"
+    return f"{safe_test_name}-{run_id}"
 
 
 @pytest.fixture(autouse=True)
-def cleanup(custom_api, resource_name):
+def cleanup(custom_api, core_api, rbac_api, resource_name):
     """
     Deletes the VClusterClaim (and wait for propagation) before and after
     each test so leftover resources from a crashed previous run don't cause conflicts.
     """
+    
     def delete():
         try:
             custom_api.delete_namespaced_custom_object(
                 group=GROUP, version=VERSION, plural=PLURAL,
                 namespace=NAMESPACE, name=resource_name,
             )
-            time.sleep(2)  # wait for deletion
         except Exception:
             pass
+
+        try:
+            core_api.delete_namespace(name=f"vcluster-{resource_name}")
+        except Exception:
+            pass
+
+        try:
+            rbac_api.delete_cluster_role_binding(name=f"helm-installer-{resource_name}")
+        except Exception:
+            pass
+
+        time.sleep(2)
 
     delete()  # pre-test cleanup
     yield

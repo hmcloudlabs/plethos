@@ -8,14 +8,7 @@ from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 
 
 class TestCreate:
-    """def test_transitions_to_provisioning(self, operator, custom_api, create_vcluster_claim, resource_name):
-
-        create_vcluster_claim()
-        obj = wait_for_phase(custom_api, resource_name, Phase.PROVISIONING, timeout=10)
-
-        assert "Creating namespace and RBAC" in obj["status"]["message"]"""
-
-    def test_provisioning_phase(self, operator, core_api, rbac_api, batch_api, custom_api, create_vcluster_claim, resource_name):
+    def test_provisioning_to_pending_phase(self, operator, core_api, rbac_api, batch_api, custom_api, create_vcluster_claim, resource_name):
         """Waits until PROVISIONING phase is over and moved to PENDING and tests if all resources were created."""
 
         create_vcluster_claim()
@@ -29,7 +22,7 @@ class TestCreate:
 
         assert "Helm install job running" in obj["status"]["message"]
 
-    def test_ready_phase(self, operator, custom_api, create_vcluster_claim, resource_name):
+    def test_pending_to_ready_phase(self, operator, custom_api, create_vcluster_claim, resource_name):
         """Status should move to READY once the helm install Job succeeds."""
 
         create_vcluster_claim()
@@ -58,6 +51,8 @@ class TestCreateIdempotency:
         """
 
         from resources import make_cluster_role_binding
+
+        # TODO: this test needs to pass without try-catch
         try:
             rbac_api.create_cluster_role_binding(body=make_cluster_role_binding(resource_name))
         except Exception:
