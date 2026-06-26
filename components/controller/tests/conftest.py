@@ -6,7 +6,7 @@ import uuid
 import pytest
 from kopf.testing import KopfRunner
 from kubernetes import client, config
-
+from kubernetes.client.exceptions import ApiException
 from shared.vclusterclaim import GROUP, PLURAL, VERSION
 
 CLUSTER_NAME = "e2e-testing-cluster"
@@ -105,8 +105,7 @@ def resource_name(run_id, request):
     Unique resource name per test.
     Keeps names distinct across runs and across tests within the same run.
     """
-    safe_test_name = request.node.name.replace("_", "-")[:20]
-    return f"{safe_test_name}-{run_id}"
+    return f"test-{uuid.uuid4().hex[:8]}"
 
 
 @pytest.fixture(autouse=True)
@@ -135,11 +134,18 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
         except Exception:
             pass
 
-        time.sleep(2)
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            try:
+                core_api.read_namespace(name=f"vcluster-{resource_name}")
+                time.sleep(2)
+            except ApiException as e:
+                if e.status == 404:
+                    break
 
-    delete()  # pre-test cleanup
     yield
-    delete()  # post-test cleanup
+    
+    delete()
 
 
 def wait_for_phase(custom_api, name, expected_phase, timeout=60):

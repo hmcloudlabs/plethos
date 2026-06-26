@@ -54,6 +54,7 @@ def make_helm_install_job(name: str, vcluster_version: str) -> dict:
             "namespace": f"vcluster-{name}",
             "labels": {
                 f"{GROUP}/vcluster-claim": name,
+                f"{GROUP}/job-type": "install",
             },
         },
         "spec": {
@@ -76,6 +77,40 @@ def make_helm_install_job(name: str, vcluster_version: str) -> dict:
                                 f"vcluster-{name}",
                                 "--version",
                                 vcluster_version,
+                            ],
+                        }
+                    ],
+                }
+            }
+        },
+    }
+
+
+def make_helm_uninstall_job(name: str) -> dict:
+    return {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+            "name": f"helm-uninstall-{name}",
+            "namespace": f"vcluster-{name}",
+            "labels": {
+                f"{GROUP}/vcluster-claim": name,
+                f"{GROUP}/job-type": "uninstall",
+            },
+        },
+        "spec": {
+            "template": {
+                "spec": {
+                    "restartPolicy": "Never",
+                    "serviceAccountName": "helm-installer",
+                    "containers": [
+                        {
+                            "name": "helm",
+                            "image": "alpine/helm:3.14.0",
+                            "command": [
+                                "helm", "uninstall",
+                                f"vcluster-{name}",
+                                "--namespace", f"vcluster-{name}",
                             ],
                         }
                     ],

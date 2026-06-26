@@ -1,10 +1,5 @@
-import time
-
-import pytest
-from kubernetes.client.exceptions import ApiException
-
-from conftest import NAMESPACE, wait_for_phase
-from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
+from conftest import wait_for_phase
+from shared.vclusterclaim import Phase
 
 
 class TestCreate:
@@ -52,11 +47,7 @@ class TestCreateIdempotency:
 
         from resources import make_cluster_role_binding
 
-        # TODO: this test needs to pass without try-catch
-        try:
-            rbac_api.create_cluster_role_binding(body=make_cluster_role_binding(resource_name))
-        except Exception:
-            pass
+        rbac_api.create_cluster_role_binding(body=make_cluster_role_binding(resource_name))
 
         create_vcluster_claim()
         obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
