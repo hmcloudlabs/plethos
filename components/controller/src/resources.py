@@ -108,9 +108,11 @@ def make_helm_uninstall_job(name: str) -> dict:
                             "name": "helm",
                             "image": "alpine/helm:3.14.0",
                             "command": [
-                                "helm", "uninstall",
+                                "helm",
+                                "uninstall",
                                 f"vcluster-{name}",
-                                "--namespace", f"vcluster-{name}",
+                                "--namespace",
+                                f"vcluster-{name}",
                             ],
                         }
                     ],

@@ -79,7 +79,9 @@ def on_create(spec: kopf.Spec, name: str | None, patch: kopf.Patch, logger, **_:
     except ApiException as e:
         if e.status != 409:
             patch.status["phase"] = Phase.ERROR
-            patch.status["message"] = f"Failed to install vCluster resources via helm job: {e.reason}."
+            patch.status["message"] = (
+                f"Failed to install vCluster resources via helm job: {e.reason}."
+            )
             raise
 
     patch.status["phase"] = Phase.PENDING
@@ -166,7 +168,9 @@ def on_delete(name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
             return
         if e.status != 409:
             patch.status["phase"] = Phase.ERROR
-            patch.status["message"] = f"Failed to delete vCluster resources via helm job: {e.reason}."
+            patch.status["message"] = (
+                f"Failed to delete vCluster resources via helm job: {e.reason}."
+            )
             raise
 
 

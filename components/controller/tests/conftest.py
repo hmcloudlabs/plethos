@@ -24,9 +24,7 @@ def kind_cluster():
     dev), or creates a fresh one if not. Either way, installs the CRDs before.
     """
 
-    existing = subprocess.run(
-        ["kind", "get", "clusters"], capture_output=True, text=True
-    )
+    existing = subprocess.run(["kind", "get", "clusters"], capture_output=True, text=True)
     already_exists = CLUSTER_NAME in existing.stdout.splitlines()
 
     if not already_exists:
@@ -39,9 +37,7 @@ def kind_cluster():
 
     core = client.CoreV1Api()
     try:
-        core.create_namespace(body=client.V1Namespace(
-            metadata=client.V1ObjectMeta(name=NAMESPACE)
-        ))
+        core.create_namespace(body=client.V1Namespace(metadata=client.V1ObjectMeta(name=NAMESPACE)))
     except Exception:
         pass
 
@@ -51,9 +47,7 @@ def kind_cluster():
     yield
 
     if not already_exists:
-        subprocess.run(
-            ["kind", "delete", "cluster", "--name", CLUSTER_NAME], check=True
-        )
+        subprocess.run(["kind", "delete", "cluster", "--name", CLUSTER_NAME], check=True)
 
 
 @pytest.fixture(scope="session")
@@ -114,12 +108,15 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
     Deletes the VClusterClaim (and wait for propagation) before and after
     each test so leftover resources from a crashed previous run don't cause conflicts.
     """
-    
+
     def delete():
         try:
             custom_api.delete_namespaced_custom_object(
-                group=GROUP, version=VERSION, plural=PLURAL,
-                namespace=NAMESPACE, name=resource_name,
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
             )
         except Exception:
             pass
@@ -144,7 +141,7 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
                     break
 
     yield
-    
+
     delete()
 
 
@@ -159,8 +156,11 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=60):
     while time.time() < deadline:
         try:
             obj = custom_api.get_namespaced_custom_object(
-                group=GROUP, version=VERSION, plural=PLURAL,
-                namespace=NAMESPACE, name=name,
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=name,
             )
         except Exception:
             time.sleep(2)
@@ -173,13 +173,13 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=60):
 
         if last_phase == "Error" and expected_phase != "Error":
             msg = obj.get("status", {}).get("message", "")
-            raise AssertionError(
-                f"Reached Error phase while waiting for {expected_phase}: {msg}"
-            )
+            raise AssertionError(f"Reached Error phase while waiting for {expected_phase}: {msg}")
 
         time.sleep(2)
 
-    raise TimeoutError(f"Timed out after {timeout}s waiting for phase '{expected_phase}', last observed: '{last_phase}'.")
+    raise TimeoutError(
+        f"Timed out after {timeout}s waiting for phase '{expected_phase}', last observed: '{last_phase}'."
+    )
 
 
 @pytest.fixture
@@ -187,15 +187,19 @@ def create_vcluster_claim(custom_api, resource_name):
     """
     Helper fixture that creates a VClusterClaim and returns its name.
     """
+
     def _create(spec=None):
         custom_api.create_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
             namespace=NAMESPACE,
             body={
                 "apiVersion": f"{GROUP}/{VERSION}",
                 "kind": "VClusterClaim",
                 "metadata": {"name": resource_name, "namespace": NAMESPACE},
-                "spec": spec or {
+                "spec": spec
+                or {
                     "name": resource_name,
                     "ownerSub": "test-sub",
                     "ownerEmail": "test@example.com",
