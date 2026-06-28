@@ -1,8 +1,5 @@
-import time
-from kubernetes.client.exceptions import ApiException
-
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
-from conftest import NAMESPACE, wait_for_phase
+from conftest import NAMESPACE, wait_for_404, wait_for_phase
 
 
 class TestDelete:
@@ -22,34 +19,21 @@ class TestDelete:
             name=resource_name,
         )
 
-        # wait for claim to be fully gone
-        import time
+        wait_for_404(
+            lambda: custom_api.get_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
+            ),
+            resource_type="Namespace",
+        )
 
-        deadline = time.time() + 60
-        while time.time() < deadline:
-            try:
-                custom_api.get_namespaced_custom_object(
-                    group=GROUP,
-                    version=VERSION,
-                    plural=PLURAL,
-                    namespace=NAMESPACE,
-                    name=resource_name,
-                )
-                time.sleep(2)
-            except Exception:
-                break
-
-        deadline = time.time() + 60
-        while time.time() < deadline:
-            try:
-                rbac_api.read_cluster_role_binding(name=f"helm-installer-{resource_name}")
-                time.sleep(2)
-            except ApiException as e:
-                if e.status == 404:
-                    return  # CRB is gone, test passes
-                raise
-
-        assert False, "ClusterRoleBinding should have been deleted"
+        wait_for_404(
+            lambda: rbac_api.read_cluster_role_binding(name=f"helm-installer-{resource_name}"),
+            resource_type="ClusterRoleBinding",
+        )
 
     def test_delete_when_namespace_already_gone(
         self, operator, core_api, custom_api, create_vcluster_claim, resource_name
@@ -70,18 +54,13 @@ class TestDelete:
             name=resource_name,
         )
 
-        deadline = time.time() + 60
-        while time.time() < deadline:
-            try:
-                custom_api.get_namespaced_custom_object(
-                    group=GROUP,
-                    version=VERSION,
-                    plural=PLURAL,
-                    namespace=NAMESPACE,
-                    name=resource_name,
-                )
-                time.sleep(2)
-            except Exception:
-                return
-
-        assert False, "VClusterClaim should have been deleted but is still present"
+        wait_for_404(
+            lambda: custom_api.get_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
+            ),
+            resource_type="Namespace",
+        )

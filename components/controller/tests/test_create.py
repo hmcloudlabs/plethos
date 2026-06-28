@@ -33,7 +33,7 @@ class TestCreate:
     def test_pending_to_ready_phase(
         self, operator, custom_api, create_vcluster_claim, resource_name
     ):
-        """Status should move to READY once the helm install Job succeeds."""
+        """Status should move to READY once the helm install job succeeds."""
 
         create_vcluster_claim()
         obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=120)
@@ -49,7 +49,6 @@ class TestCreateIdempotency:
         If the namespace already exists (409), the operator should not enter ERROR phase, it should continue and reach PENDING.
         """
 
-        # Pre-create the namespace to force a 409 on namespace creation
         from resources import make_namespace
 
         core_api.create_namespace(body=make_namespace(resource_name))

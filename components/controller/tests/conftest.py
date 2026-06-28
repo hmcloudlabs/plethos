@@ -84,21 +84,13 @@ def operator(kind_cluster):
     assert runner.exception is None, f"Operator crashed: {runner.exception}"
 
 
-@pytest.fixture(scope="session")
-def run_id():
-    """
-    Short unique identifier shared across all tests in one pytest session.
-    """
-
-    return uuid.uuid4().hex[:6]
-
-
 @pytest.fixture
-def resource_name(run_id, request):
+def resource_name():
     """
     Unique resource name per test.
     Keeps names distinct across runs and across tests within the same run.
     """
+
     return f"test-{uuid.uuid4().hex[:8]}"
 
 
@@ -131,6 +123,7 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
         except Exception:
             pass
 
+        # Wait until namespace has been deleted
         deadline = time.time() + 60
         while time.time() < deadline:
             try:
@@ -180,6 +173,25 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=60):
     raise TimeoutError(
         f"Timed out after {timeout}s waiting for phase '{expected_phase}', last observed: '{last_phase}'."
     )
+
+
+def wait_for_404(api_fn, resource_type: str, timeout=60):
+    """
+    Polls read_fn until it raises a 404 ApiException (resource is gone).
+    Raises TimeoutError if the resource still exists after timeout seconds.
+    """
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            api_fn()
+            time.sleep(2)
+        except ApiException as e:
+            if e.status == 404:
+                return
+            raise
+
+    raise TimeoutError(f"Resource {resource_type} should have been deleted after {timeout}s.")
 
 
 @pytest.fixture
