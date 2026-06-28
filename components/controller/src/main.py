@@ -3,6 +3,10 @@ import kopf
 from shared.vclusterclaim import GROUP, PLURAL, VERSION
 from utils import load_kube_config
 
+import controllers.create
+import controllers.update
+import controllers.delete
+
 
 @kopf.on.startup()
 def on_startup(logger, **_: object) -> None:
