@@ -10,7 +10,7 @@ KIND = "VClusterClaim"
 PLURAL = "vclusterclaims"
 
 
-class DesiredState(StrEnum):
+class State(StrEnum):
     RUNNING = "Running"
     SLEEPING = "Sleeping"
 
@@ -43,7 +43,7 @@ class VClusterClaimSpec(_Model):
     name: str
     owner_sub: str
     owner_email: str
-    desired_state: DesiredState = DesiredState.RUNNING
+    state: State = State.RUNNING
     access_rules: list[AccessRule] = Field(default_factory=list)
 
 

@@ -7,4 +7,4 @@ spec:
   name: test-cluster
   ownerSub: "f5b136c3-e6c9-403e-a30d-0254ae8f1175"
   ownerEmail: "test@example.com"
-  desiredState: Running
+  state: Running

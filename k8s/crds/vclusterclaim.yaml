@@ -39,7 +39,7 @@ spec:
                 x-kubernetes-validations:
                 - rule: self == oldSelf
                   message: ownerEmail is immutable
-              desiredState:
+              state:
                 type: string
                 enum: [Running, Sleeping]
                 default: Running
@@ -80,9 +80,9 @@ spec:
     - name: Owner
       type: string
       jsonPath: .spec.ownerEmail
-    - name: Desired
+    - name: State
       type: string
-      jsonPath: .spec.desiredState
+      jsonPath: .spec.state
     - name: Phase
       type: string
       jsonPath: .status.phase

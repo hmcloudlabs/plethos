@@ -1,5 +1,5 @@
 from shared.vclusterclaim import (
-    DesiredState,
+    State,
     Phase,
     VClusterClaimSpec,
     VClusterClaimStatus,
@@ -19,8 +19,8 @@ def test_spec_parses_k8s_shaped_data():
     assert spec.owner_email == "owner@hm.edu"
     assert spec.access_rules[0].subject.email == "u1@hm.edu"
     assert spec.access_rules[0].role == "admin"
-    # desiredState defaults to Running
-    assert spec.desired_state is DesiredState.RUNNING
+    # state defaults to Running
+    assert spec.state is State.RUNNING
 
 
 def test_status_phase():
