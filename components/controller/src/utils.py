@@ -1,6 +1,7 @@
 from typing import cast
 import kubernetes
 from kubernetes import client
+from kubernetes.client import V1Job
 from kubernetes.client import V1StatefulSet
 
 
@@ -23,7 +24,26 @@ def get_statefulset(
     return cast(V1StatefulSet, obj)
 
 
-def unwrap_statefulset(vc: V1StatefulSet):
-    if vc.spec is None or vc.metadata is None:
-        raise ValueError("Invalid StatefulSet: missing spec/metadata")
-    return vc.spec, vc.metadata
+def unwrap_statefulset(sts: V1StatefulSet):
+    if sts.spec is None or sts.metadata is None or sts.status is None:
+        raise ValueError("Invalid StatefulSet: missing spec/metadata.")
+    return sts.spec, sts.metadata, sts.status
+
+
+
+def get_job(
+    batch: client.BatchV1Api,
+    name: str,
+    namespace: str,
+) -> V1Job:
+    obj = batch.read_namespaced_job(
+        name=name,
+        namespace=namespace,
+    )
+    return cast(V1Job, obj)
+
+
+def unwrap_job(job: V1Job):
+    if job.status is None or job.metadata is None:
+        raise ValueError("Invalid Job: missing status/metadata.")
+    return job.status, job.metadata

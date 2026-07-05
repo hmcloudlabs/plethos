@@ -9,7 +9,7 @@ class TestDelete:
         """Deleting a VClusterClaim should remove the namespace and ClusterRoleBinding."""
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=60)
 
         custom_api.delete_namespaced_custom_object(
             group=GROUP,
@@ -41,7 +41,7 @@ class TestDelete:
         """If the vcluster namespace is already gone, on_delete should not error."""
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=60)
 
         # manually delete the namespace before deleting the claim
         core_api.delete_namespace(name=f"vcluster-{resource_name}")

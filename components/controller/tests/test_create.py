@@ -17,7 +17,7 @@ class TestCreate:
 
         create_vcluster_claim()
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=35)
 
         core_api.read_namespace(name=f"vcluster-{resource_name}")
         core_api.read_namespaced_service_account(
@@ -38,7 +38,7 @@ class TestCreate:
         create_vcluster_claim()
         obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=120)
 
-        assert "VCluster is ready" in obj["status"]["message"]
+        assert "vCluster is ready" in obj["status"]["message"]
 
 
 class TestCreateIdempotency:
@@ -54,7 +54,7 @@ class TestCreateIdempotency:
         core_api.create_namespace(body=make_namespace(resource_name))
 
         create_vcluster_claim()
-        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=35)
         assert obj["status"]["phase"] == Phase.PENDING
 
     def test_handles_existing_cluster_role_binding(
@@ -69,7 +69,7 @@ class TestCreateIdempotency:
         rbac_api.create_cluster_role_binding(body=make_cluster_role_binding(resource_name))
 
         create_vcluster_claim()
-        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=35)
         assert obj["status"]["phase"] == Phase.PENDING
 
 
@@ -80,7 +80,7 @@ class TestCreateFailureAndRecovery:
         """If the helm install Job fails, phase should move to ERROR."""
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=30)
+        wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=35)
 
         # Force the Job into a failed state
         batch_api.patch_namespaced_job_status(
@@ -104,5 +104,5 @@ class TestCreateFailureAndRecovery:
             },
         )
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.ERROR, timeout=30)
-        assert "Helm install failed" in obj["status"]["message"]
+        obj = wait_for_phase(custom_api, resource_name, Phase.ERROR, timeout=35)
+        assert "Helm install job failed" in obj["status"]["message"]

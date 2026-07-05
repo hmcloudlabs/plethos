@@ -11,12 +11,15 @@ from resources import (
     make_helm_install_job,
 )
 from config import settings
+from utils import get_job, get_statefulset, unwrap_job, unwrap_statefulset
 
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
-@kopf.timer(GROUP, VERSION, PLURAL, interval=30)
+@kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
 def reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
+    logger.info(f"Reconciliation started for {name}.")
+
     if not name or name.startswith("vcluster"):
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
@@ -70,7 +73,7 @@ def reconcile_install_job(spec: kopf.Spec, name: str, patch: kopf.Patch, logger)
     job_name = f"helm-install-{name}"
 
     try:
-        job = batch.read_namespaced_job(name=job_name, namespace=namespace)
+        job = get_job(batch, name=job_name, namespace=namespace)
     except ApiException as e:
         if e.status != 404:
             raise
@@ -89,11 +92,13 @@ def reconcile_install_job(spec: kopf.Spec, name: str, patch: kopf.Patch, logger)
                 patch.status["message"] = f"Failed to create helm install job: {create_err.reason}"
                 raise
         return False
+    
+    current_job_status, _ = unwrap_job(job)
 
-    if job.status.succeeded:
+    if current_job_status.succeeded:
         return True
 
-    if job.status.failed:
+    if current_job_status.failed:
         patch.status["phase"] = Phase.ERROR
         patch.status["message"] = "Helm install job failed."
         return False
@@ -108,7 +113,7 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
     vcluster_name = f"vcluster-{name}"
 
     try:
-        vc_set = apps.read_namespaced_stateful_set(name=vcluster_name, namespace=vcluster_name)
+        vc_set = get_statefulset(apps, name=vcluster_name, namespace=vcluster_name)
     except ApiException as e:
         if e.status == 404:
             patch.status["phase"] = Phase.PENDING
@@ -119,32 +124,32 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
-    current_annotations = vc_set.metadata.annotations or {}
+    _, current_metadata, current_status = unwrap_statefulset(vc_set)
 
-    currently_paused = current_annotations.get("loft.sh/paused") == "true"
-    should_be_paused = spec.get("state", State.RUNNING) == State.SLEEPING
+    currently_sleeping = (current_metadata.annotations or {}).get("loft.sh/paused") == "true"
+    should_be_sleeping = spec.get("state", State.RUNNING) == State.SLEEPING
 
-    if should_be_paused and not currently_paused:
+    if should_be_sleeping and not currently_sleeping:
         _sleep_vcluster(apps, vc_set, logger)
         patch.status["phase"] = Phase.SLEEPING
         patch.status["message"] = "vCluster sleeping."
         return
 
-    if not should_be_paused and currently_paused:
+    if not should_be_sleeping and currently_sleeping:
         _wake_vcluster(apps, vc_set, logger)
         patch.status["phase"] = Phase.WAKING
         patch.status["message"] = "Waking vCluster."
         return
 
-    # Desired and actual pause state already agree -> nothing to change
-    if should_be_paused and currently_paused:
+    # Desired and actual sleep state already agree -> nothing to change
+    if should_be_sleeping and currently_sleeping:
         patch.status["phase"] = Phase.SLEEPING
         patch.status["message"] = "vCluster sleeping."
         return
 
-    # Last case: should not be paused, is not paused -> either ready or waking up
-    desired_replicas = vc_set.spec.replicas or 0
-    ready_replicas = vc_set.status.ready_replicas or 0
+    # Last case: should not be sleeping, is not sleeping -> either ready or waking up
+    desired_replicas = current_status.replicas or 0
+    ready_replicas = current_status.ready_replicas or 0
     if desired_replicas > 0 and ready_replicas >= desired_replicas:
         patch.status["phase"] = Phase.READY
         patch.status["message"] = "vCluster is ready."
