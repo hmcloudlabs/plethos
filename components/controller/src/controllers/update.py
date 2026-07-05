@@ -7,8 +7,8 @@ from kubernetes.client.exceptions import ApiException
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
 
 
-@kopf.on.update(GROUP, VERSION, PLURAL, field="spec.State")
-def on_desired_state_change(spec, name, patch, old, new, logger, **_: object) -> None:
+@kopf.on.update(GROUP, VERSION, PLURAL, field="spec.state")
+def on_state_change(spec, name, patch, old, new, logger, **_: object) -> None:
     logger.info(f"Reconciling State of VClusterClaim {name}.")
 
     if new == State.SLEEPING:
@@ -26,8 +26,9 @@ def _sleep_vcluster(name: str, patch, logger) -> None:
     try:
         vc_set = apps.read_namespaced_stateful_set(
             name=f"vcluster-{name}",
-            namespace=f"vcluster-{name}"
+            namespace=f"vcluster-{name}",
         )
+  
     except ApiException as e:
         patch.status["phase"] = Phase.ERROR
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
@@ -49,7 +50,6 @@ def _sleep_vcluster(name: str, patch, logger) -> None:
         )
 
         patch.status["message"] = "vCluster sleeping."
-
         logger.info(f"Scaled down StatefulSet {vc_set.metadata.name} in vcluster-{name}.")
 
 
@@ -69,14 +69,16 @@ def _wake_vcluster(name: str, patch, logger) -> None:
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
-    annotations = vc_set.metadata.annotations or {}
+    annotations = dict(vc_set.metadata.annotations or {})
     if annotations.get("loft.sh/paused") == "true":
         original_replicas = int(annotations.get("loft.sh/paused-replicas", 1))
 
-        annotations.pop("loft.sh/paused", None)
-        annotations.pop("loft.sh/paused-date", None)
-        annotations.pop("loft.sh/paused-replicas", None)
-        vc_set.metadata.annotations = annotations
+        # Explicit None marks these for deletion in a strategic merge patch
+        vc_set.metadata.annotations = {
+            "loft.sh/paused": None,
+            "loft.sh/paused-date": None,
+            "loft.sh/paused-replicas": None,
+        }
         vc_set.spec.replicas = original_replicas
 
         apps.patch_namespaced_stateful_set(
