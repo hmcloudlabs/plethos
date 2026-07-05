@@ -4,6 +4,7 @@ import kopf
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
+from utils import get_statefulset, unwrap_statefulset
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
 
 
@@ -24,7 +25,8 @@ def _sleep_vcluster(name: str, patch, logger) -> None:
     apps = client.AppsV1Api()
 
     try:
-        vc_set = apps.read_namespaced_stateful_set(
+        vc_set = get_statefulset(
+            apps,
             name=f"vcluster-{name}",
             namespace=f"vcluster-{name}",
         )
@@ -34,23 +36,25 @@ def _sleep_vcluster(name: str, patch, logger) -> None:
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
-    if vc_set.spec.replicas > 0:
-        vc_set.metadata.annotations = {
-            **(vc_set.metadata.annotations or {}),
+    spec, metadata = unwrap_statefulset(vc_set)
+
+    if spec.replicas > 0:
+        metadata.annotations = {
+            **(metadata.annotations or {}),
             "loft.sh/paused": "true",
             "loft.sh/paused-date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "loft.sh/paused-replicas": str(vc_set.spec.replicas),
+            "loft.sh/paused-replicas": str(spec.replicas),
         }
-        vc_set.spec.replicas = 0
+        spec.replicas = 0
 
         apps.patch_namespaced_stateful_set(
-            name=vc_set.metadata.name,
+            name=metadata.name,
             namespace=f"vcluster-{name}",
             body=vc_set,
         )
 
         patch.status["message"] = "vCluster sleeping."
-        logger.info(f"Scaled down StatefulSet {vc_set.metadata.name} in vcluster-{name}.")
+        logger.info(f"Scaled down StatefulSet {metadata.name} in vcluster-{name}.")
 
 
 def _wake_vcluster(name: str, patch, logger) -> None:
@@ -60,29 +64,32 @@ def _wake_vcluster(name: str, patch, logger) -> None:
     apps = client.AppsV1Api()
 
     try:
-        vc_set = apps.read_namespaced_stateful_set(
+        vc_set = get_statefulset(
+            apps,
             name=f"vcluster-{name}",
-            namespace=f"vcluster-{name}"
+            namespace=f"vcluster-{name}",
         )
     except ApiException as e:
         patch.status["phase"] = Phase.ERROR
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
-    annotations = dict(vc_set.metadata.annotations or {})
+    spec, metadata = unwrap_statefulset(vc_set)
+
+    annotations = dict(metadata.annotations or {})
     if annotations.get("loft.sh/paused") == "true":
         original_replicas = int(annotations.get("loft.sh/paused-replicas", 1))
 
         # Explicit None marks these for deletion in a strategic merge patch
-        vc_set.metadata.annotations = {
+        metadata.annotations = {
             "loft.sh/paused": None,
             "loft.sh/paused-date": None,
             "loft.sh/paused-replicas": None,
         }
-        vc_set.spec.replicas = original_replicas
+        spec.replicas = original_replicas
 
         apps.patch_namespaced_stateful_set(
-            name=vc_set.metadata.name,
+            name=metadata.name,
             namespace=f"vcluster-{name}",
             body=vc_set,
         )
@@ -90,7 +97,7 @@ def _wake_vcluster(name: str, patch, logger) -> None:
         patch.status["phase"] = Phase.READY
         patch.status["message"] = "VCluster is ready."
 
-        logger.info(f"Scaled up StatefulSet {vc_set.metadata.name} in vcluster-{name}.")
+        logger.info(f"Scaled up StatefulSet {metadata.name} in vcluster-{name}.")
 
 
 @kopf.on.update(GROUP, VERSION, PLURAL, field="spec.accessRules")
