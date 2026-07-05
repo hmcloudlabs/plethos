@@ -91,3 +91,9 @@ def _wake_vcluster(name: str, patch, logger) -> None:
         patch.status["message"] = "VCluster is ready."
 
         logger.info(f"Scaled up StatefulSet {vc_set.metadata.name} in vcluster-{name}.")
+
+
+@kopf.on.update(GROUP, VERSION, PLURAL, field="spec.accessRules")
+def on_access_rules_change(meta, patch, name, logger, **_: object) -> None:
+    logger.info(f"accessRules changed for VClusterClaim {name}.")
+    patch.status["observedGeneration"] = meta["generation"]
