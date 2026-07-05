@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 import kubernetes
 from kubernetes import client
 from kubernetes.client import V1Job
@@ -47,3 +47,18 @@ def unwrap_job(job: V1Job):
     if job.status is None or job.metadata is None:
         raise ValueError("Invalid Job: missing status/metadata.")
     return job.status, job.metadata
+
+
+def get_crd_object(
+    custom: client.CustomObjectsApi,
+    group: str,
+    version: str,
+    plural: str,
+    namespace: str,
+    name: str,
+) -> dict[str, Any]:
+    obj = custom.get_namespaced_custom_object(
+        group=group, version=version, plural=plural,
+        namespace=namespace, name=name,
+    )
+    return cast(dict[str, Any], obj)

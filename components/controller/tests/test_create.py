@@ -19,6 +19,7 @@ class TestCreate:
 
         obj = wait_for_phase(custom_api, resource_name, Phase.PENDING, timeout=35)
 
+        # Panics if any of the resources don't exist
         core_api.read_namespace(name=f"vcluster-{resource_name}")
         core_api.read_namespaced_service_account(
             "helm-installer", namespace=f"vcluster-{resource_name}"

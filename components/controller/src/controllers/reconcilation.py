@@ -11,28 +11,32 @@ from resources import (
     make_helm_install_job,
 )
 from config import settings
-from utils import get_job, get_statefulset, unwrap_job, unwrap_statefulset
+from utils import get_job, get_statefulset, unwrap_job, unwrap_statefulset, get_crd_object
 
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
 @kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
-def reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
-    logger.info(f"Reconciliation started for {name}.")
-
+def on_reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
     if not name or name.startswith("vcluster"):
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
-    ensure_namespace_and_rbac(name, patch, logger)
+    reconcile(spec, name, patch, meta["generation"], logger)
+
+
+def reconcile(spec: kopf.Spec, name: str, patch: kopf.Patch, generation: int, logger) -> None:
+    logger.info(f"Reconciliation started for {name}.")
+
+    reconcile_namespace_and_rbac(name, patch, logger)
 
     installed = reconcile_install_job(spec, name, patch, logger)
     if installed:
         reconcile_vcluster_state(spec, name, patch, logger)
 
-    patch.status["observedGeneration"] = meta["generation"]
+    patch.status["observedGeneration"] = generation
 
 
-def ensure_namespace_and_rbac(name: str, patch: kopf.Patch, logger) -> None:
+def reconcile_namespace_and_rbac(name: str, patch: kopf.Patch, logger) -> None:
     core = client.CoreV1Api()
     rbac = client.RbacAuthorizationV1Api()
 
@@ -124,9 +128,9 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
         patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
-    _, current_metadata, current_status = unwrap_statefulset(vc_set)
+    vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
 
-    currently_sleeping = (current_metadata.annotations or {}).get("loft.sh/paused") == "true"
+    currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"
     should_be_sleeping = spec.get("state", State.RUNNING) == State.SLEEPING
 
     if should_be_sleeping and not currently_sleeping:
@@ -148,8 +152,8 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
         return
 
     # Last case: should not be sleeping, is not sleeping -> either ready or waking up
-    desired_replicas = current_status.replicas or 0
-    ready_replicas = current_status.ready_replicas or 0
+    desired_replicas = vc_set_spec.replicas or 0
+    ready_replicas = vc_set_status.ready_replicas or 0
     if desired_replicas > 0 and ready_replicas >= desired_replicas:
         patch.status["phase"] = Phase.READY
         patch.status["message"] = "vCluster is ready."
@@ -196,3 +200,42 @@ def _wake_vcluster(apps, vc_set, logger) -> None:
         body=vc_set
     )
     logger.info(f"Scaled up StatefulSet of vCluster {vc_set.metadata.name}.")
+
+
+def reconcile_claim_by_name(claim_name: str, logger) -> None:
+    custom = client.CustomObjectsApi()
+
+    try:
+        claim = get_crd_object(
+            custom, group=GROUP, version=VERSION, plural=PLURAL,
+            namespace=settings.namespace, name=claim_name,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            logger.info(f"VClusterClaim '{claim_name}' no longer exists, skipping wake-up.")
+            return
+        raise
+
+    spec = claim["spec"]
+    generation = claim["metadata"]["generation"]
+    patch = kopf.Patch()
+
+    reconcile(spec, claim_name, patch, generation, logger)
+
+    try:
+        custom.patch_namespaced_custom_object_status(
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=settings.namespace,
+            name=claim_name,
+            body={"status": dict(patch.status)},
+        )
+    except ApiException as e:
+        if e.status != 404:
+            raise
+
+
+@kopf.on.field("batch/v1", "jobs", field="status", labels={f"{GROUP}/job-type": "install"})
+def on_install_job_event(labels, logger, **_: object) -> None:
+    reconcile_claim_by_name(labels[f"{GROUP}/vcluster-claim"], logger)
