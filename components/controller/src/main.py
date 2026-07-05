@@ -3,9 +3,10 @@ import kopf
 from shared.vclusterclaim import GROUP, PLURAL, VERSION
 from utils import load_kube_config
 
-import controllers.create
-import controllers.update
+#import controllers.create
+#import controllers.update
 import controllers.delete
+import controllers.reconcilation
 
 
 @kopf.on.startup()
