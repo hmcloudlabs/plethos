@@ -134,13 +134,13 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
     should_be_sleeping = spec.get("state", State.RUNNING) == State.SLEEPING
 
     if should_be_sleeping and not currently_sleeping:
-        _sleep_vcluster(apps, vc_set, logger)
+        sleep_vcluster(apps, vc_set, logger)
         patch.status["phase"] = Phase.SLEEPING
         patch.status["message"] = "vCluster sleeping."
         return
 
     if not should_be_sleeping and currently_sleeping:
-        _wake_vcluster(apps, vc_set, logger)
+        wake_vcluster(apps, vc_set, logger)
         patch.status["phase"] = Phase.WAKING
         patch.status["message"] = "Waking vCluster."
         return
@@ -162,7 +162,7 @@ def reconcile_vcluster_state(spec: kopf.Spec, name: str, patch: kopf.Patch, logg
         patch.status["message"] = "Waking vCluster."
 
 
-def _sleep_vcluster(apps, vc_set, logger) -> None:
+def sleep_vcluster(apps, vc_set, logger) -> None:
     if not vc_set.spec.replicas or vc_set.spec.replicas <= 0:
         return
 
@@ -183,7 +183,7 @@ def _sleep_vcluster(apps, vc_set, logger) -> None:
     logger.info(f"Scaled down StatefulSet of vCluster {vc_set.metadata.name}.")
 
 
-def _wake_vcluster(apps, vc_set, logger) -> None:
+def wake_vcluster(apps, vc_set, logger) -> None:
     current_annotations = vc_set.metadata.annotations or {}
     original_replicas = int(current_annotations.get("loft.sh/paused-replicas", 1))
 

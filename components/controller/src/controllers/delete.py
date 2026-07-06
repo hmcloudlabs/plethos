@@ -4,58 +4,82 @@ from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from resources import make_helm_uninstall_job
+from utils import get_job, unwrap_job
 
 
 @kopf.on.delete(GROUP, VERSION, PLURAL)
 def on_delete(name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
-    logger.info(f"Deleting VClusterClaim: {name}.")
-
     if not name:
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
+    logger.info(f"Deleting vCluster {name}.")
+
     patch.status["phase"] = Phase.DELETING
 
+    namespace = f"vcluster-{name}"
+    job_name = f"helm-uninstall-{name}"
+
     batch = client.BatchV1Api()
+    core = client.CoreV1Api()
 
+    # Check if namespace still exists, otherwise a helm uninstall job can't be run
     try:
-        batch.create_namespaced_job(
-            namespace=f"vcluster-{name}",
-            body=make_helm_uninstall_job(name),
-        )
-        logger.info(f"Created Job helm-uninstall-{name}.")
+        core.read_namespace(name=namespace)
     except ApiException as e:
-        if e.status in (404, 403):
-            logger.info(f"Namespace vcluster-{name} already gone, skipping uninstall.")
+        if e.status == 404:
+            cleanup_cluster_scoped_resources(name, logger)
+            logger.info(f"Namespace {namespace} already gone, nothing to clean up.")
             return
-        if e.status != 409:
-            patch.status["phase"] = Phase.ERROR
-            patch.status["message"] = (
-                f"Failed to delete vCluster resources via helm job: {e.reason}."
-            )
+        raise
+
+    # If the helm uninstall job doesn't exist yet, create it
+    try:
+        job = get_job(batch, name=job_name, namespace=namespace)
+    except ApiException as e:
+        if e.status != 404:
             raise
+        
+        try:
+            batch.create_namespaced_job(namespace=namespace, body=make_helm_uninstall_job(name))
+            logger.info(f"Created Job {job_name}.")
+        except ApiException as create_err:
+            if create_err.status not in (403, 404, 409):
+                patch.status["phase"] = Phase.ERROR
+                patch.status["message"] = (
+                    f"Failed to delete vCluster resources via helm job: {create_err.reason}."
+                )
+                raise
 
+        raise kopf.TemporaryError("Uninstall job created, waiting for completion.", delay=10)
 
-@kopf.on.field("batch/v1", "jobs", field="status", labels={f"{GROUP}/job-type": "uninstall"})
-def on_uninstall_job_status(labels, status, logger, **_: object) -> None:
-    if not status.get("succeeded"):
+    current_job_status, _ = unwrap_job(job)
+
+    if current_job_status.succeeded:
+        cleanup_cluster_scoped_resources(name, logger)
         return
 
-    vc_claim_name = labels[f"{GROUP}/vcluster-claim"]
-    logger.info(f"Helm uninstall job succeeded for {vc_claim_name}, cleaning up.")
+    if current_job_status.failed:
+        patch.status["phase"] = Phase.ERROR
+        patch.status["message"] = "Helm uninstall job failed."
+        raise kopf.TemporaryError("Uninstall job failed, will keep retrying.", delay=30)
 
-    core = client.CoreV1Api()
+    raise kopf.TemporaryError("Uninstall job still running.", delay=10)
+
+
+def cleanup_cluster_scoped_resources(name: str, logger) -> None:
     rbac = client.RbacAuthorizationV1Api()
+    core = client.CoreV1Api()
 
     try:
-        rbac.delete_cluster_role_binding(name=f"helm-installer-{vc_claim_name}")
-        logger.info(f"Deleted ClusterRoleBinding helm-installer-{vc_claim_name}.")
+        rbac.delete_cluster_role_binding(name=f"helm-installer-{name}")
+        logger.info(f"Deleted ClusterRoleBinding helm-installer-{name}.")
     except ApiException as e:
         if e.status != 404:
             raise
 
     try:
-        core.delete_namespace(name=f"vcluster-{vc_claim_name}")
-        logger.info(f"Deleted namespace vcluster-{vc_claim_name}.")
+        core.delete_namespace(name=f"vcluster-{name}")
+        logger.info(f"Deleted namespace vcluster-{name}.")
     except ApiException as e:
         if e.status != 404:
             raise
