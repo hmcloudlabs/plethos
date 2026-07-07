@@ -62,7 +62,6 @@ def get_job_status(job: V1Job) -> JobStatus:
     return JobStatus.RUNNING
 
 
-
 def get_crd_object(
     custom: client.CustomObjectsApi,
     group: str,

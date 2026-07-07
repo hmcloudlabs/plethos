@@ -146,9 +146,6 @@ def remove_install_job(ctx: ReconciliationContext) -> None:
         if e.status != 404:
             raise
 
-    ctx.patch.status["phase"] = Phase.PROVISIONING
-    ctx.patch.status["message"] = "Retrying Helm installation."
-
 
 def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
     try:
@@ -262,6 +259,8 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
     reconcile(ctx)
 
     try:
+        # Since the here the reconciliation ran outside of a CRD event handler, 
+        # the status is written manually from the context into the custom resource.
         custom.patch_namespaced_custom_object_status(
             group=GROUP,
             version=VERSION,

@@ -97,6 +97,7 @@ class TestDeleteFailure:
         """
 
         names = VClusterNames(resource_name)
+
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
 
@@ -137,7 +138,7 @@ class TestDeleteFailure:
         obj = wait_for_phase(custom_api, resource_name, Phase.ERROR, timeout=30)
         assert "Helm uninstall job failed" in obj["status"]["message"]
 
-        # The claim should still exist since uninstall job didn't run
+        # The claim should still exist since uninstall job failed
         custom_api.get_namespaced_custom_object(
             group=GROUP, version=VERSION, plural=PLURAL,
             namespace=NAMESPACE, name=resource_name,

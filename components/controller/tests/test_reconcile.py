@@ -85,10 +85,10 @@ class TestCreateIdempotency:
 
 
 class TestCreateFailure:
-    def test_helm_failure_sets_error_phase(
+    def test_helm_install_failure_retries_installation(
         self, operator, custom_api, batch_api, create_vcluster_claim, resource_name
     ):
-        """If the helm install Job fails, phase should move to ERROR."""
+        """If the helm install Job fails, it should be removed and retried."""
 
         names = VClusterNames(resource_name)
 
@@ -123,8 +123,26 @@ class TestCreateFailure:
             },
         )
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.ERROR, timeout=30)
-        assert "Helm install job failed" in obj["status"]["message"]
+        # Controller should notice failure and move back into provisioning
+        obj = wait_for_phase(
+            custom_api,
+            resource_name,
+            Phase.PROVISIONING,
+            timeout=30,
+        )
+
+        assert obj["status"]["message"] in (
+            "Creating helm install job.",
+            "Helm install job running.",
+        )
+
+        # The install job should exist again after recreation
+        wait_for_job(
+            batch_api,
+            names.namespace,
+            names.install_job,
+            timeout=30,
+        )
 
 
 class TestUpdate:
