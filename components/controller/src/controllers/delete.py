@@ -9,9 +9,14 @@ from utils import get_job, unwrap_job
 
 
 
-
 @kopf.on.delete(GROUP, VERSION, PLURAL)
 def on_delete(name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
+    """
+    Delete handler that runs when `metadata.deletionTimestamp` is set on an object 
+    still holding kopf's finalizer. Kopf checks this also on startup, which is why 
+    this handler is even-based and not part of a reconciliation loop.
+    """
+
     if not name:
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 

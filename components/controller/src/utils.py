@@ -30,7 +30,6 @@ def unwrap_statefulset(sts: V1StatefulSet):
     return sts.spec, sts.metadata, sts.status
 
 
-
 def get_job(
     batch: client.BatchV1Api,
     name: str,

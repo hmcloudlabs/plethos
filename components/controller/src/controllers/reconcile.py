@@ -44,11 +44,8 @@ def reconcile(ctx: ReconciliationContext) -> None:
 
 
 def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
-    core = client.CoreV1Api()
-    rbac = client.RbacAuthorizationV1Api()
-
     try:
-        core.create_namespace(body=make_namespace(ctx.names.namespace))
+        ctx.clients.core.create_namespace(body=make_namespace(ctx.names.namespace))
         ctx.logger.info(f"Created namespace {ctx.names.namespace}.")
     except ApiException as e:
         if e.status != 409:
@@ -57,11 +54,11 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
             raise
 
     try:
-        core.create_namespaced_service_account(
+        ctx.clients.core.create_namespaced_service_account(
             namespace=ctx.names.namespace,
             body=make_service_account(ctx.names.namespace, ctx.names.service_account),
         )
-        ctx.logger.info(f"Created ServiceAccount helm-installer in {ctx.names.namespace}.")
+        ctx.logger.info(f"Created ServiceAccount {ctx.names.service_account} in {ctx.names.namespace}.")
     except ApiException as e:
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
@@ -69,8 +66,8 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
             raise
 
     try:
-        rbac.create_cluster_role_binding(body=make_cluster_role_binding(ctx.name, ctx.names.crb))
-        ctx.logger.info(f"Created ClusterRoleBinding helm-installer-{ctx.name}.")
+        ctx.clients.rbac.create_cluster_role_binding(body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb))
+        ctx.logger.info(f"Created ClusterRoleBinding {ctx.names.crb}.")
     except ApiException as e:
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
@@ -79,10 +76,8 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
 
 
 def reconcile_install_job(ctx: ReconciliationContext) -> bool:
-    batch = client.BatchV1Api()
-
     try:
-        job = get_job(batch, name=ctx.names.install_job, namespace=ctx.names.namespace)
+        job = get_job(ctx.clients.batch, name=ctx.names.install_job, namespace=ctx.names.namespace)
     except ApiException as e:
         if e.status != 404:
             raise
@@ -91,7 +86,7 @@ def reconcile_install_job(ctx: ReconciliationContext) -> bool:
         ctx.patch.status["message"] = "Creating helm install job."
 
         try:
-            batch.create_namespaced_job(
+            ctx.clients.batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
                 body=make_helm_install_job(
                     ctx.names.namespace,
@@ -124,10 +119,8 @@ def reconcile_install_job(ctx: ReconciliationContext) -> bool:
 
 
 def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
-    apps = client.AppsV1Api()
-
     try:
-        vc_set = get_statefulset(apps, name=ctx.name, namespace=ctx.names.namespace)
+        vc_set = get_statefulset(ctx.clients.apps, name=ctx.names.vcluster, namespace=ctx.names.namespace)
     except ApiException as e:
         if e.status == 404:
             ctx.patch.status["phase"] = Phase.PENDING
@@ -144,13 +137,13 @@ def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
     should_be_sleeping = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
 
     if should_be_sleeping and not currently_sleeping:
-        sleep_vcluster(apps, vc_set, ctx.logger)
+        sleep_vcluster(ctx.clients.apps, vc_set, ctx.logger)
         ctx.patch.status["phase"] = Phase.SLEEPING
         ctx.patch.status["message"] = "vCluster sleeping."
         return
 
     if not should_be_sleeping and currently_sleeping:
-        wake_vcluster(apps, vc_set, ctx.logger)
+        wake_vcluster(ctx.clients.apps, vc_set, ctx.logger)
         ctx.patch.status["phase"] = Phase.WAKING
         ctx.patch.status["message"] = "Waking vCluster."
         return

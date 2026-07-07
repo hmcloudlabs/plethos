@@ -1,8 +1,16 @@
 from dataclasses import dataclass, field
 import logging
 import kopf
+from kubernetes import client
 
-from config import KubernetesClients
+
+@dataclass(slots=True)
+class KubernetesClients:
+    core: client.CoreV1Api = field(default_factory=client.CoreV1Api)
+    batch: client.BatchV1Api = field(default_factory=client.BatchV1Api)
+    apps: client.AppsV1Api = field(default_factory=client.AppsV1Api)
+    rbac: client.RbacAuthorizationV1Api = field(default_factory=client.RbacAuthorizationV1Api)
+    custom: client.CustomObjectsApi = field(default_factory=client.CustomObjectsApi)
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,7 +64,6 @@ class DeletionContext:
     name: str
     patch: kopf.Patch
     logger: logging.Logger
-
     names: VClusterNames = field(init=False)
 
     def __post_init__(self):

@@ -1,14 +1,6 @@
 import os
-from dataclasses import dataclass, field
-from kubernetes import client
+from dataclasses import dataclass
 
-@dataclass(slots=True)
-class KubernetesClients:
-    core: client.CoreV1Api = field(default_factory=client.CoreV1Api)
-    batch: client.BatchV1Api = field(default_factory=client.BatchV1Api)
-    apps: client.AppsV1Api = field(default_factory=client.AppsV1Api)
-    rbac: client.RbacAuthorizationV1Api = field(default_factory=client.RbacAuthorizationV1Api)
-    custom: client.CustomObjectsApi = field(default_factory=client.CustomObjectsApi)
 
 @dataclass(frozen=True)
 class Settings:

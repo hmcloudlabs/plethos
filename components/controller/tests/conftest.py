@@ -194,6 +194,26 @@ def wait_for_404(api_fn, resource_type: str, timeout=60):
     raise TimeoutError(f"Resource {resource_type} should have been deleted after {timeout}s.")
 
 
+
+def wait_for_job(batch_api, namespace: str, job_name: str, timeout: int = 30):
+    """
+    Polls until the named Job exists, returning it. Used instead of waiting on
+    a CR phase when we need a handle on the Job itself (e.g. to force its
+    status), since the Job can exist well before -- or independently of --
+    any particular phase being observably written to status.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            return batch_api.read_namespaced_job(name=job_name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+            time.sleep(1)
+
+    raise TimeoutError(f"Job '{job_name}' in '{namespace}' did not appear after {timeout}s.")
+
+
 @pytest.fixture
 def create_vcluster_claim(custom_api, resource_name):
     """
