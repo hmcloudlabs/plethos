@@ -9,6 +9,8 @@ from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from shared.vclusterclaim import GROUP, PLURAL, VERSION
 
+from context import KubernetesClients
+
 CLUSTER_NAME = "e2e-testing-cluster"
 NAMESPACE = os.environ["VCLUSTERCLAIMS_NAMESPACE"]
 
@@ -51,23 +53,8 @@ def kind_cluster():
 
 
 @pytest.fixture(scope="session")
-def core_api(kind_cluster):
-    return client.CoreV1Api()
-
-
-@pytest.fixture(scope="session")
-def rbac_api(kind_cluster):
-    return client.RbacAuthorizationV1Api()
-
-
-@pytest.fixture(scope="session")
-def batch_api(kind_cluster):
-    return client.BatchV1Api()
-
-
-@pytest.fixture(scope="session")
-def custom_api(kind_cluster):
-    return client.CustomObjectsApi()
+def clients(kind_cluster):
+    return KubernetesClients()
 
 
 @pytest.fixture
@@ -95,7 +82,7 @@ def resource_name():
 
 
 @pytest.fixture(autouse=True)
-def cleanup(custom_api, core_api, rbac_api, resource_name):
+def cleanup(clients, resource_name):
     """
     Deletes the VClusterClaim (and wait for propagation) before and after
     each test so leftover resources from a crashed previous run don't cause conflicts.
@@ -103,7 +90,7 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
 
     def delete():
         try:
-            custom_api.delete_namespaced_custom_object(
+            clients.custom.delete_namespaced_custom_object(
                 group=GROUP,
                 version=VERSION,
                 plural=PLURAL,
@@ -114,12 +101,12 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
             pass
 
         try:
-            core_api.delete_namespace(name=f"vcluster-{resource_name}")
+            clients.core.delete_namespace(name=f"vcluster-{resource_name}")
         except Exception:
             pass
 
         try:
-            rbac_api.delete_cluster_role_binding(name=f"helm-installer-{resource_name}")
+            clients.rbac.delete_cluster_role_binding(name=f"helm-installer-{resource_name}")
         except Exception:
             pass
 
@@ -127,7 +114,7 @@ def cleanup(custom_api, core_api, rbac_api, resource_name):
         deadline = time.time() + 60
         while time.time() < deadline:
             try:
-                core_api.read_namespace(name=f"vcluster-{resource_name}")
+                clients.core.read_namespace(name=f"vcluster-{resource_name}")
                 time.sleep(2)
             except ApiException as e:
                 if e.status == 404:
@@ -214,13 +201,13 @@ def wait_for_job(batch_api, namespace: str, job_name: str, timeout: int = 30):
 
 
 @pytest.fixture
-def create_vcluster_claim(custom_api, resource_name):
+def create_vcluster_claim(clients, resource_name):
     """
     Helper fixture that creates a VClusterClaim and returns its name.
     """
 
     def _create(spec=None):
-        custom_api.create_namespaced_custom_object(
+        clients.custom.create_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,

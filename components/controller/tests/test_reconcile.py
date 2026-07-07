@@ -14,10 +14,7 @@ class TestCreate:
     def test_provisions_resources_and_reaches_ready(
         self,
         operator,
-        core_api,
-        rbac_api,
-        batch_api,
-        custom_api,
+        clients,
         create_vcluster_claim,
         resource_name,
     ):
@@ -30,19 +27,19 @@ class TestCreate:
         names = VClusterNames(resource_name)
         create_vcluster_claim()
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
         assert "vCluster is ready" in obj["status"]["message"]
 
         # Panics if any of the resources don't exist
-        core_api.read_namespace(name=names.namespace)
-        core_api.read_namespaced_service_account(names.service_account, namespace=names.namespace)
-        rbac_api.read_cluster_role_binding(name=names.crb)
-        batch_api.read_namespaced_job(names.install_job, namespace=names.namespace)
+        clients.core.read_namespace(name=names.namespace)
+        clients.core.read_namespaced_service_account(names.service_account, namespace=names.namespace)
+        clients.rbac.read_cluster_role_binding(name=names.crb)
+        clients.batch.read_namespaced_job(names.install_job, namespace=names.namespace)
 
 
 class TestCreateIdempotency:
     def test_handles_existing_namespace(
-        self, operator, custom_api, core_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
         If the namespace already exists (409), the operator should not enter
@@ -54,15 +51,15 @@ class TestCreateIdempotency:
         names = VClusterNames(resource_name)
 
         # Create pre-existing namespace
-        core_api.create_namespace(body=make_namespace(names.namespace))
+        clients.core.create_namespace(body=make_namespace(names.namespace))
 
         create_vcluster_claim()
-        obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
         assert obj["status"]["phase"] == Phase.READY
 
     def test_handles_existing_cluster_role_binding(
-        self, operator, custom_api, rbac_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
         If the ClusterRoleBinding already exists (409), the operator should not
@@ -74,29 +71,29 @@ class TestCreateIdempotency:
         names = VClusterNames(resource_name)
 
         # Create pre-existing CRB
-        rbac_api.create_cluster_role_binding(
+        clients.rbac.create_cluster_role_binding(
             body=make_cluster_role_binding(names.namespace, names.crb)
         )
 
         create_vcluster_claim()
-        obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
         assert obj["status"]["phase"] == Phase.READY
 
 
 class TestCreateFailure:
     def test_helm_install_failure_retries_installation(
-        self, operator, custom_api, batch_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """If the helm install Job fails, it should be removed and retried."""
 
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_job(batch_api, names.namespace, names.install_job, timeout=30)
+        wait_for_job(clients.batch, names.namespace, names.install_job, timeout=30)
 
         # Force the Job into a failed state
-        batch_api.patch_namespaced_job_status(
+        clients.batch.patch_namespaced_job_status(
             name=names.install_job,
             namespace=names.namespace,
             body={
@@ -129,20 +126,22 @@ class TestCreateFailure:
 
         # Controller should notice failure and move back into provisioning
         obj = wait_for_phase(
-            custom_api,
+            clients.custom,
             resource_name,
             Phase.PROVISIONING,
             timeout=30,
         )
 
+        # Could be at any of those steps
         assert obj["status"]["message"] in (
+            "Helm install job failed.",
             "Creating helm install job.",
             "Helm install job running.",
         )
 
         # The install job should exist again after recreation
         wait_for_job(
-            batch_api,
+            clients.batch,
             names.namespace,
             names.install_job,
             timeout=30,
@@ -150,15 +149,15 @@ class TestCreateFailure:
 
 
 class TestUpdate:
-    def test_sleep_vcluster(self, operator, custom_api, create_vcluster_claim, resource_name):
+    def test_sleep_vcluster(self, operator, clients, create_vcluster_claim, resource_name):
         """Changing state to Sleeping should scale down the vCluster StatefulSet."""
 
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
-        custom_api.patch_namespaced_custom_object(
+        clients.custom.patch_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -167,7 +166,7 @@ class TestUpdate:
             body={"spec": {"state": "Sleeping"}},
         )
 
-        wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
 
         apps = client.AppsV1Api()
 
@@ -178,16 +177,16 @@ class TestUpdate:
         assert vc_set_metadata.annotations.get("loft.sh/paused") == "true"
         assert "loft.sh/paused-replicas" in vc_set_metadata.annotations
 
-    def test_wake_vcluster(self, operator, custom_api, create_vcluster_claim, resource_name):
+    def test_wake_vcluster(self, operator, clients, create_vcluster_claim, resource_name):
         """Changing state back to Running should scale up the vCluster StatefulSet."""
 
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
-        # first sleep
-        custom_api.patch_namespaced_custom_object(
+        # First sleep
+        clients.custom.patch_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -195,10 +194,10 @@ class TestUpdate:
             name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
-        wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
 
-        # then wake
-        custom_api.patch_namespaced_custom_object(
+        # Then wake
+        clients.custom.patch_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -207,7 +206,7 @@ class TestUpdate:
             body={"spec": {"state": "Running"}},
         )
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
         assert "vCluster is ready" in obj["status"]["message"]
 
         apps = client.AppsV1Api()
@@ -219,14 +218,14 @@ class TestUpdate:
         assert vc_set_metadata.annotations.get("loft.sh/paused") is None
 
     def test_sleep_already_sleeping(
-        self, operator, custom_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """Setting state to Sleeping when already sleeping should not error."""
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
-        custom_api.patch_namespaced_custom_object(
+        clients.custom.patch_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -234,10 +233,10 @@ class TestUpdate:
             name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
-        wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
 
         # Patch again with same value
-        custom_api.patch_namespaced_custom_object(
+        clients.custom.patch_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -247,7 +246,7 @@ class TestUpdate:
         )
         time.sleep(5)
 
-        obj = custom_api.get_namespaced_custom_object(
+        obj = clients.custom.get_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -257,14 +256,14 @@ class TestUpdate:
         assert obj["status"]["phase"] == Phase.SLEEPING
 
     def test_immutable_fields_rejected(
-        self, operator, custom_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """Changing immutable fields like name or ownerSub should be rejected by the API."""
 
         create_vcluster_claim()
 
         with pytest.raises(ApiException) as exc_info:
-            custom_api.patch_namespaced_custom_object(
+            clients.custom.patch_namespaced_custom_object(
                 group=GROUP,
                 version=VERSION,
                 plural=PLURAL,

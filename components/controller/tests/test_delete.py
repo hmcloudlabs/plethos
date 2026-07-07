@@ -1,6 +1,5 @@
 import time
 
-
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from conftest import NAMESPACE, wait_for_phase, wait_for_404, wait_for_job
 from context import VClusterNames
@@ -8,7 +7,7 @@ from context import VClusterNames
 
 class TestDelete:
     def test_delete_removes_vcluster_resources(
-        self, operator, core_api, rbac_api, custom_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
         Deleting a VClusterClaim should run the uninstall job and then remove
@@ -18,10 +17,10 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
         # Remove VClusterClaim resource
-        custom_api.delete_namespaced_custom_object(
+        clients.custom.delete_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -31,7 +30,7 @@ class TestDelete:
 
         # Expects the claim, namespace and CRB to disappear
         wait_for_404(
-            lambda: custom_api.get_namespaced_custom_object(
+            lambda: clients.custom.get_namespaced_custom_object(
                 group=GROUP,
                 version=VERSION,
                 plural=PLURAL,
@@ -42,16 +41,16 @@ class TestDelete:
             timeout=30,
         )
         wait_for_404(
-            lambda: core_api.read_namespace(name=names.namespace),
+            lambda: clients.core.read_namespace(name=names.namespace),
             resource_type="Namespace",
         )
         wait_for_404(
-            lambda: rbac_api.read_cluster_role_binding(name=names.crb),
+            lambda: clients.rbac.read_cluster_role_binding(name=names.crb),
             resource_type="ClusterRoleBinding",
         )
 
     def test_delete_when_namespace_already_gone(
-        self, operator, core_api, rbac_api, custom_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
         If the vcluster namespace is already gone (e.g. deleted manually),
@@ -62,17 +61,17 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
         # Manually delete the namespace before deleting the claim
-        core_api.delete_namespace(name=names.namespace)
+        clients.core.delete_namespace(name=names.namespace)
         wait_for_404(
-            lambda: core_api.read_namespace(name=names.namespace),
+            lambda: clients.core.read_namespace(name=names.namespace),
             resource_type="Namespace",
             timeout=30,
         )
 
-        custom_api.delete_namespaced_custom_object(
+        clients.custom.delete_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -81,7 +80,7 @@ class TestDelete:
         )
 
         wait_for_404(
-            lambda: custom_api.get_namespaced_custom_object(
+            lambda: clients.custom.get_namespaced_custom_object(
                 group=GROUP,
                 version=VERSION,
                 plural=PLURAL,
@@ -93,14 +92,14 @@ class TestDelete:
 
         # Cluster-scoped cleanup should still have run, even though no uninstall job ran.
         wait_for_404(
-            lambda: rbac_api.read_cluster_role_binding(name=names.crb),
+            lambda: clients.rbac.read_cluster_role_binding(name=names.crb),
             resource_type="ClusterRoleBinding",
         )
 
 
 class TestDeleteFailure:
     def test_uninstall_job_failure_sets_error_phase(
-        self, operator, custom_api, batch_api, create_vcluster_claim, resource_name
+        self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
         If the helm uninstall Job fails, phase should move to ERROR and the
@@ -110,9 +109,9 @@ class TestDeleteFailure:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
 
-        custom_api.delete_namespaced_custom_object(
+        clients.custom.delete_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
@@ -120,9 +119,9 @@ class TestDeleteFailure:
             name=resource_name,
         )
 
-        wait_for_job(batch_api, names.namespace, names.uninstall_job, timeout=30)
+        wait_for_job(clients.batch, names.namespace, names.uninstall_job, timeout=30)
 
-        batch_api.patch_namespaced_job_status(
+        clients.batch.patch_namespaced_job_status(
             name=names.uninstall_job,
             namespace=names.namespace,
             body={
@@ -153,11 +152,11 @@ class TestDeleteFailure:
             },
         )
 
-        obj = wait_for_phase(custom_api, resource_name, Phase.ERROR, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.ERROR, timeout=30)
         assert "Helm uninstall job failed" in obj["status"]["message"]
 
         # The claim should still exist since uninstall job failed
-        custom_api.get_namespaced_custom_object(
+        clients.custom.get_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
