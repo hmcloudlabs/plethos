@@ -134,9 +134,9 @@ class TestCreateFailure:
 
         # Could be at any of those steps
         assert obj["status"]["message"] in (
-            "Helm install job failed.",
-            "Creating helm install job.",
-            "Helm install job running.",
+            "Helm install job failed, will retry later.",
+            "Creating helm install job",
+            "Helm install job running",
         )
 
         # The install job should exist again after recreation

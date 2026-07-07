@@ -113,6 +113,7 @@ def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
             ctx.clients.batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
                 body=make_helm_install_job(
+                    ctx.name,
                     ctx.names.namespace,
                     ctx.names.install_job,
                     ctx.names.vcluster,
@@ -136,8 +137,8 @@ def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
 
     match install_job_status:
         case JobStatus.FAILED:
-            ctx.patch.status["phase"] = Phase.ERROR
-            ctx.patch.status["message"] = "Helm install job failed."
+            ctx.patch.status["phase"] = Phase.PROVISIONING
+            ctx.patch.status["message"] = "Helm install job failed, will retry later."
 
         case JobStatus.RUNNING:
             ctx.patch.status["phase"] = Phase.PENDING
