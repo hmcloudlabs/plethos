@@ -71,7 +71,10 @@ def get_crd_object(
     name: str,
 ) -> dict[str, Any]:
     obj = custom.get_namespaced_custom_object(
-        group=group, version=version, plural=plural,
-        namespace=namespace, name=name,
+        group=group,
+        version=version,
+        plural=plural,
+        namespace=namespace,
+        name=name,
     )
     return cast(dict[str, Any], obj)

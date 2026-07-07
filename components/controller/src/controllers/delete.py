@@ -1,21 +1,19 @@
 import kopf
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client import V1Job
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from context import DeletionContext
 from enums import JobStatus
 from resources import make_helm_uninstall_job
-from utils import get_job_status, get_job, unwrap_job
-
+from utils import get_job_status, get_job
 
 
 @kopf.on.delete(GROUP, VERSION, PLURAL)
 def on_delete(name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
     """
-    Delete handler that runs when `metadata.deletionTimestamp` is set on an object 
-    still holding kopf's finalizer. Kopf checks this also on startup, which is why 
+    Delete handler that runs when `metadata.deletionTimestamp` is set on an object
+    still holding kopf's finalizer. Kopf checks this also on startup, which is why
     this handler is even-based and not part of a reconciliation loop.
     """
 
@@ -23,6 +21,7 @@ def on_delete(name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
     delete(DeletionContext(name, patch, logger))
+
 
 def delete(ctx: DeletionContext) -> None:
     ctx.logger.info(f"Deleting vCluster {ctx.names.vcluster}.")
@@ -48,7 +47,7 @@ def delete(ctx: DeletionContext) -> None:
     except ApiException as e:
         if e.status != 404:
             raise
-        
+
         try:
             batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
@@ -56,7 +55,7 @@ def delete(ctx: DeletionContext) -> None:
                     ctx.names.namespace,
                     ctx.names.uninstall_job,
                     ctx.names.vcluster,
-                )
+                ),
             )
             ctx.logger.info(f"Created Job {ctx.names.uninstall_job}.")
         except ApiException as create_err:

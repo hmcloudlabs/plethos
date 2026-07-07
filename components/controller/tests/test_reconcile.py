@@ -110,13 +110,17 @@ class TestCreateFailure:
                             "type": "FailureTarget",
                             "status": "True",
                             "reason": "BackoffLimitExceeded",
-                            "lastTransitionTime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            "lastTransitionTime": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
                         },
                         {
                             "type": "Failed",
                             "status": "True",
                             "reason": "BackoffLimitExceeded",
-                            "lastTransitionTime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            "lastTransitionTime": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
                         },
                     ],
                 }
@@ -148,99 +152,124 @@ class TestCreateFailure:
 class TestUpdate:
     def test_sleep_vcluster(self, operator, custom_api, create_vcluster_claim, resource_name):
         """Changing state to Sleeping should scale down the vCluster StatefulSet."""
- 
+
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
- 
+
         custom_api.patch_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
 
         wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
- 
+
         apps = client.AppsV1Api()
-        
+
         vc_set = get_statefulset(apps, names.vcluster, names.namespace)
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
- 
+
         assert vc_set_spec.replicas == 0
         assert vc_set_metadata.annotations.get("loft.sh/paused") == "true"
         assert "loft.sh/paused-replicas" in vc_set_metadata.annotations
- 
+
     def test_wake_vcluster(self, operator, custom_api, create_vcluster_claim, resource_name):
         """Changing state back to Running should scale up the vCluster StatefulSet."""
- 
+
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
- 
+
         # first sleep
         custom_api.patch_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
         wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
- 
+
         # then wake
         custom_api.patch_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
             body={"spec": {"state": "Running"}},
         )
- 
+
         obj = wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
         assert "vCluster is ready" in obj["status"]["message"]
- 
+
         apps = client.AppsV1Api()
-        
+
         vc_set = get_statefulset(apps, names.vcluster, names.namespace)
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
 
         assert vc_set_spec.replicas > 0
         assert vc_set_metadata.annotations.get("loft.sh/paused") is None
- 
-    def test_sleep_already_sleeping(self, operator, custom_api, create_vcluster_claim, resource_name):
+
+    def test_sleep_already_sleeping(
+        self, operator, custom_api, create_vcluster_claim, resource_name
+    ):
         """Setting state to Sleeping when already sleeping should not error."""
- 
+
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
- 
+
         custom_api.patch_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
         wait_for_phase(custom_api, resource_name, Phase.SLEEPING, timeout=30)
- 
+
         # Patch again with same value
         custom_api.patch_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
         time.sleep(5)
 
         obj = custom_api.get_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
         )
         assert obj["status"]["phase"] == Phase.SLEEPING
- 
-    def test_immutable_fields_rejected(self, operator, custom_api, create_vcluster_claim, resource_name):
+
+    def test_immutable_fields_rejected(
+        self, operator, custom_api, create_vcluster_claim, resource_name
+    ):
         """Changing immutable fields like name or ownerSub should be rejected by the API."""
- 
+
         create_vcluster_claim()
- 
+
         with pytest.raises(ApiException) as exc_info:
             custom_api.patch_namespaced_custom_object(
-                group=GROUP, version=VERSION, plural=PLURAL,
-                namespace=NAMESPACE, name=resource_name,
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
                 body={"spec": {"ownerSub": "different-sub"}},
             )
         assert exc_info.value.status == 422

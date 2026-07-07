@@ -194,7 +194,6 @@ def wait_for_404(api_fn, resource_type: str, timeout=60):
     raise TimeoutError(f"Resource {resource_type} should have been deleted after {timeout}s.")
 
 
-
 def wait_for_job(batch_api, namespace: str, job_name: str, timeout: int = 30):
     """
     Polls until the named Job exists, returning it. Used instead of waiting on

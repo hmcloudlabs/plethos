@@ -13,28 +13,32 @@ from resources import (
     make_helm_install_job,
 )
 from config import settings
-from utils import get_job_status, get_job, get_statefulset, unwrap_job, unwrap_statefulset, get_crd_object
+from utils import get_job_status, get_job, get_statefulset, unwrap_statefulset, get_crd_object
 
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
 @kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
-def on_reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
+def on_reconcile(
+    spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object
+) -> None:
     """
-    Time interval based handler that reconciles the vCluster, while also being 
+    Time interval based handler that reconciles the vCluster, while also being
     triggered by a VClusterClaim creation or update event.
     """
 
     if not name or name.startswith("vcluster"):
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
-    reconcile(ReconciliationContext(
-        name=name,
-        spec=spec,
-        meta=meta,
-        patch=patch,
-        logger=logger,
-    ))
+    reconcile(
+        ReconciliationContext(
+            name=name,
+            spec=spec,
+            meta=meta,
+            patch=patch,
+            logger=logger,
+        )
+    )
 
 
 def reconcile(ctx: ReconciliationContext) -> None:
@@ -43,7 +47,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
     ensure_namespace(ctx)
     ensure_service_account(ctx)
     ensure_rbac(ctx)
-    
+
     match ensure_install_job(ctx):
         case JobStatus.SUCCEEDED:
             reconcile_vcluster_state(ctx)
@@ -51,7 +55,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
             remove_install_job(ctx)
         case JobStatus.RUNNING:
             pass
-    
+
     ctx.patch.status["observedGeneration"] = ctx.generation
 
 
@@ -72,7 +76,9 @@ def ensure_service_account(ctx: ReconciliationContext) -> None:
             namespace=ctx.names.namespace,
             body=make_service_account(ctx.names.namespace, ctx.names.service_account),
         )
-        ctx.logger.info(f"Created ServiceAccount {ctx.names.service_account} in {ctx.names.namespace}.")
+        ctx.logger.info(
+            f"Created ServiceAccount {ctx.names.service_account} in {ctx.names.namespace}."
+        )
     except ApiException as e:
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
@@ -82,7 +88,9 @@ def ensure_service_account(ctx: ReconciliationContext) -> None:
 
 def ensure_rbac(ctx: ReconciliationContext) -> None:
     try:
-        ctx.clients.rbac.create_cluster_role_binding(body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb))
+        ctx.clients.rbac.create_cluster_role_binding(
+            body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb)
+        )
         ctx.logger.info(f"Created ClusterRoleBinding {ctx.names.crb}.")
     except ApiException as e:
         if e.status != 409:
@@ -108,17 +116,20 @@ def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
                     ctx.names.namespace,
                     ctx.names.install_job,
                     ctx.names.vcluster,
-                    vcluster_version=settings.vcluster_version),
+                    vcluster_version=settings.vcluster_version,
+                ),
             )
             ctx.logger.info(f"Created Job {ctx.names.install_job}.")
 
         except ApiException as create_err:
             if create_err.status != 409:
                 ctx.patch.status["phase"] = Phase.ERROR
-                ctx.patch.status["message"] = f"Failed to create helm install job: {create_err.reason}"
-                
+                ctx.patch.status["message"] = (
+                    f"Failed to create helm install job: {create_err.reason}"
+                )
+
                 return JobStatus.FAILED
-    
+
         return JobStatus.RUNNING
 
     install_job_status = get_job_status(job)
@@ -149,13 +160,15 @@ def remove_install_job(ctx: ReconciliationContext) -> None:
 
 def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
     try:
-        vc_set = get_statefulset(ctx.clients.apps, name=ctx.names.vcluster, namespace=ctx.names.namespace)
+        vc_set = get_statefulset(
+            ctx.clients.apps, name=ctx.names.vcluster, namespace=ctx.names.namespace
+        )
     except ApiException as e:
         if e.status == 404:
             ctx.patch.status["phase"] = Phase.PENDING
             ctx.patch.status["message"] = "Waiting for vCluster StatefulSet to appear."
             return
-        
+
         ctx.patch.status["phase"] = Phase.ERROR
         ctx.patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
@@ -208,9 +221,7 @@ def sleep_vcluster(apps, vc_set, logger) -> None:
     vc_set.spec.replicas = 0
 
     apps.patch_namespaced_stateful_set(
-        name=vc_set.metadata.name,
-        namespace=vc_set.metadata.namespace,
-        body=vc_set
+        name=vc_set.metadata.name, namespace=vc_set.metadata.namespace, body=vc_set
     )
     logger.info(f"Scaled down StatefulSet of vCluster {vc_set.metadata.name}.")
 
@@ -227,9 +238,7 @@ def wake_vcluster(apps, vc_set, logger) -> None:
     vc_set.spec.replicas = original_replicas
 
     apps.patch_namespaced_stateful_set(
-        name=vc_set.metadata.name,
-        namespace=vc_set.metadata.namespace,
-        body=vc_set
+        name=vc_set.metadata.name, namespace=vc_set.metadata.namespace, body=vc_set
     )
     logger.info(f"Scaled up StatefulSet of vCluster {vc_set.metadata.name}.")
 
@@ -239,8 +248,12 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
 
     try:
         claim = get_crd_object(
-            custom, group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=settings.namespace, name=claim_name,
+            custom,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=settings.namespace,
+            name=claim_name,
         )
     except ApiException as e:
         if e.status == 404:
@@ -259,7 +272,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
     reconcile(ctx)
 
     try:
-        # Since the here the reconciliation ran outside of a CRD event handler, 
+        # Since the here the reconciliation ran outside of a CRD event handler,
         # the status is written manually from the context into the custom resource.
         custom.patch_namespaced_custom_object_status(
             group=GROUP,

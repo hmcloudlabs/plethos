@@ -54,7 +54,7 @@ class ReconciliationContext:
 
     def __post_init__(self):
         self.names = VClusterNames(self.name)
-    
+
     @property
     def generation(self) -> int:
         return self.meta["generation"]

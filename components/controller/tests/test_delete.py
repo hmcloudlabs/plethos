@@ -1,6 +1,5 @@
 import time
 
-from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from conftest import NAMESPACE, wait_for_phase, wait_for_404, wait_for_job
@@ -17,21 +16,27 @@ class TestDelete:
         """
 
         names = VClusterNames(resource_name)
-        
+
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
 
         # Remove VClusterClaim resource
         custom_api.delete_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
         )
 
         # Expects the claim, namespace and CRB to disappear
         wait_for_404(
             lambda: custom_api.get_namespaced_custom_object(
-                group=GROUP, version=VERSION, plural=PLURAL,
-                namespace=NAMESPACE, name=resource_name,
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
             ),
             resource_type="VClusterClaim",
             timeout=30,
@@ -49,13 +54,13 @@ class TestDelete:
         self, operator, core_api, rbac_api, custom_api, create_vcluster_claim, resource_name
     ):
         """
-        If the vcluster namespace is already gone (e.g. deleted manually), 
+        If the vcluster namespace is already gone (e.g. deleted manually),
         on_delete should skip the uninstall job entirely, but still
         clean up the cluster-scoped ClusterRoleBinding.
         """
 
         names = VClusterNames(resource_name)
-        
+
         create_vcluster_claim()
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
 
@@ -68,14 +73,20 @@ class TestDelete:
         )
 
         custom_api.delete_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
         )
 
         wait_for_404(
             lambda: custom_api.get_namespaced_custom_object(
-                group=GROUP, version=VERSION, plural=PLURAL,
-                namespace=NAMESPACE, name=resource_name,
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
             ),
             resource_type="VClusterClaim",
         )
@@ -102,8 +113,11 @@ class TestDeleteFailure:
         wait_for_phase(custom_api, resource_name, Phase.READY, timeout=30)
 
         custom_api.delete_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
         )
 
         wait_for_job(batch_api, names.namespace, names.uninstall_job, timeout=30)
@@ -122,13 +136,17 @@ class TestDeleteFailure:
                             "type": "FailureTarget",
                             "status": "True",
                             "reason": "BackoffLimitExceeded",
-                            "lastTransitionTime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            "lastTransitionTime": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
                         },
                         {
                             "type": "Failed",
                             "status": "True",
                             "reason": "BackoffLimitExceeded",
-                            "lastTransitionTime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            "lastTransitionTime": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
                         },
                     ],
                 }
@@ -140,6 +158,9 @@ class TestDeleteFailure:
 
         # The claim should still exist since uninstall job failed
         custom_api.get_namespaced_custom_object(
-            group=GROUP, version=VERSION, plural=PLURAL,
-            namespace=NAMESPACE, name=resource_name,
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
         )

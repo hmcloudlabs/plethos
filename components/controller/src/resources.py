@@ -45,7 +45,9 @@ def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
     }
 
 
-def make_helm_install_job(namespace: str, helm_install_name: str, vcluster_name: str, vcluster_version: str) -> dict:
+def make_helm_install_job(
+    namespace: str, helm_install_name: str, vcluster_name: str, vcluster_version: str
+) -> dict:
     return {
         "apiVersion": "batch/v1",
         "kind": "Job",

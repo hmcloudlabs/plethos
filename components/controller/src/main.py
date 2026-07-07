@@ -2,9 +2,6 @@ import kopf
 
 from utils import load_kube_config
 
-import controllers.delete
-import controllers.reconcile
-
 
 @kopf.on.startup()
 def on_startup(logger, **_: object) -> None:
