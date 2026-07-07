@@ -59,6 +59,7 @@ class ReconciliationContext:
     def generation(self) -> int:
         return self.meta["generation"]
 
+
 @dataclass(slots=True)
 class DeletionContext:
     name: str

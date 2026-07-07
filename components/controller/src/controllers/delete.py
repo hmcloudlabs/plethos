@@ -1,11 +1,13 @@
 import kopf
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from kubernetes.client import V1Job
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from context import DeletionContext
+from enums import JobStatus
 from resources import make_helm_uninstall_job
-from utils import get_job, unwrap_job
+from utils import get_job_status, get_job, unwrap_job
 
 
 
@@ -67,18 +69,17 @@ def delete(ctx: DeletionContext) -> None:
 
         raise kopf.TemporaryError("Uninstall job created, waiting for completion.", delay=10)
 
-    current_job_status, _ = unwrap_job(job)
+    uninstall_job_status = get_job_status(job)
 
-    if current_job_status.succeeded:
-        cleanup_cluster_scoped_resources(ctx)
-        return
-
-    if current_job_status.failed:
-        ctx.patch.status["phase"] = Phase.ERROR
-        ctx.patch.status["message"] = "Helm uninstall job failed."
-        raise kopf.TemporaryError("Uninstall job failed, will keep retrying.", delay=30)
-
-    raise kopf.TemporaryError("Uninstall job still running.", delay=10)
+    match uninstall_job_status:
+        case JobStatus.SUCCEEDED:
+            cleanup_cluster_scoped_resources(ctx)
+        case JobStatus.RUNNING:
+            raise kopf.TemporaryError("Uninstall job still running.", delay=10)
+        case JobStatus.FAILED:
+            ctx.patch.status["phase"] = Phase.ERROR
+            ctx.patch.status["message"] = "Helm uninstall job failed."
+            raise kopf.TemporaryError("Uninstall job failed, will keep retrying.", delay=30)
 
 
 def cleanup_cluster_scoped_resources(ctx: DeletionContext) -> None:

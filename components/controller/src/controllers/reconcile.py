@@ -5,6 +5,7 @@ from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
 from context import ReconciliationContext
+from enums import JobStatus
 from resources import (
     make_namespace,
     make_service_account,
@@ -12,13 +13,18 @@ from resources import (
     make_helm_install_job,
 )
 from config import settings
-from utils import get_job, get_statefulset, unwrap_job, unwrap_statefulset, get_crd_object
+from utils import get_job_status, get_job, get_statefulset, unwrap_job, unwrap_statefulset, get_crd_object
 
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
 @kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
 def on_reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object) -> None:
+    """
+    Time interval based handler that reconciles the vCluster, while also being 
+    triggered by a VClusterClaim creation or update event.
+    """
+
     if not name or name.startswith("vcluster"):
         raise kopf.PermanentError(f"Invalid resource name '{name}'.")
 
@@ -34,16 +40,22 @@ def on_reconcile(spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, log
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
 
-    reconcile_namespace_and_rbac(ctx)
-
-    installed = reconcile_install_job(ctx)
-    if installed:
-        reconcile_vcluster_state(ctx)
-
+    ensure_namespace(ctx)
+    ensure_service_account(ctx)
+    ensure_rbac(ctx)
+    
+    match ensure_install_job(ctx):
+        case JobStatus.SUCCEEDED:
+            reconcile_vcluster_state(ctx)
+        case JobStatus.FAILED:
+            remove_install_job(ctx)
+        case JobStatus.RUNNING:
+            pass
+    
     ctx.patch.status["observedGeneration"] = ctx.generation
 
 
-def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
+def ensure_namespace(ctx: ReconciliationContext) -> None:
     try:
         ctx.clients.core.create_namespace(body=make_namespace(ctx.names.namespace))
         ctx.logger.info(f"Created namespace {ctx.names.namespace}.")
@@ -53,6 +65,8 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
             ctx.patch.status["message"] = f"Failed to create namespace: {e.reason}"
             raise
 
+
+def ensure_service_account(ctx: ReconciliationContext) -> None:
     try:
         ctx.clients.core.create_namespaced_service_account(
             namespace=ctx.names.namespace,
@@ -65,6 +79,8 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
             ctx.patch.status["message"] = f"Failed to create ServiceAccount: {e.reason}"
             raise
 
+
+def ensure_rbac(ctx: ReconciliationContext) -> None:
     try:
         ctx.clients.rbac.create_cluster_role_binding(body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb))
         ctx.logger.info(f"Created ClusterRoleBinding {ctx.names.crb}.")
@@ -75,7 +91,7 @@ def reconcile_namespace_and_rbac(ctx: ReconciliationContext) -> None:
             raise
 
 
-def reconcile_install_job(ctx: ReconciliationContext) -> bool:
+def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
     try:
         job = get_job(ctx.clients.batch, name=ctx.names.install_job, namespace=ctx.names.namespace)
     except ApiException as e:
@@ -95,27 +111,43 @@ def reconcile_install_job(ctx: ReconciliationContext) -> bool:
                     vcluster_version=settings.vcluster_version),
             )
             ctx.logger.info(f"Created Job {ctx.names.install_job}.")
+
         except ApiException as create_err:
             if create_err.status != 409:
                 ctx.patch.status["phase"] = Phase.ERROR
                 ctx.patch.status["message"] = f"Failed to create helm install job: {create_err.reason}"
-                raise
-
-        return False
+                
+                return JobStatus.FAILED
     
-    current_job_status, _ = unwrap_job(job)
+        return JobStatus.RUNNING
 
-    if current_job_status.succeeded:
-        return True
+    install_job_status = get_job_status(job)
 
-    if current_job_status.failed:
-        ctx.patch.status["phase"] = Phase.ERROR
-        ctx.patch.status["message"] = "Helm install job failed."
-        return False
+    match install_job_status:
+        case JobStatus.FAILED:
+            ctx.patch.status["phase"] = Phase.ERROR
+            ctx.patch.status["message"] = "Helm install job failed."
 
-    ctx.patch.status["phase"] = Phase.PENDING
-    ctx.patch.status["message"] = "Helm install job running."
-    return False
+        case JobStatus.RUNNING:
+            ctx.patch.status["phase"] = Phase.PENDING
+            ctx.patch.status["message"] = "Helm install job running."
+
+    return install_job_status
+
+
+def remove_install_job(ctx: ReconciliationContext) -> None:
+    try:
+        ctx.clients.batch.delete_namespaced_job(
+            name=ctx.names.install_job,
+            namespace=ctx.names.namespace,
+            propagation_policy="Foreground",
+        )
+    except ApiException as e:
+        if e.status != 404:
+            raise
+
+    ctx.patch.status["phase"] = Phase.PROVISIONING
+    ctx.patch.status["message"] = "Retrying Helm installation."
 
 
 def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
