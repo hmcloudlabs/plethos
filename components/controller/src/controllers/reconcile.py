@@ -1,6 +1,7 @@
 from datetime import datetime, UTC
 import kopf
 from kubernetes import client
+from kubernetes.client import V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
@@ -48,15 +49,18 @@ def reconcile(ctx: ReconciliationContext) -> None:
     ensure_service_account(ctx)
     ensure_rbac(ctx)
 
-    match ensure_install_job(ctx):
-        case JobStatus.SUCCEEDED:
-            reconcile_vcluster_state(ctx)
-        case JobStatus.FAILED:
-            remove_install_job(ctx)
-        case JobStatus.RUNNING:
-            pass
+    vc_set = get_vcluster(ctx)
+    if vc_set is not None:
+        reconcile_vcluster_state(ctx, vc_set)
+    else:
+        provision_vcluster(ctx)
 
     ctx.patch.status["observedGeneration"] = ctx.generation
+
+
+def provision_vcluster(ctx: ReconciliationContext) -> None:
+    if ensure_install_job(ctx) is not JobStatus.RUNNING:
+        remove_install_job(ctx)
 
 
 def ensure_namespace(ctx: ReconciliationContext) -> None:
@@ -159,21 +163,21 @@ def remove_install_job(ctx: ReconciliationContext) -> None:
             raise
 
 
-def reconcile_vcluster_state(ctx: ReconciliationContext) -> None:
+def get_vcluster(ctx: ReconciliationContext) -> V1StatefulSet | None:
     try:
-        vc_set = get_statefulset(
+        return get_statefulset(
             ctx.clients.apps, name=ctx.names.vcluster, namespace=ctx.names.namespace
         )
     except ApiException as e:
         if e.status == 404:
-            ctx.patch.status["phase"] = Phase.PENDING
-            ctx.patch.status["message"] = "Waiting for vCluster StatefulSet to appear."
-            return
+            return None
 
         ctx.patch.status["phase"] = Phase.ERROR
         ctx.patch.status["message"] = f"Failed to get the vCluster StatefulSet: {e.reason}"
         raise
 
+
+def reconcile_vcluster_state(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> None:
     vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
 
     currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"
