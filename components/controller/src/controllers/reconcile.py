@@ -58,11 +58,6 @@ def reconcile(ctx: ReconciliationContext) -> None:
     ctx.patch.status["observedGeneration"] = ctx.generation
 
 
-def provision_vcluster(ctx: ReconciliationContext) -> None:
-    if ensure_install_job(ctx) is not JobStatus.RUNNING:
-        remove_install_job(ctx)
-
-
 def ensure_namespace(ctx: ReconciliationContext) -> None:
     try:
         ctx.clients.core.create_namespace(body=make_namespace(ctx.names.namespace))
@@ -103,7 +98,7 @@ def ensure_rbac(ctx: ReconciliationContext) -> None:
             raise
 
 
-def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
+def provision_vcluster(ctx: ReconciliationContext) -> None:
     try:
         job = get_job(ctx.clients.batch, name=ctx.names.install_job, namespace=ctx.names.namespace)
     except ApiException as e:
@@ -133,22 +128,21 @@ def ensure_install_job(ctx: ReconciliationContext) -> JobStatus:
                     f"Failed to create helm install job: {create_err.reason}"
                 )
 
-                return JobStatus.FAILED
+        return
 
-        return JobStatus.RUNNING
+    match get_job_status(job):
+        case JobStatus.SUCCEEDED:
+            # Install succeeded but the vCluster is gone -> recycle for a fresh install.
+            remove_install_job(ctx)
 
-    install_job_status = get_job_status(job)
-
-    match install_job_status:
-        case JobStatus.FAILED:
+        case JobStatus.SUCCEEDED | JobStatus.FAILED:
+            remove_install_job(ctx)
             ctx.patch.status["phase"] = Phase.PROVISIONING
             ctx.patch.status["message"] = "Helm install job failed, will retry later."
 
         case JobStatus.RUNNING:
             ctx.patch.status["phase"] = Phase.PENDING
             ctx.patch.status["message"] = "Helm install job running."
-
-    return install_job_status
 
 
 def remove_install_job(ctx: ReconciliationContext) -> None:
