@@ -61,7 +61,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
     if not vc_set:
         provision_vcluster(ctx)
         return
-    
+
     reconcile_vcluster(ctx, vc_set)
 
 
@@ -111,10 +111,10 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
     except ApiException as e:
         if e.status != 404:
             raise
-        
+
         ctx.patch.status["phase"] = Phase.PROVISIONING
         ctx.patch.status["message"] = "Creating helm install job."
-        
+
         try:
             ctx.clients.batch.create_namespaced_job(
                 namespace=ctx.names.namespace,

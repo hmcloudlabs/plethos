@@ -198,7 +198,9 @@ def wait_for_job(batch_api, namespace: str, job_name: str, timeout: int = TIMEOU
     raise TimeoutError(f"Job '{job_name}' in '{namespace}' did not appear after {timeout}s.")
 
 
-def wait_for_job_recreation(batch_api, namespace: str, job_name: str, old_uid: str, timeout: int = TIMEOUT):
+def wait_for_job_recreation(
+    batch_api, namespace: str, job_name: str, old_uid: str, timeout: int = TIMEOUT
+):
     """
     Polls until a Job named `job_name` exists with a uid different from `old_uid`,
     i.e. the previous Job was deleted and the controller recreated a fresh one.

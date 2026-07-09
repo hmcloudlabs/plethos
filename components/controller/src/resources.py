@@ -46,7 +46,11 @@ def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
 
 
 def make_helm_install_job(
-    claim_name: str, namespace: str, helm_install_name: str, vcluster_name: str, vcluster_version: str
+    claim_name: str,
+    namespace: str,
+    helm_install_name: str,
+    vcluster_name: str,
+    vcluster_version: str,
 ) -> dict:
     return {
         "apiVersion": "batch/v1",
@@ -88,12 +92,14 @@ def make_helm_install_job(
                         }
                     ],
                 }
-            }
+            },
         },
     }
 
 
-def make_helm_uninstall_job(claim_name: str, namespace: str, helm_uninstall_name: str, vcluster_name: str) -> dict:
+def make_helm_uninstall_job(
+    claim_name: str, namespace: str, helm_uninstall_name: str, vcluster_name: str
+) -> dict:
     return {
         "apiVersion": "batch/v1",
         "kind": "Job",

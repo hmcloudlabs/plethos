@@ -32,7 +32,9 @@ class TestCreate:
 
         # Panics if any of the resources don't exist
         clients.core.read_namespace(name=names.namespace)
-        clients.core.read_namespaced_service_account(names.service_account, namespace=names.namespace)
+        clients.core.read_namespaced_service_account(
+            names.service_account, namespace=names.namespace
+        )
         clients.rbac.read_cluster_role_binding(name=names.crb)
         clients.batch.read_namespaced_job(names.install_job, namespace=names.namespace)
 
@@ -86,7 +88,7 @@ class TestCreateFailureAndRecovery:
         self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
-        A terminally failed install Job keeps the claim in PROVISIONING and 
+        A terminally failed install Job keeps the claim in PROVISIONING and
         once the finished Job is gone the controller provisions a fresh one.
         """
 
@@ -94,9 +96,7 @@ class TestCreateFailureAndRecovery:
 
         create_vcluster_claim()
 
-        original_uid = wait_for_job(
-            clients.batch, names.namespace, names.install_job
-        ).metadata.uid
+        original_uid = wait_for_job(clients.batch, names.namespace, names.install_job).metadata.uid
 
         # Force the Job into a terminally-failed state (backoffLimit exceeded).
         # Kubernetes rejects Failed=True unless the interim FailureTarget=True
@@ -228,9 +228,7 @@ class TestUpdate:
         assert vc_set_spec.replicas > 0
         assert vc_set_metadata.annotations.get("loft.sh/paused") is None
 
-    def test_sleep_already_sleeping(
-        self, operator, clients, create_vcluster_claim, resource_name
-    ):
+    def test_sleep_already_sleeping(self, operator, clients, create_vcluster_claim, resource_name):
         """Setting state to Sleeping when already sleeping should not error."""
 
         create_vcluster_claim()
