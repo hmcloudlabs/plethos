@@ -136,35 +136,21 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
 
     status = get_job_status(job)
 
-    # If job is running, that's the expected happy path
+    # Running -> installation in progress, will retry on failures
     if status is JobStatus.RUNNING:
         ctx.patch.status["phase"] = Phase.PENDING
         ctx.patch.status["message"] = "Helm install job running."
-    
-    # If it failed, remove so next reconciliation cycle tries again
+
+    # Failed after all retries -> will be deleted by the Job's TTL and retried next reconciliation loop
     elif status is JobStatus.FAILED:
         ctx.patch.status["phase"] = Phase.PROVISIONING
-        ctx.patch.status["message"] = "Helm install job failed, retrying."
-        remove_install_job(ctx)
+        ctx.patch.status["message"] = "Helm install job failed."
 
-    # If it already finished successfully, something must be wrong since the 
-    # vCluster doesn't exists, remove so next reconciliation cycle tries again
+    # Finished but vCluster isn't there -> same as above: the TTL
+    # deletes the job and the next reconciliation cycle recreates it.
     elif status is JobStatus.SUCCEEDED:
         ctx.patch.status["phase"] = Phase.PROVISIONING
-        ctx.patch.status["message"] = "Helm install job succeeded but no vCluster exists, retrying."
-        remove_install_job(ctx)
-    
-
-def remove_install_job(ctx: ReconciliationContext) -> None:
-    try:
-        ctx.clients.batch.delete_namespaced_job(
-            name=ctx.names.install_job,
-            namespace=ctx.names.namespace,
-            propagation_policy="Foreground",
-        )
-    except ApiException as e:
-        if e.status != 404:
-            raise
+        ctx.patch.status["message"] = "Helm install job finished but no vCluster found, will retry."
 
 
 def get_vcluster(ctx: ReconciliationContext) -> V1StatefulSet | None:

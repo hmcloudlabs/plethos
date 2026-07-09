@@ -60,6 +60,10 @@ def make_helm_install_job(
             },
         },
         "spec": {
+            # Job retries failures itself and cleans itself up once finished.
+            # Using `upgrade --install` to make every (re)try idempotent.
+            "backoffLimit": 3,
+            "ttlSecondsAfterFinished": 120,
             "template": {
                 "spec": {
                     "restartPolicy": "Never",
@@ -70,7 +74,8 @@ def make_helm_install_job(
                             "image": "alpine/helm:3.14.0",
                             "command": [
                                 "helm",
-                                "install",
+                                "upgrade",
+                                "--install",
                                 vcluster_name,
                                 "vcluster",
                                 "--repo",

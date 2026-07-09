@@ -58,11 +58,11 @@ def unwrap_job(job: V1Job):
 def get_job_status(job: V1Job) -> JobStatus:
     job_status, _ = unwrap_job(job)
 
-    if job_status.succeeded:
-        return JobStatus.SUCCEEDED
-
-    if job_status.failed:
-        return JobStatus.FAILED
+    for condition in job_status.conditions or []:
+        if condition.type == "Complete" and condition.status == "True":
+            return JobStatus.SUCCEEDED
+        if condition.type == "Failed" and condition.status == "True":
+            return JobStatus.FAILED
 
     return JobStatus.RUNNING
 

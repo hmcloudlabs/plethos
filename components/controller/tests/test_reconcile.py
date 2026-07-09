@@ -134,7 +134,7 @@ class TestCreateFailure:
 
         # Could be at any of those steps
         assert obj["status"]["message"] in (
-            "Helm install job failed, will retry later.",
+            "Helm install job failed.",
             "Creating helm install job",
             "Helm install job running",
         )
