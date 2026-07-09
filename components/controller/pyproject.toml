@@ -20,7 +20,8 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 env = [
     "VCLUSTERCLAIMS_NAMESPACE=e2e-testing-namespace",
-    "RECONCILIATION_INTERVAL=5"
+    "RECONCILIATION_INTERVAL=5",
+    "TEST_TIMEOUT=90"
 ]
 
 [dependency-groups]

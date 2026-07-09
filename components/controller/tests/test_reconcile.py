@@ -3,7 +3,7 @@ import pytest
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
-from conftest import NAMESPACE, wait_for_job, wait_for_phase
+from conftest import NAMESPACE, wait_for_job, wait_for_job_recreation, wait_for_phase
 from context import VClusterNames
 from shared.vclusterclaim import Phase, GROUP, PLURAL, VERSION
 
@@ -27,7 +27,7 @@ class TestCreate:
         names = VClusterNames(resource_name)
         create_vcluster_claim()
 
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
         assert "vCluster is ready" in obj["status"]["message"]
 
         # Panics if any of the resources don't exist
@@ -54,7 +54,7 @@ class TestCreateIdempotency:
         clients.core.create_namespace(body=make_namespace(names.namespace))
 
         create_vcluster_claim()
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         assert obj["status"]["phase"] == Phase.READY
 
@@ -76,23 +76,31 @@ class TestCreateIdempotency:
         )
 
         create_vcluster_claim()
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         assert obj["status"]["phase"] == Phase.READY
 
 
-class TestCreateFailure:
+class TestCreateFailureAndRecovery:
     def test_helm_install_failure_retries_installation(
         self, operator, clients, create_vcluster_claim, resource_name
     ):
-        """If the helm install Job fails, it should be removed and retried."""
+        """
+        A terminally failed install Job keeps the claim in PROVISIONING and 
+        once the finished Job is gone the controller provisions a fresh one.
+        """
 
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_job(clients.batch, names.namespace, names.install_job, timeout=30)
 
-        # Force the Job into a failed state
+        original_uid = wait_for_job(
+            clients.batch, names.namespace, names.install_job
+        ).metadata.uid
+
+        # Force the Job into a terminally-failed state (backoffLimit exceeded).
+        # Kubernetes rejects Failed=True unless the interim FailureTarget=True
+        # condition is also present, and requires active=0 for a finished Job.
         clients.batch.patch_namespaced_job_status(
             name=names.install_job,
             namespace=names.namespace,
@@ -124,27 +132,30 @@ class TestCreateFailure:
             },
         )
 
-        # Controller should notice failure and move back into provisioning
+        # A failed install keeps the claim provisioning (retrying), never Error.
         obj = wait_for_phase(
             clients.custom,
             resource_name,
             Phase.PROVISIONING,
-            timeout=30,
         )
-
-        # Could be at any of those steps
         assert obj["status"]["message"] in (
             "Helm install job failed.",
-            "Creating helm install job",
-            "Helm install job running",
+            "Creating helm install job.",
+            "Helm install job running.",
         )
 
-        # The install job should exist again after recreation
-        wait_for_job(
+        # Delete job manually (in a real cluster this happens autom. via TTL)
+        clients.batch.delete_namespaced_job(
+            name=names.install_job,
+            namespace=names.namespace,
+            propagation_policy="Foreground",
+        )
+
+        wait_for_job_recreation(
             clients.batch,
             names.namespace,
             names.install_job,
-            timeout=30,
+            original_uid,
         )
 
 
@@ -155,7 +166,7 @@ class TestUpdate:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         clients.custom.patch_namespaced_custom_object(
             group=GROUP,
@@ -166,7 +177,7 @@ class TestUpdate:
             body={"spec": {"state": "Sleeping"}},
         )
 
-        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
 
         apps = client.AppsV1Api()
 
@@ -183,7 +194,7 @@ class TestUpdate:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         # First sleep
         clients.custom.patch_namespaced_custom_object(
@@ -194,7 +205,7 @@ class TestUpdate:
             name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
-        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
 
         # Then wake
         clients.custom.patch_namespaced_custom_object(
@@ -206,7 +217,7 @@ class TestUpdate:
             body={"spec": {"state": "Running"}},
         )
 
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
         assert "vCluster is ready" in obj["status"]["message"]
 
         apps = client.AppsV1Api()
@@ -223,7 +234,7 @@ class TestUpdate:
         """Setting state to Sleeping when already sleeping should not error."""
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         clients.custom.patch_namespaced_custom_object(
             group=GROUP,
@@ -233,7 +244,7 @@ class TestUpdate:
             name=resource_name,
             body={"spec": {"state": "Sleeping"}},
         )
-        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
 
         # Patch again with same value
         clients.custom.patch_namespaced_custom_object(

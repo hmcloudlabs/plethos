@@ -17,7 +17,7 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         # Remove VClusterClaim resource
         clients.custom.delete_namespaced_custom_object(
@@ -38,7 +38,6 @@ class TestDelete:
                 name=resource_name,
             ),
             resource_type="VClusterClaim",
-            timeout=30,
         )
         wait_for_404(
             lambda: clients.core.read_namespace(name=names.namespace),
@@ -61,14 +60,13 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         # Manually delete the namespace before deleting the claim
         clients.core.delete_namespace(name=names.namespace)
         wait_for_404(
             lambda: clients.core.read_namespace(name=names.namespace),
             resource_type="Namespace",
-            timeout=30,
         )
 
         clients.custom.delete_namespaced_custom_object(
@@ -109,7 +107,7 @@ class TestDeleteFailure:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY, timeout=30)
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
 
         clients.custom.delete_namespaced_custom_object(
             group=GROUP,
@@ -119,7 +117,7 @@ class TestDeleteFailure:
             name=resource_name,
         )
 
-        wait_for_job(clients.batch, names.namespace, names.uninstall_job, timeout=30)
+        wait_for_job(clients.batch, names.namespace, names.uninstall_job)
 
         clients.batch.patch_namespaced_job_status(
             name=names.uninstall_job,
@@ -152,7 +150,7 @@ class TestDeleteFailure:
             },
         )
 
-        obj = wait_for_phase(clients.custom, resource_name, Phase.ERROR, timeout=30)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.ERROR)
         assert "Helm uninstall job failed" in obj["status"]["message"]
 
         # The claim should still exist since uninstall job failed

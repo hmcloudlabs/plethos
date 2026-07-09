@@ -191,15 +191,15 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
         ctx.patch.status["message"] = "vCluster sleeping."
         return
 
-    # Last case: should not be sleeping, is not sleeping -> either ready or waking up
+    # Last case: should not be sleeping, is not sleeping -> either ready or getting ready after wakeup
     desired_replicas = vc_set_spec.replicas or 0
     ready_replicas = vc_set_status.ready_replicas or 0
     if desired_replicas > 0 and ready_replicas >= desired_replicas:
         ctx.patch.status["phase"] = Phase.READY
         ctx.patch.status["message"] = "vCluster is ready."
     else:
-        ctx.patch.status["phase"] = Phase.WAKING
-        ctx.patch.status["message"] = "Waking vCluster."
+        ctx.patch.status["phase"] = Phase.PENDING
+        ctx.patch.status["message"] = "Waiting for vCluster to be ready."
 
 
 def sleep_vcluster(apps, vc_set, logger) -> None:
