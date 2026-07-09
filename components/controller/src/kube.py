@@ -1,10 +1,15 @@
+from enum import StrEnum
 from typing import Any, cast
 import kubernetes
 from kubernetes import client
 from kubernetes.client import V1Job
 from kubernetes.client import V1StatefulSet
 
-from enums import JobStatus
+
+class JobStatus(StrEnum):
+    RUNNING = "Running"
+    SUCCEEDED = "Succeeded"
+    FAILED = "Failed"
 
 
 def load_kube_config() -> None:

@@ -4,9 +4,8 @@ from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
 from context import DeletionContext
-from enums import JobStatus
 from resources import make_helm_uninstall_job
-from utils import get_job_status, get_job
+from kube import JobStatus, get_job_status, get_job
 
 
 @kopf.on.delete(GROUP, VERSION, PLURAL)

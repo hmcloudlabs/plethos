@@ -7,7 +7,7 @@ from conftest import NAMESPACE, wait_for_job, wait_for_phase
 from context import VClusterNames
 from shared.vclusterclaim import Phase, GROUP, PLURAL, VERSION
 
-from utils import get_statefulset, unwrap_statefulset
+from kube import get_statefulset, unwrap_statefulset
 
 
 class TestCreate:

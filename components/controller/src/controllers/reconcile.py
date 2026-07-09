@@ -6,7 +6,6 @@ from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
 from context import ReconciliationContext
-from enums import JobStatus
 from resources import (
     make_namespace,
     make_service_account,
@@ -14,7 +13,14 @@ from resources import (
     make_helm_install_job,
 )
 from config import settings
-from utils import get_job_status, get_job, get_statefulset, unwrap_statefulset, get_crd_object
+from kube import (
+    JobStatus,
+    get_job_status,
+    get_job,
+    get_statefulset,
+    unwrap_statefulset,
+    get_crd_object,
+)
 
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
@@ -56,7 +62,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
         provision_vcluster(ctx)
         return
     
-    reconcile_vcluster_state(ctx, vc_set)
+    reconcile_vcluster(ctx, vc_set)
 
 
 def ensure_namespace(ctx: ReconciliationContext) -> None:
@@ -175,7 +181,7 @@ def get_vcluster(ctx: ReconciliationContext) -> V1StatefulSet | None:
         raise
 
 
-def reconcile_vcluster_state(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> None:
+def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> None:
     vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
 
     currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"

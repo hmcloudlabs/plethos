@@ -1,6 +1,6 @@
 import kopf
 
-from utils import load_kube_config
+from kube import load_kube_config
 
 import controllers.reconcile
 import controllers.delete
