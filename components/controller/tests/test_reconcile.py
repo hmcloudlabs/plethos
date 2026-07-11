@@ -30,6 +30,14 @@ class TestCreate:
         obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
         assert "vCluster is ready" in obj["status"]["message"]
 
+        # Check that `Ready` status condition is true with reason "Ready"
+        ready = next(
+            (c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None
+        )
+        assert ready is not None
+        assert ready["status"] == "True"
+        assert ready["reason"] == Phase.READY
+
         # Panics if any of the resources don't exist
         clients.core.read_namespace(name=names.namespace)
         clients.core.read_namespaced_service_account(
@@ -90,6 +98,10 @@ class TestCreateFailureAndRecovery:
         """
         A terminally failed install Job keeps the claim in PROVISIONING and
         once the finished Job is gone the controller provisions a fresh one.
+
+        TODO:
+        Delete or rewrite this test because recreation is driven by our manual 
+        delete and not the failure, so it doesn't truely verify failure recovery.
         """
 
         names = VClusterNames(resource_name)
@@ -99,8 +111,6 @@ class TestCreateFailureAndRecovery:
         original_uid = wait_for_job(clients.batch, names.namespace, names.install_job).metadata.uid
 
         # Force the Job into a terminally-failed state (backoffLimit exceeded).
-        # Kubernetes rejects Failed=True unless the interim FailureTarget=True
-        # condition is also present, and requires active=0 for a finished Job.
         clients.batch.patch_namespaced_job_status(
             name=names.install_job,
             namespace=names.namespace,
@@ -177,7 +187,15 @@ class TestUpdate:
             body={"spec": {"state": "Sleeping"}},
         )
 
-        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
+
+        # Check that `Ready` status condition is false with reason "Sleeping"
+        ready = next(
+            (c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None
+        )
+        assert ready is not None
+        assert ready["status"] == "False"
+        assert ready["reason"] == Phase.SLEEPING
 
         apps = client.AppsV1Api()
 
