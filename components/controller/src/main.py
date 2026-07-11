@@ -2,8 +2,8 @@ import kopf
 
 from kube import load_kube_config
 
-import controllers.reconcile  # noqa: F401
-import controllers.delete  # noqa: F401
+import handlers.reconcile  # noqa: F401
+import handlers.delete  # noqa: F401
 
 
 @kopf.on.startup()

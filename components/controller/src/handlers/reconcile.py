@@ -52,8 +52,6 @@ def on_reconcile(
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
 
-    ctx.patch.status["observedGeneration"] = ctx.generation
-
     ensure_namespace(ctx)
     ensure_service_account(ctx)
     ensure_rbac(ctx)
@@ -63,6 +61,8 @@ def reconcile(ctx: ReconciliationContext) -> None:
         provision_vcluster(ctx)
     else:
         reconcile_vcluster(ctx, vc_set)
+
+    ctx.patch.status["observedGeneration"] = ctx.generation
 
     sync_conditions(ctx)
 
