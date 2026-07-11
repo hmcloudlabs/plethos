@@ -47,7 +47,17 @@ class VClusterClaimSpec(_Model):
     access_rules: list[AccessRule] = Field(default_factory=list)
 
 
+class Condition(_Model):
+    type: str
+    status: Literal["True", "False", "Unknown"]
+    reason: str
+    message: str
+    last_transition_time: str
+    observed_generation: int | None = None
+
+
 class VClusterClaimStatus(_Model):
     phase: Phase | None = None
     message: str | None = None
     observed_generation: int | None = None
+    conditions: list[Condition] = Field(default_factory=list)

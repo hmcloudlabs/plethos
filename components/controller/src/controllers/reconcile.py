@@ -27,7 +27,7 @@ from kube import (
 @kopf.on.update(GROUP, VERSION, PLURAL)
 @kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
 def on_reconcile(
-    spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, logger, **_: object
+    spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, status, logger, **_: object
 ) -> None:
     """
     Time interval based handler that reconciles the vCluster, while also being
@@ -43,6 +43,7 @@ def on_reconcile(
             spec=spec,
             meta=meta,
             patch=patch,
+            status=status,
             logger=logger,
         )
     )
@@ -60,9 +61,57 @@ def reconcile(ctx: ReconciliationContext) -> None:
     vc_set = get_vcluster(ctx)
     if not vc_set:
         provision_vcluster(ctx)
-        return
+    else:
+        reconcile_vcluster(ctx, vc_set)
 
-    reconcile_vcluster(ctx, vc_set)
+    sync_conditions(ctx)
+
+
+def sync_conditions(ctx: ReconciliationContext) -> None:
+    """
+    Derive the status conditions from the state gathered during this reconcile.
+    These conditions are used for machine-readable condition tooling which expects
+    `kubectl wait --for=condition=Ready`.
+
+    Conditions:
+        * `Ready`: Only `True` when the vCluster is actually up, otherwise `False` with 
+          the `status.phase` as the reason (Provisioning, Pending, Sleeping, ...)
+        * futher conditions get derived here
+    """
+
+    # Sync `Ready` condition
+    phase = ctx.patch.status.get("phase")
+    if phase is not None:
+        set_condition(
+            ctx,
+            cond_type="Ready",
+            cond_status="True" if phase == Phase.READY else "False",
+            reason=str(phase),
+            message=ctx.patch.status.get("message", ""),
+        )
+
+
+def set_condition(
+    ctx: ReconciliationContext, *, cond_type: str, cond_status: str, reason: str, message: str
+) -> None:
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    conditions = {c["type"]: dict(c) for c in (ctx.status.get("conditions") or [])}
+
+    previous = conditions.get(cond_type)
+    if previous and previous.get("status") == cond_status:
+        last_transition = previous.get("lastTransitionTime", now)
+    else:
+        last_transition = now
+
+    conditions[cond_type] = {
+        "type": cond_type,
+        "status": cond_status,
+        "reason": reason,
+        "message": message,
+        "lastTransitionTime": last_transition,
+        "observedGeneration": ctx.generation,
+    }
+    ctx.patch.status["conditions"] = list(conditions.values())
 
 
 def ensure_namespace(ctx: ReconciliationContext) -> None:
@@ -261,6 +310,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
         spec=claim["spec"],
         meta=claim["metadata"],
         patch=kopf.Patch(),
+        status=claim.get("status") or {},
         logger=logger,
     )
 

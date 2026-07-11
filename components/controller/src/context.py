@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 import logging
 import kopf
 from kubernetes import client
@@ -49,6 +51,7 @@ class ReconciliationContext:
     meta: kopf.Meta
     patch: kopf.Patch
     logger: logging.Logger
+    status: Mapping[str, Any] = field(default_factory=dict)
     clients: KubernetesClients = field(default_factory=KubernetesClients)
     names: VClusterNames = field(init=False)
 
