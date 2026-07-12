@@ -41,7 +41,7 @@ class AccessRule(_Model):
 
 class VClusterClaimSpec(_Model):
     name: str
-    owner_sub: str
+    owner_subject: str
     owner_email: str
     v_cluster_version: str = "0.35.0"
     state: State = State.RUNNING
