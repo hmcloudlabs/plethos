@@ -238,7 +238,7 @@ def create_vcluster_claim(clients, resource_name):
                 "spec": spec
                 or {
                     "name": resource_name,
-                    "ownerSub": "test-sub",
+                    "ownerSubject": "test-sub",
                     "ownerEmail": "test@example.com",
                 },
             },

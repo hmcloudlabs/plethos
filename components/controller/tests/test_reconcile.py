@@ -285,7 +285,7 @@ class TestUpdate:
     def test_immutable_fields_rejected(
         self, operator, clients, create_vcluster_claim, resource_name
     ):
-        """Changing immutable fields like name or ownerSub should be rejected by the API."""
+        """Changing immutable fields like name or ownerSubject should be rejected by the API."""
 
         create_vcluster_claim()
 
@@ -296,6 +296,6 @@ class TestUpdate:
                 plural=PLURAL,
                 namespace=NAMESPACE,
                 name=resource_name,
-                body={"spec": {"ownerSub": "different-sub"}},
+                body={"spec": {"ownerSubject": "different-sub"}},
             )
         assert exc_info.value.status == 422
