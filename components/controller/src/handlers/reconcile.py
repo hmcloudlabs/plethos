@@ -74,7 +74,7 @@ def sync_conditions(ctx: ReconciliationContext) -> None:
     `kubectl wait --for=condition=Ready`.
 
     Conditions:
-        * `Ready`: Only `True` when the vCluster is actually up, otherwise `False` with 
+        * `Ready`: Only `True` when the vCluster is actually up, otherwise `False` with
           the `status.phase` as the reason (Provisioning, Pending, Sleeping, ...)
         * futher conditions get derived here
     """
@@ -155,6 +155,14 @@ def ensure_rbac(ctx: ReconciliationContext) -> None:
 
 
 def provision_vcluster(ctx: ReconciliationContext) -> None:
+    version = ctx.spec.get("vClusterVersion")
+    if version not in settings.supported_vcluster_versions:
+        ctx.patch.status["phase"] = Phase.ERROR
+        ctx.patch.status["message"] = (
+            f"vCluster version '{version}' is not supported by this controller (supported: {settings.supported_vcluster_versions})."
+        )
+        return
+
     try:
         job = get_job(ctx.clients.batch, name=ctx.names.install_job, namespace=ctx.names.namespace)
     except ApiException as e:
@@ -172,7 +180,7 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
                     ctx.names.namespace,
                     ctx.names.install_job,
                     ctx.names.vcluster,
-                    vcluster_version=settings.vcluster_version,
+                    vcluster_version=version,
                 ),
             )
             ctx.logger.info(f"Created Job {ctx.names.install_job}.")

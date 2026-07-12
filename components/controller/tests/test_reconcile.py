@@ -31,9 +31,7 @@ class TestCreate:
         assert "vCluster is ready" in obj["status"]["message"]
 
         # Check that `Ready` status condition is true with reason "Ready"
-        ready = next(
-            (c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None
-        )
+        ready = next((c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None)
         assert ready is not None
         assert ready["status"] == "True"
         assert ready["reason"] == Phase.READY
@@ -100,7 +98,7 @@ class TestCreateFailureAndRecovery:
         once the finished Job is gone the controller provisions a fresh one.
 
         TODO:
-        Delete or rewrite this test because recreation is driven by our manual 
+        Delete or rewrite this test because the recreation is driven by our manual
         delete and not the failure, so it doesn't truely verify failure recovery.
         """
 
@@ -169,6 +167,46 @@ class TestCreateFailureAndRecovery:
         )
 
 
+class TestVClusterVersion:
+    def test_rejects_malformed_version(self, clients, create_vcluster_claim, resource_name):
+        """Non semver style versions are rejected by the CRD pattern."""
+
+        with pytest.raises(ApiException) as exc_info:
+            create_vcluster_claim(
+                spec={
+                    "name": resource_name,
+                    "ownerSubject": "test-sub",
+                    "ownerEmail": "test@example.com",
+                    "vClusterVersion": "invalid.version",
+                }
+            )
+        assert exc_info.value.status == 422
+
+    def test_unsupported_version_enters_error(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """An unsupported version is refused by the controller, lands in ERROR and no install Job is created."""
+
+        names = VClusterNames(resource_name)
+
+        create_vcluster_claim(
+            spec={
+                "name": resource_name,
+                "ownerSubject": "test-sub",
+                "ownerEmail": "test@example.com",
+                "vClusterVersion": "99.99.99",
+            }
+        )
+
+        obj = wait_for_phase(clients.custom, resource_name, Phase.ERROR)
+        assert "99.99.99" in obj["status"]["message"]
+
+        # The version gate ran before provisioning, so no install Job exists.
+        with pytest.raises(ApiException) as exc_info:
+            clients.batch.read_namespaced_job(names.install_job, namespace=names.namespace)
+        assert exc_info.value.status == 404
+
+
 class TestUpdate:
     def test_sleep_vcluster(self, operator, clients, create_vcluster_claim, resource_name):
         """Changing state to Sleeping should scale down the vCluster StatefulSet."""
@@ -190,9 +228,7 @@ class TestUpdate:
         obj = wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
 
         # Check that `Ready` status condition is false with reason "Sleeping"
-        ready = next(
-            (c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None
-        )
+        ready = next((c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None)
         assert ready is not None
         assert ready["status"] == "False"
         assert ready["reason"] == Phase.SLEEPING
@@ -285,7 +321,7 @@ class TestUpdate:
     def test_immutable_fields_rejected(
         self, operator, clients, create_vcluster_claim, resource_name
     ):
-        """Changing immutable fields like name or ownerSubject should be rejected by the API."""
+        """Changing immutable fields like ownerSubject or vClusterVersion is rejected by the API."""
 
         create_vcluster_claim()
 
@@ -297,5 +333,16 @@ class TestUpdate:
                 namespace=NAMESPACE,
                 name=resource_name,
                 body={"spec": {"ownerSubject": "different-sub"}},
+            )
+        assert exc_info.value.status == 422
+
+        with pytest.raises(ApiException) as exc_info:
+            clients.custom.patch_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
+                body={"spec": {"vClusterVersion": "0.19.0"}},
             )
         assert exc_info.value.status == 422

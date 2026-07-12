@@ -20,7 +20,7 @@ spec:
         properties:
           spec:
             type: object
-            required: [name, ownerSub, ownerEmail]
+            required: [name, ownerSubject, ownerEmail]
             properties:
               name:
                 type: string
@@ -29,16 +29,24 @@ spec:
                 x-kubernetes-validations:
                 - rule: self == oldSelf
                   message: name is immutable
-              ownerSub:
+              ownerSubject:
                 type: string
                 x-kubernetes-validations:
                 - rule: self == oldSelf
-                  message: ownerSub is immutable
+                  message: ownerSubject is immutable
               ownerEmail:
                 type: string
                 x-kubernetes-validations:
                 - rule: self == oldSelf
                   message: ownerEmail is immutable
+              vClusterVersion:
+                type: string
+                # Format only. The controller gates the actually supported versions via the SUPPORTED_VCLUSTER_VERSIONS.
+                pattern: ^\d+\.\d+\.\d+$
+                default: "0.35.0"
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: vClusterVersion is immutable
               state:
                 type: string
                 enum: [Running, Sleeping]
