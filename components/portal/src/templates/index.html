@@ -4,7 +4,15 @@
 <div class="card">
   <div class="card-body">
     <h1 class="card-title h4">Welcome to the vKube Portal</h1>
-    <p class="card-text text-body-secondary mb-0">Manage your VClusterClaims here.</p>
+    {% if user %}
+    <p class="card-text text-body-secondary">
+      Signed in as <strong>{{ user.email or user.name }}</strong>.
+    </p>
+    <a class="btn btn-primary" href="/clusters">Manage my clusters</a>
+    {% else %}
+    <p class="card-text text-body-secondary">Log in to create and manage your virtual clusters.</p>
+    <a class="btn btn-primary" href="/login">Log in with SSO</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

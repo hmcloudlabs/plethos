@@ -23,10 +23,29 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
+          <ul class="navbar-nav me-auto">
             <li class="nav-item">
               <a class="nav-link" href="/">Home</a>
             </li>
+            {% if user %}
+            <li class="nav-item">
+              <a class="nav-link" href="/clusters">My Clusters</a>
+            </li>
+            {% endif %}
+          </ul>
+          <ul class="navbar-nav">
+            {% if user %}
+            <li class="nav-item d-flex align-items-center me-2">
+              <span class="navbar-text">{{ user.name }}</span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Log out</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="/login">Log in</a>
+            </li>
+            {% endif %}
           </ul>
         </div>
       </div>

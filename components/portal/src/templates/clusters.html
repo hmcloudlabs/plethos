@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="h4 mb-0">My Clusters</h1>
+</div>
+
+<div class="alert alert-secondary" role="alert">
+  Cluster listing and creation are coming next. Signed in as
+  <strong>{{ user.email or user.name }}</strong>.
+</div>
+{% endblock %}
