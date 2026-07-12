@@ -12,7 +12,7 @@ from resources import (
     make_cluster_role_binding,
     make_helm_install_job,
 )
-from config import settings
+from config import config
 from kube import (
     JobStatus,
     get_job_status,
@@ -25,7 +25,7 @@ from kube import (
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
-@kopf.timer(GROUP, VERSION, PLURAL, interval=settings.reconciliation_interval)
+@kopf.timer(GROUP, VERSION, PLURAL, interval=config.reconciliation_interval)
 def on_reconcile(
     spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, status, logger, **_: object
 ) -> None:
@@ -156,10 +156,10 @@ def ensure_rbac(ctx: ReconciliationContext) -> None:
 
 def provision_vcluster(ctx: ReconciliationContext) -> None:
     version = ctx.spec.get("vClusterVersion")
-    if version not in settings.supported_vcluster_versions:
+    if version not in config.supported_vcluster_versions:
         ctx.patch.status["phase"] = Phase.ERROR
         ctx.patch.status["message"] = (
-            f"vCluster version '{version}' is not supported by this controller (supported: {settings.supported_vcluster_versions})."
+            f"vCluster version '{version}' is not supported by this controller (supported: {config.supported_vcluster_versions})."
         )
         return
 
@@ -304,7 +304,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
-            namespace=settings.namespace,
+            namespace=config.namespace,
             name=claim_name,
         )
     except ApiException as e:
@@ -331,7 +331,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
             group=GROUP,
             version=VERSION,
             plural=PLURAL,
-            namespace=settings.namespace,
+            namespace=config.namespace,
             name=ctx.name,
             body={"status": dict(ctx.patch.status)},
         )

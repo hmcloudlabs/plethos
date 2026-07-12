@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class Settings:
+class Config:
     host: str = os.getenv("PORTAL_HOST", "0.0.0.0")
     port: int = int(os.getenv("PORTAL_PORT", "8000"))
     session_secret: str = os.getenv("PORTAL_SESSION_SECRET", "dev-secret-change-me")
@@ -13,4 +13,4 @@ class Settings:
     oidc_client_secret: str = os.getenv("OIDC_CLIENT_SECRET", "")
 
 
-settings = Settings()
+config = Config()
