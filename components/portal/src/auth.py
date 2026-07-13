@@ -89,5 +89,5 @@ def require_user(request: Request) -> User:
     user = get_session_user(request)
     if user is None:
         raise NotAuthenticatedError()
-    
+
     return user
