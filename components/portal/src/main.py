@@ -9,10 +9,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from auth import (
     NotAuthenticatedError,
     User,
-    clear_user,
-    get_current_user,
+    clear_session_user,
+    get_session_user,
     require_user,
-    save_user,
+    set_session_user,
     sso_client,
 )
 from config import config
@@ -46,19 +46,19 @@ async def auth_callback(request: Request) -> RedirectResponse:
     client = sso_client()
     token = await client.authorize_access_token(request)
     claims = token.get("userinfo") or await client.userinfo(token=token)
-    save_user(request, User.from_claims(dict(claims)))
+    set_session_user(request, User.from_claims(dict(claims)))
     return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
-    clear_user(request)
+    clear_session_user(request)
     return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    user = get_current_user(request)
+    user = get_session_user(request)
     return templates.TemplateResponse(
         request, "index.html", {"title": "vkube Portal", "user": user}
     )

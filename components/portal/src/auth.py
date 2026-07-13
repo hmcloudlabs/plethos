@@ -63,15 +63,15 @@ class NotAuthenticatedError(Exception):
     """
 
 
-def save_user(request: Request, user: User) -> None:
+def set_session_user(request: Request, user: User) -> None:
     request.session[_SESSION_KEY] = user.to_session()
 
 
-def clear_user(request: Request) -> None:
+def clear_session_user(request: Request) -> None:
     request.session.pop(_SESSION_KEY, None)
 
 
-def get_current_user(request: Request) -> User | None:
+def get_session_user(request: Request) -> User | None:
     data = request.session.get(_SESSION_KEY)
     if not data:
         return None
@@ -86,7 +86,7 @@ def get_current_user(request: Request) -> User | None:
 def require_user(request: Request) -> User:
     """FastAPI dependency which returns the logged-in user or triggers a login redirect."""
 
-    user = get_current_user(request)
+    user = get_session_user(request)
     if user is None:
         raise NotAuthenticatedError()
     
