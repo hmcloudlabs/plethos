@@ -204,32 +204,27 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
   --bs-btn-disabled-border-color: var(--gray-200);
 }
 
-.btn-info {
-  --bs-btn-color: var(--blue-600);
-  --bs-btn-bg: rgba(var(--blue-rgb), 0.10);
-  --bs-btn-border-color: rgba(var(--blue-rgb), 0.20);
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: var(--blue-600);
-  --bs-btn-hover-border-color: var(--blue-600);
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: var(--blue-600);
-  --bs-btn-active-border-color: var(--blue-600);
-  --bs-btn-disabled-color: var(--blue-600);
-  --bs-btn-disabled-bg: rgba(var(--blue-rgb), 0.08);
-  --bs-btn-disabled-border-color: rgba(var(--blue-rgb), 0.15);
+.btn-info,
+.btn-danger,
+.btn-warning,
+.btn-success {
+  --bs-btn-color: var(--btn-fg);
+  --bs-btn-bg: rgba(var(--btn-rgb), 0.10);
+  --bs-btn-border-color: rgba(var(--btn-rgb), 0.20);
+  --bs-btn-hover-color: var(--btn-fg);
+  --bs-btn-hover-bg: rgba(var(--btn-rgb), 0.18);
+  --bs-btn-hover-border-color: rgba(var(--btn-rgb), 0.28);
+  --bs-btn-active-color: var(--btn-fg);
+  --bs-btn-active-bg: rgba(var(--btn-rgb), 0.24);
+  --bs-btn-active-border-color: rgba(var(--btn-rgb), 0.30);
+  --bs-btn-disabled-color: var(--btn-fg);
+  --bs-btn-disabled-bg: rgba(var(--btn-rgb), 0.08);
+  --bs-btn-disabled-border-color: rgba(var(--btn-rgb), 0.15);
 }
-
-.btn-danger {
-  --bs-btn-color: var(--red-600);
-  --bs-btn-bg: rgba(var(--red-rgb), 0.10);
-  --bs-btn-border-color: rgba(var(--red-rgb), 0.20);
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: var(--red-500);
-  --bs-btn-hover-border-color: var(--red-500);
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: var(--red-600);
-  --bs-btn-active-border-color: var(--red-600);
-}
+.btn-info    { --btn-rgb: var(--blue-rgb);  --btn-fg: var(--blue-600); }  /* blue   */
+.btn-danger  { --btn-rgb: var(--red-rgb);   --btn-fg: var(--red-600); }   /* red    */
+.btn-warning { --btn-rgb: var(--amber-rgb); --btn-fg: var(--amber-700); } /* amber  */
+.btn-success { --btn-rgb: var(--green-rgb); --btn-fg: var(--green-600); } /* green  */
 
 .badge {
   font-weight: 600;

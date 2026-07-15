@@ -13,7 +13,7 @@
 <div class="bento bento--pad mb-4">
   <span class="bento__label">New cluster</span>
   <form method="post" action="/clusters" class="row g-2 align-items-end mt-1">
-    <div class="col-sm-9">
+    <div class="col-sm-10">
       <label for="name" class="form-label">Cluster name</label>
       <input
         type="text"
@@ -28,7 +28,7 @@
         value="{{ form_name or '' }}"
       />
     </div>
-    <div class="col-sm-3">
+    <div class="col-sm-2">
       <button type="submit" class="btn btn-primary w-100">{{ icon("plus") }} Create cluster</button>
     </div>
   </form>

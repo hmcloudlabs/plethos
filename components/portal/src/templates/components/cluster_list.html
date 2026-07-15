@@ -45,7 +45,7 @@
             <div class="d-inline-flex gap-2 justify-content-end w-100">
               {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
               <a
-                class="btn btn-sm btn-secondary {{ '' if can_connect else 'disabled' }}"
+                class="btn btn-sm btn-success {{ '' if can_connect else 'disabled' }}"
                 {% if can_connect %}href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
               >
                 {{ icon("download") }} Connect
