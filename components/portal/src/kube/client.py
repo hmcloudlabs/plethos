@@ -13,5 +13,12 @@ def load_kube_config() -> None:
 @lru_cache(maxsize=1)
 def custom_objects_api() -> client.CustomObjectsApi:
     """Shared CustomObjectsApi client, that is cached so we reuse one client/connection pool. """
-    
+
     return client.CustomObjectsApi()
+
+
+@lru_cache(maxsize=1)
+def core_v1_api() -> client.CoreV1Api:
+    """Shared CoreV1Api client (used to read the vCluster kubeconfig Secret)."""
+
+    return client.CoreV1Api()

@@ -14,7 +14,7 @@
         {% for vcluster_claim in vcluster_claims %}
         {% set phase = vcluster_claim.status.phase %}
         {% set state = vcluster_claim.spec.state %}
-        {# Steady states: desired (state) and actual (phase) agree. #}
+
         {% set steady_running = phase == 'Ready' and state == 'Running' %}
         {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
         <tr>
@@ -25,7 +25,7 @@
             {% elif steady_sleeping %}
             <span class="badge text-bg-secondary">Sleeping</span>
             {% elif phase in ['Ready', 'Sleeping', 'Waking'] %}
-            {# Operational, but desired state not applied yet -> in transition. #}
+
             {% if state == 'Sleeping' %}
             <span class="badge text-bg-secondary">Sleeping&hellip;</span>
             {% else %}
@@ -41,7 +41,15 @@
           </td>
           <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "—" }}</td>
           <td class="text-end">
-            {# Only offer a toggle in a steady state, so the button never contradicts the status. #}
+            {% if phase in ['Ready', 'Sleeping', 'Waking'] %}
+            <a
+              class="btn btn-sm btn-outline-primary"
+              href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"
+            >
+              Connect
+            </a>
+            {% endif %}
+
             {% if steady_running %}
             <button
               class="btn btn-sm btn-outline-secondary"
@@ -61,6 +69,16 @@
               Wake
             </button>
             {% endif %}
+
+            <button
+              class="btn btn-sm btn-outline-danger"
+              hx-post="/clusters/{{ vcluster_claim.spec.name }}/delete"
+              hx-target="#cluster-list"
+              hx-swap="outerHTML"
+              hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? This cannot be undone."
+            >
+              Delete
+            </button>
           </td>
         </tr>
         {% endfor %}

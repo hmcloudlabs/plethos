@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from auth import User, require_user
@@ -99,6 +99,34 @@ def wake_cluster(
 ) -> HTMLResponse:
     vcc_service.set_state(user.sub, name, State.RUNNING)
     return _render_cluster_list(request, user, vcc_service)
+
+
+@router.post("/clusters/{name}/delete", response_class=HTMLResponse)
+def delete_cluster(
+    name: str,
+    request: Request,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    vcc_service.delete(user.sub, name)
+    return _render_cluster_list(request, user, vcc_service)
+
+
+@router.get("/clusters/{name}/kubeconfig")
+def download_kubeconfig(
+    name: str,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> Response:
+    kubeconfig = vcc_service.get_kubeconfig(user.sub, name)
+    if kubeconfig is None:
+        raise HTTPException(status_code=404, detail="Kubeconfig not available yet.")
+
+    return Response(
+        content=kubeconfig,
+        media_type="application/yaml",
+        headers={"Content-Disposition": f'attachment; filename="{name}-kubeconfig.yaml"'},
+    )
 
 
 @router.post("/clusters")
