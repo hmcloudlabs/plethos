@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,10 +13,19 @@ from auth import (
     sso_client,
 )
 from config import config
+from kube.client import load_kube_config
 from pages import clusters, home
 from templating import STATIC_DIR
 
-app = FastAPI(title="vkube Portal")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    load_kube_config()
+    
+    yield
+
+
+app = FastAPI(title="vkube Portal", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
