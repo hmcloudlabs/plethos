@@ -1,5 +1,3 @@
-"""The public landing / home page (no login required)."""
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 

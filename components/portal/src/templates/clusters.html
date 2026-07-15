@@ -5,8 +5,32 @@
   <h1 class="h4 mb-0">My Clusters</h1>
 </div>
 
-<div class="alert alert-secondary" role="alert">
-  Cluster listing and creation are coming next. Signed in as
-  <strong>{{ user.email or user.name }}</strong>.
-</div>
+{% if error %}
+<div class="alert alert-danger" role="alert">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/clusters" class="card card-body mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-sm-9">
+      <label for="name" class="form-label">Cluster name</label>
+      <input
+        type="text"
+        id="name"
+        name="name"
+        class="form-control"
+        required
+        maxlength="63"
+        pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+        title="Lowercase letters, digits and hyphens"
+        placeholder="e.g. dev"
+        value="{{ form_name or '' }}"
+      />
+    </div>
+    <div class="col-sm-3">
+      <button type="submit" class="btn btn-primary w-100">Create cluster</button>
+    </div>
+  </div>
+</form>
+
+{% include "components/cluster_list.html" %}
 {% endblock %}

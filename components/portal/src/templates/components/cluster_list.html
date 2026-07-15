@@ -1,0 +1,44 @@
+<div id="cluster-list" hx-get="/clusters/list" hx-trigger="every 3s" hx-swap="outerHTML">
+  {% if claims %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for claim in claims %}
+        <tr>
+          <td class="fw-semibold">{{ claim.spec.name }}</td>
+          <td>
+            {# Once Ready, show the desired state (Running/Sleeping); otherwise show the phase. #}
+            {% if claim.status.phase == 'Ready' %}
+            <span class="badge {{ 'text-bg-success' if claim.spec.state == 'Running' else 'text-bg-secondary' }}">
+              {{ claim.spec.state }}
+            </span>
+            {% elif claim.status.phase %}
+            <span class="badge
+              {%- if claim.status.phase == 'Error' %} text-bg-danger
+              {%- elif claim.status.phase in ['Sleeping', 'Deleting'] %} text-bg-secondary
+              {%- else %} text-bg-info{% endif %}">
+              {{ claim.status.phase }}
+            </span>
+            {% else %}
+            <span class="text-body-secondary">-</span>
+            {% endif %}
+          </td>
+          <td class="text-body-secondary">{{ claim.creation_timestamp[:10] if claim.creation_timestamp else "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-secondary" role="alert">
+    You don't have any clusters yet.
+  </div>
+  {% endif %}
+</div>

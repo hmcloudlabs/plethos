@@ -17,5 +17,21 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "vkube-system")
 
+    # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
+    # The portal always provisions the newest of these; it isn't user-selectable.
+    supported_vcluster_versions: tuple[str, ...] = tuple(
+        v.strip()
+        for v in os.getenv("SUPPORTED_VCLUSTER_VERSIONS", "0.19.0,0.35.0").split(",")
+        if v.strip()
+    )
+
+    @property
+    def latest_vcluster_version(self) -> str:
+        """Newest supported version (semver-ordered), used for every new cluster."""
+        return max(
+            self.supported_vcluster_versions,
+            key=lambda v: tuple(int(part) for part in v.split(".")),
+        )
+
 
 config = Config()
