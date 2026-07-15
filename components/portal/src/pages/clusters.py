@@ -39,7 +39,7 @@ def _render_clusters(
         request,
         "clusters.html",
         {
-            "title": "My Clusters",
+            "title": "Clusters",
             "user": user,
             "vcluster_claims": vcc_service.list_for_owner(user.sub),
             "error": error,

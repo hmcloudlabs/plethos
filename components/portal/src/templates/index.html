@@ -1,18 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-  <div class="card-body">
-    <h1 class="card-title h4">Welcome to the vKube Portal</h1>
-    {% if user %}
-    <p class="card-text text-body-secondary">
-      Signed in as <strong>{{ user.email or user.name }}</strong>.
-    </p>
-    <a class="btn btn-primary" href="/clusters">Manage my clusters</a>
-    {% else %}
-    <p class="card-text text-body-secondary">Log in to create and manage your virtual clusters.</p>
-    <a class="btn btn-primary" href="/login">Log in with SSO</a>
-    {% endif %}
+<div class="py-4 py-lg-5">
+  {% if user %}
+  <h1 class="h4 fw-bold mb-4">Overview</h1>
+  <div class="row g-3" style="max-width: 34rem;">
+    <div class="col-4">
+      <div class="bento bento--pad">
+        <div class="h2 fw-bold mb-1">{{ cluster_summary.total }}</div>
+        <span class="bento__label">Clusters</span>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="bento bento--pad">
+        <div class="h2 fw-bold mb-1">{{ cluster_summary.running }}</div>
+        <span class="bento__label">Running</span>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="bento bento--pad">
+        <div class="h2 fw-bold mb-1">{{ cluster_summary.sleeping }}</div>
+        <span class="bento__label">Sleeping</span>
+      </div>
+    </div>
   </div>
+  <div class="mt-4">
+    <a class="btn btn-primary" href="/clusters">Manage clusters &rarr;</a>
+  </div>
+  {% else %}
+  <h1 class="h4 fw-bold mb-2">Sign in</h1>
+  <p class="text-body-secondary mb-4">Sign in to create and manage your clusters.</p>
+  <a class="btn btn-primary" href="/login">Sign in via SSO</a>
+  {% endif %}
 </div>
 {% endblock %}

@@ -1,16 +1,18 @@
 {% extends "base.html" %}
+{% from "components/icons.html" import icon %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h1 class="h4 mb-0">My Clusters</h1>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 fw-bold mb-0">Manage Clusters</h1>
 </div>
 
 {% if error %}
 <div class="alert alert-danger" role="alert">{{ error }}</div>
 {% endif %}
 
-<form method="post" action="/clusters" class="card card-body mb-4">
-  <div class="row g-2 align-items-end">
+<div class="bento bento--pad mb-4">
+  <span class="bento__label">New cluster</span>
+  <form method="post" action="/clusters" class="row g-2 align-items-end mt-1">
     <div class="col-sm-9">
       <label for="name" class="form-label">Cluster name</label>
       <input
@@ -22,15 +24,17 @@
         maxlength="63"
         pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?"
         title="Lowercase letters, digits and hyphens"
-        placeholder="e.g. dev"
+        placeholder="Enter a name for your cluster..."
         value="{{ form_name or '' }}"
       />
     </div>
     <div class="col-sm-3">
-      <button type="submit" class="btn btn-primary w-100">Create cluster</button>
+      <button type="submit" class="btn btn-primary w-100">{{ icon("plus") }} Create cluster</button>
     </div>
-  </div>
-</form>
+  </form>
+</div>
 
-{% include "components/cluster_list.html" %}
+<div class="bento">
+  {% include "components/cluster_list.html" %}
+</div>
 {% endblock %}

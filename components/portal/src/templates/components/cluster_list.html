@@ -1,4 +1,5 @@
-<div id="cluster-list" hx-get="/clusters/list" hx-trigger="every 3s" hx-swap="outerHTML">
+{% from "components/icons.html" import icon %}
+<div id="cluster-list" class="p-2 p-sm-3" hx-get="/clusters/list" hx-trigger="every 3s" hx-swap="outerHTML">
   {% if vcluster_claims %}
   <div class="table-responsive">
     <table class="table align-middle">
@@ -14,11 +15,11 @@
         {% for vcluster_claim in vcluster_claims %}
         {% set phase = vcluster_claim.status.phase %}
         {% set state = vcluster_claim.spec.state %}
-
+        
         {% set steady_running = phase == 'Ready' and state == 'Running' %}
         {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
         <tr>
-          <td class="fw-semibold">{{ vcluster_claim.spec.name }}</td>
+          <td class="cluster-name fw-semibold">{{ vcluster_claim.spec.name }}</td>
           <td>
             {% if steady_running %}
             <span class="badge text-bg-success">Running</span>
@@ -27,7 +28,7 @@
             {% elif phase in ['Ready', 'Sleeping', 'Waking'] %}
 
             {% if state == 'Sleeping' %}
-            <span class="badge text-bg-secondary">Sleeping&hellip;</span>
+            <span class="badge text-bg-warning">Sleeping&hellip;</span>
             {% else %}
             <span class="badge text-bg-info">Waking&hellip;</span>
             {% endif %}
@@ -40,45 +41,55 @@
             {% endif %}
           </td>
           <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "—" }}</td>
-          <td class="text-end">
-            {% if phase in ['Ready', 'Sleeping', 'Waking'] %}
-            <a
-              class="btn btn-sm btn-outline-primary"
-              href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"
-            >
-              Connect
-            </a>
-            {% endif %}
+          <td>
+            <div class="d-inline-flex gap-2 justify-content-end w-100">
+              {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
+              <a
+                class="btn btn-sm btn-secondary {{ '' if can_connect else 'disabled' }}"
+                {% if can_connect %}href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
+              >
+                {{ icon("download") }} Connect
+              </a>
 
-            {% if steady_running %}
-            <button
-              class="btn btn-sm btn-outline-secondary"
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/sleep"
-              hx-target="#cluster-list"
-              hx-swap="outerHTML"
-            >
-              Sleep
-            </button>
-            {% elif steady_sleeping %}
-            <button
-              class="btn btn-sm btn-outline-primary"
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/wake"
-              hx-target="#cluster-list"
-              hx-swap="outerHTML"
-            >
-              Wake
-            </button>
-            {% endif %}
+              {% if steady_running %}
+              <button
+                class="btn btn-sm btn-info"
+                hx-post="/clusters/{{ vcluster_claim.spec.name }}/sleep"
+                hx-target="#cluster-list"
+                hx-swap="outerHTML"
+              >
+                {{ icon("moon") }} Sleep
+              </button>
+              {% elif steady_sleeping %}
+              <button
+                class="btn btn-sm btn-info"
+                hx-post="/clusters/{{ vcluster_claim.spec.name }}/wake"
+                hx-target="#cluster-list"
+                hx-swap="outerHTML"
+              >
+                {{ icon("sun") }} Wake
+              </button>
+              {% else %}
+              <button class="btn btn-sm btn-info" disabled>
+                {% if state == 'Sleeping' %}{{ icon("moon") }} Sleep
+                {%- elif phase in ['Sleeping', 'Waking'] %}{{ icon("sun") }} Wake
+                {%- else %}{{ icon("moon") }} Sleep{% endif %}
+              </button>
+              {% endif %}
 
-            <button
-              class="btn btn-sm btn-outline-danger"
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/delete"
-              hx-target="#cluster-list"
-              hx-swap="outerHTML"
-              hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? This cannot be undone."
-            >
-              Delete
-            </button>
+              {% set can_delete = phase != 'Deleting' %}
+              <button
+                class="btn btn-sm btn-danger"
+                {% if can_delete %}
+                hx-post="/clusters/{{ vcluster_claim.spec.name }}/delete"
+                hx-target="#cluster-list"
+                hx-swap="outerHTML"
+                hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? This cannot be undone."
+                {% else %}disabled{% endif %}
+              >
+                {{ icon("trash") }}
+              </button>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -86,7 +97,8 @@
     </table>
   </div>
   {% else %}
-  <div class="alert alert-secondary" role="alert">
+  <div class="text-center text-body-secondary py-5">
+    <div class="mb-1" style="font-size: 1.5rem;">◇</div>
     You don't have any clusters yet.
   </div>
   {% endif %}
