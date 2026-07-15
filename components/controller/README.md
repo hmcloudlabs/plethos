@@ -30,7 +30,7 @@ kubectl apply -f k8s/crds/vclusterclaim.yaml
 **Note:** Run everything from the root directory of this project.
 
 ```bash
-uv run kopf run components/controller/src/main.py --verbose
+uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose
 ```
 
 ## Creating a claim

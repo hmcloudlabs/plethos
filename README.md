@@ -35,7 +35,7 @@ uv run uvicorn main:app --reload --app-dir components/portal/src
 ### Controller:
 Please refer to the [components/controller/README.md](components/controller/README.md) on how to prepare your K8s cluster.
 ```bash
-uv run kopf run components/controller/src/main.py --verbose
+uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose # namespace name might be different
 ```
 
 ## Lint
