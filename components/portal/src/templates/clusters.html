@@ -7,14 +7,15 @@
 </div>
 
 {% if error %}
-<div class="alert alert-danger" role="alert">{{ error }}</div>
+<div class="alert alert-danger alert-dismissible" role="alert">
+  {{ error }}
+</div>
 {% endif %}
 
 <div class="bento bento--pad mb-4">
   <span class="bento__label">New cluster</span>
-  <form method="post" action="/clusters" class="row g-2 align-items-end mt-1">
-    <div class="col-sm-10">
-      <label for="name" class="form-label">Cluster name</label>
+  <form method="post" action="/clusters" class="d-flex flex-wrap align-items-end gap-2 mt-2">
+    <div style="flex: 0 1 22rem;">
       <input
         type="text"
         id="name"
@@ -28,9 +29,7 @@
         value="{{ form_name or '' }}"
       />
     </div>
-    <div class="col-sm-2">
-      <button type="submit" class="btn btn-primary w-100">{{ icon("plus") }} Create cluster</button>
-    </div>
+    <button type="submit" class="btn btn-primary">{{ icon("plus") }} Create cluster</button>
   </form>
 </div>
 

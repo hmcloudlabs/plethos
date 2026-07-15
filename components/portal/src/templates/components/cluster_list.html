@@ -19,7 +19,7 @@
         {% set steady_running = phase == 'Ready' and state == 'Running' %}
         {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
         <tr>
-          <td class="cluster-name fw-semibold">{{ vcluster_claim.spec.name }}</td>
+          <td class="cluster-name">{{ vcluster_claim.spec.name }}</td>
           <td>
             {% if steady_running %}
             <span class="badge text-bg-success">Running</span>
@@ -46,6 +46,7 @@
               {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
               <a
                 class="btn btn-sm btn-success {{ '' if can_connect else 'disabled' }}"
+                title="{{ 'Download kubeconfig' if can_connect else 'Available once the cluster is ready' }}"
                 {% if can_connect %}href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
               >
                 {{ icon("download") }} Connect
@@ -57,6 +58,7 @@
                 hx-post="/clusters/{{ vcluster_claim.spec.name }}/sleep"
                 hx-target="#cluster-list"
                 hx-swap="outerHTML"
+                hx-confirm="Put '{{ vcluster_claim.spec.name }}' to sleep? Its workloads are stopped, but its data is preserved."
               >
                 {{ icon("moon") }} Sleep
               </button>
@@ -84,7 +86,7 @@
                 hx-post="/clusters/{{ vcluster_claim.spec.name }}/delete"
                 hx-target="#cluster-list"
                 hx-swap="outerHTML"
-                hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? This cannot be undone."
+                hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? All of its content will be permanently deleted."
                 {% else %}disabled{% endif %}
               >
                 {{ icon("trash") }}

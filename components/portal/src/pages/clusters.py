@@ -66,7 +66,10 @@ def clusters(
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    return _render_clusters(request, user, vcc_service)
+    # One-shot flash from a failed create (set before the PRG redirect below).
+    error = request.session.pop("flash_error", None)
+    form_name = request.session.pop("flash_form_name", "")
+    return _render_clusters(request, user, vcc_service, error=error, form_name=form_name)
 
 
 
@@ -146,6 +149,8 @@ def create_cluster(
             error = f"You already have a cluster named '{name}'."
 
     if error is not None:
-        return _render_clusters(request, user, vcc_service, error=error, form_name=name, status_code=400)
+        # Flash the error and redirect (PRG) so a page reload never re-submits.
+        request.session["flash_error"] = error
+        request.session["flash_form_name"] = name
 
     return RedirectResponse("/clusters", status_code=303)

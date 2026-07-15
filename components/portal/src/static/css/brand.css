@@ -60,6 +60,26 @@
 body {
   font-family: var(--font-sans);
   letter-spacing: -0.01em;
+  /* Column layout so the footer sticks to the bottom on short pages. */
+  display: flex;
+  flex-direction: column;
+}
+main {
+  flex: 1 0 auto;
+}
+
+/* --- Footer --- */
+.app-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--gray-200);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  padding: 1rem 0;
+}
+.brand-mark--sm {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 
@@ -134,6 +154,10 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
   --bs-dropdown-link-hover-bg: var(--gray-100);
   --bs-dropdown-link-hover-color: var(--gray-900);
   --bs-dropdown-min-width: 12rem;
+  /* Explicit (opaque) surface — the navbar's translucent/blurred bg was
+     showing through when only the CSS var was set. */
+  background-color: var(--gray-0);
+  border: 1px solid var(--gray-200);
   box-shadow: var(--shadow-2);
   padding: 0.35rem;
 }
@@ -258,7 +282,7 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 }
 .table > :not(caption) > * > * { padding: 0.85rem 0.75rem; }
 
-.cluster-name { font-family: var(--font-mono); color: var(--gray-900); }
+.cluster-name { font-family: var(--font-mono); font-weight: 400; font-size: 0.85rem; color: var(--gray-800); }
 
 /* --- Forms --- */
 .form-control, .form-select {

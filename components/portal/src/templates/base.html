@@ -74,7 +74,28 @@
 
     <main class="container py-4">{% block content %}{% endblock %}</main>
 
+    {# Deployers can add org-specific links (docs, imprint, privacy, contact) here. #}
+    <footer class="app-footer">
+      <div class="container d-flex align-items-center gap-2">
+        <span>vKube - self-serivce multi-tenant Kubernetes platform</span>
+      </div>
+    </footer>
+
     <script src="{{ url_for('static', path='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', path='vendor/htmx/htmx.min.js') }}"></script>
+    <script>
+      // Dismiss any dismissible alert on the first click anywhere on the page.
+      (function () {
+        var alert = document.querySelector(".alert-dismissible");
+        if (!alert) return;
+        document.addEventListener(
+          "click",
+          function () {
+            alert.remove();
+          },
+          { once: true }
+        );
+      })();
+    </script>
   </body>
 </html>
