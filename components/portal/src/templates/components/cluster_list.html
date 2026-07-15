@@ -1,5 +1,5 @@
 <div id="cluster-list" hx-get="/clusters/list" hx-trigger="every 3s" hx-swap="outerHTML">
-  {% if claims %}
+  {% if vcluster_claims %}
   <div class="table-responsive">
     <table class="table align-middle">
       <thead>
@@ -7,30 +7,61 @@
           <th>Name</th>
           <th>Status</th>
           <th>Created</th>
+          <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
-        {% for claim in claims %}
+        {% for vcluster_claim in vcluster_claims %}
+        {% set phase = vcluster_claim.status.phase %}
+        {% set state = vcluster_claim.spec.state %}
+        {# Steady states: desired (state) and actual (phase) agree. #}
+        {% set steady_running = phase == 'Ready' and state == 'Running' %}
+        {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
         <tr>
-          <td class="fw-semibold">{{ claim.spec.name }}</td>
+          <td class="fw-semibold">{{ vcluster_claim.spec.name }}</td>
           <td>
-            {# Once Ready, show the desired state (Running/Sleeping); otherwise show the phase. #}
-            {% if claim.status.phase == 'Ready' %}
-            <span class="badge {{ 'text-bg-success' if claim.spec.state == 'Running' else 'text-bg-secondary' }}">
-              {{ claim.spec.state }}
-            </span>
-            {% elif claim.status.phase %}
-            <span class="badge
-              {%- if claim.status.phase == 'Error' %} text-bg-danger
-              {%- elif claim.status.phase in ['Sleeping', 'Deleting'] %} text-bg-secondary
-              {%- else %} text-bg-info{% endif %}">
-              {{ claim.status.phase }}
-            </span>
+            {% if steady_running %}
+            <span class="badge text-bg-success">Running</span>
+            {% elif steady_sleeping %}
+            <span class="badge text-bg-secondary">Sleeping</span>
+            {% elif phase in ['Ready', 'Sleeping', 'Waking'] %}
+            {# Operational, but desired state not applied yet -> in transition. #}
+            {% if state == 'Sleeping' %}
+            <span class="badge text-bg-secondary">Sleeping&hellip;</span>
+            {% else %}
+            <span class="badge text-bg-info">Waking&hellip;</span>
+            {% endif %}
+            {% elif phase == 'Error' %}
+            <span class="badge text-bg-danger">Error</span>
+            {% elif phase %}
+            <span class="badge text-bg-info">{{ phase }}</span>
             {% else %}
             <span class="text-body-secondary">-</span>
             {% endif %}
           </td>
-          <td class="text-body-secondary">{{ claim.creation_timestamp[:10] if claim.creation_timestamp else "—" }}</td>
+          <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "—" }}</td>
+          <td class="text-end">
+            {# Only offer a toggle in a steady state, so the button never contradicts the status. #}
+            {% if steady_running %}
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              hx-post="/clusters/{{ vcluster_claim.spec.name }}/sleep"
+              hx-target="#cluster-list"
+              hx-swap="outerHTML"
+            >
+              Sleep
+            </button>
+            {% elif steady_sleeping %}
+            <button
+              class="btn btn-sm btn-outline-primary"
+              hx-post="/clusters/{{ vcluster_claim.spec.name }}/wake"
+              hx-target="#cluster-list"
+              hx-swap="outerHTML"
+            >
+              Wake
+            </button>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

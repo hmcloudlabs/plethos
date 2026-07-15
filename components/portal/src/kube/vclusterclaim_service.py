@@ -110,14 +110,19 @@ class VClusterClaimService:
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
     def set_state(self, sub: str, name: str, state: State) -> None:
-        self._api.patch_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            namespace=self._namespace,
-            plural=PLURAL,
-            name=vcc_name(sub, name),
-            body={"spec": {"state": state.value}},
-        )
+        try:
+            self._api.patch_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+                name=vcc_name(sub, name),
+                body={"spec": {"state": state.value}},
+            )
+        except ApiException as e:
+            # Tolerate a cluster that was deleted between listing and the action.
+            if e.status != 404:
+                raise
 
     def delete(self, sub: str, name: str) -> None:
         try:
