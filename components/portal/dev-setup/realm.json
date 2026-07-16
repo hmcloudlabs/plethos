@@ -17,6 +17,8 @@
       "username": "admin",
       "enabled": true,
       "email": "admin@example.com",
+      "firstName": "Ada",
+      "lastName": "Admin",
       "credentials": [
         {
           "type": "password",
@@ -32,6 +34,22 @@
       "username": "testuser",
       "enabled": true,
       "email": "testuser@example.com",
+      "firstName": "Tess",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "testuser2",
+      "enabled": true,
+      "email": "testuser2@example.com",
+      "firstName": "Theo",
+      "lastName": "Tester",
       "credentials": [
         {
           "type": "password",

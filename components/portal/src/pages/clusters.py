@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from auth import User, require_user
 from config import config
+from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_service import VClusterClaimAlreadyExistsError, VClusterClaimService
 from shared.vclusterclaim import State
 from templating import templates
@@ -42,8 +43,7 @@ def _render_clusters(
             "title": "Clusters",
             "user": user,
             "vcluster_claims": vcc_service.list_for_owner(user.sub),
-            # Sharing/invitations are not implemented yet; empty for now.
-            "shared_vcluster_claims": [],
+            "shared_vcluster_claims": vcc_service.list_shared_with(user.email),
             "error": error,
             "form_name": form_name,
         },
@@ -54,11 +54,24 @@ def _render_clusters(
 def _render_cluster_list(
     request: Request, user: User, vcc_service: VClusterClaimService
 ) -> HTMLResponse:
-    """Just the self-refreshing list fragment (htmx poll + action swaps)."""
+    """Self-refreshing cluster table."""
+
     return templates.TemplateResponse(
         request,
         "components/cluster_list.html",
         {"vcluster_claims": vcc_service.list_for_owner(user.sub)},
+    )
+
+
+def _render_access_panel(
+    request: Request, name: str, claim: VClusterClaim, *, error: str | None = None
+) -> HTMLResponse:
+    """The manage-users modal body."""
+
+    return templates.TemplateResponse(
+        request,
+        "components/access_panel.html",
+        {"cluster_name": name, "access_rules": claim.spec.access_rules, "error": error},
     )
 
 
@@ -68,7 +81,6 @@ def clusters(
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    # One-shot flash from a failed create (set before the PRG redirect below).
     error = request.session.pop("flash_error", None)
     form_name = request.session.pop("flash_form_name", "")
     return _render_clusters(request, user, vcc_service, error=error, form_name=form_name)
@@ -134,6 +146,64 @@ def download_kubeconfig(
     )
 
 
+@router.get("/clusters/{name}/access", response_class=HTMLResponse)
+def cluster_access(
+    name: str,
+    request: Request,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    claim = vcc_service.get(user.sub, name)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Cluster not found.")
+    return _render_access_panel(request, name, claim)
+
+
+@router.post("/clusters/{name}/access", response_class=HTMLResponse)
+def add_cluster_access(
+    name: str,
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    email = email.strip().lower()
+
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    error: str | None = None
+    if not EMAIL_RE.match(email):
+        error = "Enter a valid email address."
+    elif email == user.email.lower():
+        error = "You can't add yourself."
+
+    if error is None:
+        claim = vcc_service.add_access(user.sub, name, email)
+    else:
+        claim = vcc_service.get(user.sub, name)
+
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Cluster not found.")
+    
+    return _render_access_panel(request, name, claim, error=error)
+
+
+@router.post("/clusters/{name}/access/remove", response_class=HTMLResponse)
+def remove_cluster_access(
+    name: str,
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    claim = vcc_service.remove_access(user.sub, name, email.strip().lower())
+
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Cluster not found.")
+    
+    return _render_access_panel(request, name, claim)
+
+
 @router.post("/clusters")
 def create_cluster(
     request: Request,
@@ -151,7 +221,6 @@ def create_cluster(
             error = f"You already have a cluster named '{name}'."
 
     if error is not None:
-        # Flash the error and redirect (PRG) so a page reload never re-submits.
         request.session["flash_error"] = error
         request.session["flash_form_name"] = name
 

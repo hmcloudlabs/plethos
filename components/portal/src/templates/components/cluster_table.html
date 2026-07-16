@@ -1,11 +1,5 @@
 {% from "components/icons.html" import icon %}
 
-{#
-  Renders a cluster table (or an empty state).
-  - shared:    when true, this is a cluster shared with the user -> no delete action.
-  - list_id:   htmx target that lifecycle actions swap.
-  - empty_text: message shown when there are no clusters.
-#}
 {% macro cluster_table(vcluster_claims, shared=False, list_id="cluster-list", empty_text="You don't have any clusters yet.") %}
 {% if vcluster_claims %}
 <div class="table-responsive">
@@ -13,6 +7,7 @@
     <thead>
       <tr>
         <th>Name</th>
+        {% if shared %}<th>Owner</th>{% endif %}
         <th>Status</th>
         <th>Created</th>
         <th class="text-end">Actions</th>
@@ -26,6 +21,7 @@
       {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
       <tr>
         <td class="cluster-name">{{ vcluster_claim.spec.name }}</td>
+        {% if shared %}<td class="text-body-secondary">{{ vcluster_claim.spec.owner_email }}</td>{% endif %}
         <td>
           {% if steady_running %}
           <span class="badge text-bg-success">Running</span>
@@ -46,6 +42,18 @@
           {% endif %}
         </td>
         <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "—" }}</td>
+        {% if shared %}
+        <td>
+          <div class="d-inline-flex gap-2 justify-content-end w-100">
+            {# Shared members can't manage the cluster yet, so these are disabled. #}
+            {% if steady_sleeping %}
+            <button class="btn btn-sm btn-info" disabled>{{ icon("sun") }} Wake</button>
+            {% else %}
+            <button class="btn btn-sm btn-info" disabled>{{ icon("moon") }} Sleep</button>
+            {% endif %}
+          </div>
+        </td>
+        {% else %}
         <td>
           <div class="d-inline-flex gap-2 justify-content-end w-100">
             {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
@@ -84,7 +92,21 @@
             </button>
             {% endif %}
 
-            {% if not shared %}
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary"
+              title="Manage users"
+              data-bs-toggle="modal"
+              data-bs-target="#access-modal"
+              hx-get="/clusters/{{ vcluster_claim.spec.name }}/access"
+              hx-target="#access-modal-body"
+              {# override the outerHTML swap inherited from #cluster-list, which would
+                 otherwise replace (delete) the modal body the form needs to target #}
+              hx-swap="innerHTML"
+            >
+              {{ icon("users") }}
+            </button>
+
             {% set can_delete = phase != 'Deleting' %}
             <button
               class="btn btn-sm btn-danger"
@@ -97,9 +119,9 @@
             >
               {{ icon("trash") }}
             </button>
-            {% endif %}
           </div>
         </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

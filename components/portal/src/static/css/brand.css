@@ -343,3 +343,17 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
   border-color: var(--gray-200);
   border-radius: var(--radius-sm);
 }
+
+/* --- Modal --- */
+.modal-content {
+  background-color: var(--gray-0);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+}
+.modal-header {
+  border-bottom: 1px solid var(--gray-200);
+  padding: 1rem 1.25rem;
+}
+.modal-header .modal-title { font-size: 1rem; font-weight: 600; }
+.modal-body { padding: 1.25rem; }

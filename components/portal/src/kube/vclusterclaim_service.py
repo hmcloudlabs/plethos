@@ -13,6 +13,7 @@ from shared.vclusterclaim import (
     KIND,
     PLURAL,
     VERSION,
+    AccessRule,
     State,
     VClusterClaimSpec,
 )
@@ -147,6 +148,63 @@ class VClusterClaimService:
         except ApiException as e:
             if e.status != 404:
                 raise
+
+    def list_shared_with(self, email: str) -> list[VClusterClaim]:
+        """Lists all clusters that a user's email was invited to (ie. written into the `accessRules`).
+
+        Access is keyed by email, which no label indexes, so we list every claim in the (single) 
+        claims namespace and filter in memory. This is fine for now (as long as the amount of clusters 
+        stay in small scale).
+        """
+
+        # List *all* VClusterClaims
+        res = self._api.list_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            namespace=self._namespace,
+            plural=PLURAL,
+        )
+        claims = [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+        email = email.lower()
+        return [
+            claim for claim in claims
+            if claim.spec.owner_email.lower() != email
+            and any(rule.email.lower() == email for rule in claim.spec.access_rules)
+        ]
+
+    def add_access(self, owner_sub: str, name: str, email: str) -> VClusterClaim | None:
+        claim = self.get(owner_sub, name)
+        if claim is None:
+            return None
+
+        # Drop any existing rule for this email in the current VClusterClaim before re-adding.
+        rules = [rule for rule in claim.spec.access_rules if rule.email != email]
+        rules.append(AccessRule(email=email))
+
+        return self._patch_access_rules(owner_sub, name, rules)
+
+    def remove_access(self, owner_sub: str, name: str, email: str) -> VClusterClaim | None:        
+        claim = self.get(owner_sub, name)
+        if claim is None:
+            return None
+
+        rules = [rule for rule in claim.spec.access_rules if rule.email != email]
+
+        return self._patch_access_rules(owner_sub, name, rules)
+
+    def _patch_access_rules(
+        self, owner_sub: str, name: str, rules: list[AccessRule]
+    ) -> VClusterClaim:
+        obj = self._api.patch_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            namespace=self._namespace,
+            plural=PLURAL,
+            name=vcc_name(owner_sub, name),
+            body={"spec": {"accessRules": [rule.model_dump(by_alias=True) for rule in rules]}},
+        )
+        return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
     def get_kubeconfig(self, sub: str, name: str) -> str | None:
         """The vCluster's kubeconfig, or None if the user doesn't own it or it isn't provisioned yet."""

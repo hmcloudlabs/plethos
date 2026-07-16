@@ -1,0 +1,40 @@
+{% from "components/icons.html" import icon %}
+{# Modal body for managing who can access a cluster. Re-rendered on every add/remove. #}
+<div class="mb-3">
+  <span class="bento__label">Cluster</span>
+  <div class="cluster-name">{{ cluster_name }}</div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger py-2 small mb-3">{{ error }}</div>
+{% endif %}
+
+<form hx-post="/clusters/{{ cluster_name }}/access" hx-target="#access-modal-body" class="d-flex gap-2 mb-3">
+  <input
+    type="email"
+    name="email"
+    class="form-control form-control-sm"
+    placeholder="user@example.com"
+    required
+  />
+  <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }} Add</button>
+</form>
+
+<ul class="list-unstyled mb-0">
+  {% for rule in access_rules %}
+  <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
+    <span>{{ rule.email }}</span>
+    <button
+      class="btn btn-sm btn-danger flex-shrink-0"
+      title="Remove access"
+      hx-post="/clusters/{{ cluster_name }}/access/remove"
+      hx-vals='{"email": {{ rule.email | tojson }} }'
+      hx-target="#access-modal-body"
+    >
+      {{ icon("trash") }}
+    </button>
+  </li>
+  {% else %}
+  <li class="text-body-secondary small py-2 fst-italic">No one else has access to this cluster yet.</li>
+  {% endfor %}
+</ul>
