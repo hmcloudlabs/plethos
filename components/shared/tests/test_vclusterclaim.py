@@ -12,13 +12,12 @@ def test_spec_parses_k8s_shaped_data():
             "name": "dev",
             "ownerSubject": "abc-123",
             "ownerEmail": "owner@hm.edu",
-            "accessRules": [{"subject": {"sub": "u-1", "email": "u1@hm.edu"}, "role": "admin"}],
+            "accessRules": [{"email": "u1@hm.edu"}],
         }
     )
     assert spec.name == "dev"
     assert spec.owner_email == "owner@hm.edu"
-    assert spec.access_rules[0].subject.email == "u1@hm.edu"
-    assert spec.access_rules[0].role == "admin"
+    assert spec.access_rules[0].email == "u1@hm.edu"
     # state defaults to Running
     assert spec.state is State.RUNNING
 

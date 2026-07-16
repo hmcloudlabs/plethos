@@ -53,21 +53,14 @@ spec:
                 default: Running
               accessRules:
                 type: array
+                x-kubernetes-list-type: map
+                x-kubernetes-list-map-keys: [email]
                 items:
                   type: object
-                  required: [subject, role]
+                  required: [email]
                   properties:
-                    subject:
-                      type: object
-                      required: [sub, email]
-                      properties:
-                        sub:
-                          type: string
-                        email:
-                          type: string
-                    role:
+                    email:
                       type: string
-                      enum: [admin, viewer]
           status:
             type: object
             properties:

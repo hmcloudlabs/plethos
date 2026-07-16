@@ -29,14 +29,8 @@ class _Model(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class Subject(_Model):
-    sub: str
-    email: str
-
-
 class AccessRule(_Model):
-    subject: Subject
-    role: Literal["admin", "viewer"]
+    email: str
 
 
 class VClusterClaimSpec(_Model):
