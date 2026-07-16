@@ -42,6 +42,8 @@ def _render_clusters(
             "title": "Clusters",
             "user": user,
             "vcluster_claims": vcc_service.list_for_owner(user.sub),
+            # Sharing/invitations are not implemented yet; empty for now.
+            "shared_vcluster_claims": [],
             "error": error,
             "form_name": form_name,
         },

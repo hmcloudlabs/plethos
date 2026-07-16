@@ -19,7 +19,6 @@ def index(request: Request) -> HTMLResponse:
         cluster_summary = {
             "total": len(claims),
             "running": sum(1 for c in claims if c.status.phase == "Ready"),
-            "sleeping": sum(1 for c in claims if c.status.phase == "Sleeping"),
         }
 
     return templates.TemplateResponse(

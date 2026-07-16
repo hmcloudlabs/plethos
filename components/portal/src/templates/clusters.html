@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "components/icons.html" import icon %}
+{% from "components/cluster_table.html" import cluster_table %}
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
@@ -29,11 +30,28 @@
         value="{{ form_name or '' }}"
       />
     </div>
-    <button type="submit" class="btn btn-primary">{{ icon("plus") }} Create cluster</button>
+    <button type="submit" class="btn btn-primary">{{ icon("plus") }} create cluster</button>
   </form>
 </div>
 
-<div class="bento">
+<div class="bento mb-4">
+  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
+    <span class="bento__label">Your clusters</span>
+  </div>
   {% include "components/cluster_list.html" %}
+</div>
+
+<div class="bento">
+  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
+    <span class="bento__label">Clusters shared with you</span>
+  </div>
+  <div id="shared-cluster-list" class="p-2 p-sm-3">
+    {{ cluster_table(
+        shared_vcluster_claims,
+        shared=True,
+        list_id="shared-cluster-list",
+        empty_text="No clusters have been shared with you.",
+    ) }}
+  </div>
 </div>
 {% endblock %}

@@ -1,37 +1,80 @@
 {% extends "base.html" %}
+{% from "components/icons.html" import icon %}
 
 {% block content %}
-<div class="py-3 py-lg-4">
-  {% if user %}
-  <p class="bento__label mb-5">vKube - self-serivce multi-tenant Kubernetes platform</p>
-  <h1 class="h4 fw-bold mb-4">Overview</h1>
-  <div class="row g-3" style="max-width: 34rem;">
-    <div class="col-4">
-      <div class="bento bento--pad">
-        <div class="h2 fw-bold mb-1">{{ cluster_summary.total }}</div>
-        <span class="bento__label">Clusters</span>
-      </div>
+<div class="py-3 py-lg-4" style="max-width: 48rem;">
+  <h1 class="h3 fw-bold mb-2">Welcome to vKube</h1>
+  <p class="text-body-secondary mb-5">
+    A self-service platform for creating and managing Kubernetes clusters.
+  </p>
+
+  {# --- Resources: guides + source (dummy links for now) --- #}
+  <h2 class="h5 fw-bold mb-3">Guides</h2>
+  <div class="row g-3 mb-5">
+    <div class="col-sm-6">
+      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
+        {{ icon("book") }}
+        <span class="resource-link__body">
+          <span class="resource-link__title">Getting started</span>
+          <span class="resource-link__desc">Create your first cluster and connect to it.</span>
+        </span>
+        {{ icon("arrow-up-right") }}
+      </a>
     </div>
-    <div class="col-4">
-      <div class="bento bento--pad">
-        <div class="h2 fw-bold mb-1">{{ cluster_summary.running }}</div>
-        <span class="bento__label">Running</span>
-      </div>
+    <div class="col-sm-6">
+      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
+        {{ icon("book") }}
+        <span class="resource-link__body">
+          <span class="resource-link__title">User guide</span>
+          <span class="resource-link__desc">Sleeping, waking and downloading your data.</span>
+        </span>
+        {{ icon("arrow-up-right") }}
+      </a>
     </div>
-    <div class="col-4">
-      <div class="bento bento--pad">
-        <div class="h2 fw-bold mb-1">{{ cluster_summary.sleeping }}</div>
-        <span class="bento__label">Sleeping</span>
-      </div>
+    <div class="col-sm-6">
+      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
+        {{ icon("github") }}
+        <span class="resource-link__body">
+          <span class="resource-link__title">Source code</span>
+          <span class="resource-link__desc">vKube on GitHub.</span>
+        </span>
+        {{ icon("arrow-up-right") }}
+      </a>
     </div>
   </div>
-  <div class="mt-4">
-    <a class="btn btn-primary" href="/clusters">Manage clusters &rarr;</a>
+
+  {% if user %}
+  <h2 class="h5 fw-bold mb-3">Overview</h2>
+  <div class="row g-3">
+    {# --- Tiny dashboard: running / total, plus manage button --- #}
+    <div class="col-md-6">
+      <div class="bento bento--pad h-100 d-flex flex-column">
+        <span class="bento__label">Your clusters</span>
+        <div class="h2 fw-bold my-3">
+          {{ cluster_summary.running }}/{{ cluster_summary.total }}
+          <span class="fs-6 fw-normal text-body-secondary ms-1">running</span>
+        </div>
+        <a class="btn btn-primary mt-auto align-self-start" href="/clusters">manage clusters &rarr;</a>
+      </div>
+    </div>
+    {# --- Placeholder for clusters shared with / invited to the user (not built yet) --- #}
+    <div class="col-md-6">
+      <div class="bento bento--pad h-100 d-flex flex-column">
+        <span class="bento__label">Clusters shared with you</span>
+        <p class="text-body-secondary small mb-0 mt-2">
+          You have no cluster invitations.
+        </p>
+      </div>
+    </div>
   </div>
   {% else %}
-  <h1 class="h4 fw-bold mb-2">Sign in</h1>
-  <p class="text-body-secondary mb-4">Sign in to create and manage your clusters.</p>
-  <a class="btn btn-primary" href="/login">Sign in via SSO</a>
+  <div class="bento bento--pad d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <div class="fw-semibold">Sign in to get started</div>
+      <div class="small text-body-secondary">Create and manage your clusters.</div>
+    </div>
+    <a class="btn btn-primary" href="/login">Sign in via SSO</a>
+  </div>
   {% endif %}
 </div>
 {% endblock %}
