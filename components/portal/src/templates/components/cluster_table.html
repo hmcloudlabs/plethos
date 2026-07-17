@@ -1,27 +1,47 @@
 {% from "components/icons.html" import icon %}
 
+{#
+  Renders a cluster table (or an empty state). Clusters are addressed by their
+  object name so the same actions work whether the caller owns the cluster or is
+  a shared member.
+  - shared:    when true, append an Owner column (at the end) and hide owner-only
+               actions (manage users, delete).
+  - list_id:   htmx target that lifecycle actions swap.
+  - empty_text: message shown when there are no clusters.
+
+  Columns use fixed widths (table-layout: fixed + colgroup) so the shared columns
+  line up across the two tables; the extra Owner column sits last.
+#}
 {% macro cluster_table(vcluster_claims, shared=False, list_id="cluster-list", empty_text="You don't have any clusters yet.") %}
 {% if vcluster_claims %}
 <div class="table-responsive">
-  <table class="table align-middle">
+  <table class="table cluster-table align-middle">
+    <colgroup>
+      <col class="col-name" />
+      <col class="col-status" />
+      <col class="col-created" />
+      {% if shared %}<col class="col-owner" />{% endif %}
+      <col class="col-actions" />
+    </colgroup>
     <thead>
       <tr>
         <th>Name</th>
-        {% if shared %}<th>Owner</th>{% endif %}
         <th>Status</th>
         <th>Created</th>
+        {% if shared %}<th>Owner</th>{% endif %}
         <th class="text-end">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for vcluster_claim in vcluster_claims %}
+      {% set obj = vcluster_claim.object_name %}
+      {% set name = vcluster_claim.spec.name %}
       {% set phase = vcluster_claim.status.phase %}
       {% set state = vcluster_claim.spec.state %}
       {% set steady_running = phase == 'Ready' and state == 'Running' %}
       {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
       <tr>
-        <td class="cluster-name">{{ vcluster_claim.spec.name }}</td>
-        {% if shared %}<td class="text-body-secondary">{{ vcluster_claim.spec.owner_email }}</td>{% endif %}
+        <td class="text-body-secondary text-truncate" title="{{ name }}">{{ name }}</td>
         <td>
           {% if steady_running %}
           <span class="badge text-bg-success">Running</span>
@@ -41,26 +61,19 @@
           <span class="text-body-secondary">-</span>
           {% endif %}
         </td>
-        <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "—" }}</td>
+        <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "-" }}</td>
         {% if shared %}
-        <td>
-          <div class="d-inline-flex gap-2 justify-content-end w-100">
-            {# Shared members can't manage the cluster yet, so these are disabled. #}
-            {% if steady_sleeping %}
-            <button class="btn btn-sm btn-info" disabled>{{ icon("sun") }} Wake</button>
-            {% else %}
-            <button class="btn btn-sm btn-info" disabled>{{ icon("moon") }} Sleep</button>
-            {% endif %}
-          </div>
+        <td class="text-body-secondary text-truncate" title="{{ vcluster_claim.spec.owner_email }}">
+          {{ vcluster_claim.spec.owner_email }}
         </td>
-        {% else %}
+        {% endif %}
         <td>
           <div class="d-inline-flex gap-2 justify-content-end w-100">
             {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
             <a
               class="btn btn-sm btn-success {{ '' if can_connect else 'disabled' }}"
               title="{{ 'Download kubeconfig' if can_connect else 'Available once the cluster is ready' }}"
-              {% if can_connect %}href="/clusters/{{ vcluster_claim.spec.name }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
+              {% if can_connect %}href="/clusters/{{ obj }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
             >
               {{ icon("download") }} Connect
             </a>
@@ -68,17 +81,17 @@
             {% if steady_running %}
             <button
               class="btn btn-sm btn-info"
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/sleep"
+              hx-post="/clusters/{{ obj }}/sleep"
               hx-target="#{{ list_id }}"
               hx-swap="outerHTML"
-              hx-confirm="Put '{{ vcluster_claim.spec.name }}' to sleep? Its workloads are stopped, but its data is preserved."
+              hx-confirm="Put '{{ name }}' to sleep? Its workloads are stopped, but its data is preserved."
             >
               {{ icon("moon") }} Sleep
             </button>
             {% elif steady_sleeping %}
             <button
               class="btn btn-sm btn-info"
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/wake"
+              hx-post="/clusters/{{ obj }}/wake"
               hx-target="#{{ list_id }}"
               hx-swap="outerHTML"
             >
@@ -92,13 +105,14 @@
             </button>
             {% endif %}
 
+            {% if not shared %}
             <button
               type="button"
               class="btn btn-sm btn-secondary"
               title="Manage users"
               data-bs-toggle="modal"
               data-bs-target="#access-modal"
-              hx-get="/clusters/{{ vcluster_claim.spec.name }}/access"
+              hx-get="/clusters/{{ obj }}/access"
               hx-target="#access-modal-body"
               {# override the outerHTML swap inherited from #cluster-list, which would
                  otherwise replace (delete) the modal body the form needs to target #}
@@ -111,17 +125,17 @@
             <button
               class="btn btn-sm btn-danger"
               {% if can_delete %}
-              hx-post="/clusters/{{ vcluster_claim.spec.name }}/delete"
+              hx-post="/clusters/{{ obj }}/delete"
               hx-target="#{{ list_id }}"
               hx-swap="outerHTML"
-              hx-confirm="Delete cluster '{{ vcluster_claim.spec.name }}'? All of its content will be permanently deleted."
+              hx-confirm="Delete cluster '{{ name }}'? All of its content will be permanently deleted."
               {% else %}disabled{% endif %}
             >
               {{ icon("trash") }}
             </button>
+            {% endif %}
           </div>
         </td>
-        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

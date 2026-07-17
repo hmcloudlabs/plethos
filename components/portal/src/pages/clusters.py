@@ -5,7 +5,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from auth import User, require_user
 from config import config
 from kube.vclusterclaim_model import VClusterClaim
-from kube.vclusterclaim_service import VClusterClaimAlreadyExistsError, VClusterClaimService
+from kube.vclusterclaim_service import (
+    AccessType,
+    VClusterClaimAlreadyExistsError,
+    VClusterClaimService,
+)
 from shared.vclusterclaim import State
 from templating import templates
 
@@ -14,6 +18,16 @@ router = APIRouter()
 
 def get_vcc_service() -> VClusterClaimService:
     return VClusterClaimService()
+
+
+def _owned_claim_or_404(
+    vcc_service: VClusterClaimService, object_name: str, sub: str
+) -> VClusterClaim:
+    """Fetch a claim the user owns, or raise 404 (used by the owner-only access panel)."""
+    claim = vcc_service.get_by_object_name(object_name)
+    if claim is None or vcc_service.access_type(claim, sub) is not AccessType.OWNER:
+        raise HTTPException(status_code=404, detail="Cluster not found.")
+    return claim
 
 
 def _validate_new_cluster(name: str) -> str | None:
@@ -54,7 +68,7 @@ def _render_clusters(
 def _render_cluster_list(
     request: Request, user: User, vcc_service: VClusterClaimService
 ) -> HTMLResponse:
-    """Self-refreshing cluster table."""
+    """Self-refreshing table of the user's own clusters."""
 
     return templates.TemplateResponse(
         request,
@@ -63,15 +77,45 @@ def _render_cluster_list(
     )
 
 
+def _render_shared_cluster_list(
+    request: Request, user: User, vcc_service: VClusterClaimService
+) -> HTMLResponse:
+    """Self-refreshing table of clusters shared with the user."""
+
+    return templates.TemplateResponse(
+        request,
+        "components/shared_cluster_list.html",
+        {"shared_vcluster_claims": vcc_service.list_shared_with(user.email)},
+    )
+
+
+def _render_after_action(
+    request: Request, user: User, vcc_service: VClusterClaimService
+) -> HTMLResponse:
+    """Re-render whichever table triggered the action (owned vs shared).
+
+    htmx sends the resolved target id in the HX-Target header; both tables only
+    ever show the caller's own data, so this just picks the right fragment.
+    """
+    if request.headers.get("HX-Target") == "shared-cluster-list":
+        return _render_shared_cluster_list(request, user, vcc_service)
+    return _render_cluster_list(request, user, vcc_service)
+
+
 def _render_access_panel(
-    request: Request, name: str, claim: VClusterClaim, *, error: str | None = None
+    request: Request, claim: VClusterClaim, *, error: str | None = None
 ) -> HTMLResponse:
     """The manage-users modal body."""
 
     return templates.TemplateResponse(
         request,
         "components/access_panel.html",
-        {"cluster_name": name, "access_rules": claim.spec.access_rules, "error": error},
+        {
+            "object_name": claim.object_name,
+            "cluster_name": claim.spec.name,
+            "access_rules": claim.spec.access_rules,
+            "error": error,
+        },
     )
 
 
@@ -96,77 +140,87 @@ def clusters_list(
     return _render_cluster_list(request, user, vcc_service)
 
 
-@router.post("/clusters/{name}/sleep", response_class=HTMLResponse)
+@router.get("/clusters/shared/list", response_class=HTMLResponse)
+def shared_clusters_list(
+    request: Request,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    return _render_shared_cluster_list(request, user, vcc_service)
+
+
+@router.post("/clusters/{object_name}/sleep", response_class=HTMLResponse)
 def sleep_cluster(
-    name: str,
+    object_name: str,
     request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    vcc_service.set_state(user.sub, name, State.SLEEPING)
-    return _render_cluster_list(request, user, vcc_service)
+    vcc_service.set_state(object_name, user.sub, user.email, State.SLEEPING)
+    return _render_after_action(request, user, vcc_service)
 
 
-@router.post("/clusters/{name}/wake", response_class=HTMLResponse)
+@router.post("/clusters/{object_name}/wake", response_class=HTMLResponse)
 def wake_cluster(
-    name: str,
+    object_name: str,
     request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    vcc_service.set_state(user.sub, name, State.RUNNING)
-    return _render_cluster_list(request, user, vcc_service)
+    vcc_service.set_state(object_name, user.sub, user.email, State.RUNNING)
+    return _render_after_action(request, user, vcc_service)
 
 
-@router.post("/clusters/{name}/delete", response_class=HTMLResponse)
+@router.post("/clusters/{object_name}/delete", response_class=HTMLResponse)
 def delete_cluster(
-    name: str,
+    object_name: str,
     request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    vcc_service.delete(user.sub, name)
+    # Owner-only (enforced in the service).
+    vcc_service.delete(object_name, user.sub)
     return _render_cluster_list(request, user, vcc_service)
 
 
-@router.get("/clusters/{name}/kubeconfig")
+@router.get("/clusters/{object_name}/kubeconfig")
 def download_kubeconfig(
-    name: str,
+    object_name: str,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> Response:
-    kubeconfig = vcc_service.get_kubeconfig(user.sub, name)
-    if kubeconfig is None:
+    result = vcc_service.get_kubeconfig(object_name, user.sub, user.email)
+    if result is None:
         raise HTTPException(status_code=404, detail="Kubeconfig not available yet.")
 
+    display_name, kubeconfig = result
     return Response(
         content=kubeconfig,
         media_type="application/yaml",
-        headers={"Content-Disposition": f'attachment; filename="{name}-kubeconfig.yaml"'},
+        headers={"Content-Disposition": f'attachment; filename="{display_name}-kubeconfig.yaml"'},
     )
 
 
-@router.get("/clusters/{name}/access", response_class=HTMLResponse)
+@router.get("/clusters/{object_name}/access", response_class=HTMLResponse)
 def cluster_access(
-    name: str,
+    object_name: str,
     request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    claim = vcc_service.get(user.sub, name)
-    if claim is None:
-        raise HTTPException(status_code=404, detail="Cluster not found.")
-    return _render_access_panel(request, name, claim)
+    claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
+    return _render_access_panel(request, claim)
 
 
-@router.post("/clusters/{name}/access", response_class=HTMLResponse)
+@router.post("/clusters/{object_name}/access", response_class=HTMLResponse)
 def add_cluster_access(
-    name: str,
+    object_name: str,
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
+    claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     email = email.strip().lower()
 
     EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -178,30 +232,27 @@ def add_cluster_access(
         error = "You can't add yourself."
 
     if error is None:
-        claim = vcc_service.add_access(user.sub, name, email)
-    else:
-        claim = vcc_service.get(user.sub, name)
+        updated = vcc_service.add_access(object_name, user.sub, email)
+        if updated is not None:
+            claim = updated
 
-    if claim is None:
-        raise HTTPException(status_code=404, detail="Cluster not found.")
-    
-    return _render_access_panel(request, name, claim, error=error)
+    return _render_access_panel(request, claim, error=error)
 
 
-@router.post("/clusters/{name}/access/remove", response_class=HTMLResponse)
+@router.post("/clusters/{object_name}/access/remove", response_class=HTMLResponse)
 def remove_cluster_access(
-    name: str,
+    object_name: str,
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
     vcc_service: VClusterClaimService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    claim = vcc_service.remove_access(user.sub, name, email.strip().lower())
+    claim = vcc_service.remove_access(object_name, user.sub, email.strip().lower())
 
     if claim is None:
         raise HTTPException(status_code=404, detail="Cluster not found.")
-    
-    return _render_access_panel(request, name, claim)
+
+    return _render_access_panel(request, claim)
 
 
 @router.post("/clusters")

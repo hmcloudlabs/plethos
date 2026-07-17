@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import StrEnum
 
 from shared.vclusterclaim import VClusterClaimSpec, VClusterClaimStatus
 
@@ -20,3 +21,10 @@ class VClusterClaim:
             status=VClusterClaimStatus.model_validate(obj.get("status") or {}),
             creation_timestamp=meta.get("creationTimestamp"),
         )
+
+
+class AccessType(StrEnum):
+    """A caller's level of access to a cluster."""
+
+    OWNER = "owner"
+    MEMBER = "member"

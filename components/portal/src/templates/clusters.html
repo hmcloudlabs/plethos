@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% from "components/icons.html" import icon %}
-{% from "components/cluster_table.html" import cluster_table %}
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
@@ -45,14 +44,7 @@
   <div class="px-3 px-sm-4 pt-3 pt-sm-4">
     <span class="bento__label">Clusters shared with you</span>
   </div>
-  <div id="shared-cluster-list" class="p-2 p-sm-3">
-    {{ cluster_table(
-        shared_vcluster_claims,
-        shared=True,
-        list_id="shared-cluster-list",
-        empty_text="No clusters have been shared with you.",
-    ) }}
-  </div>
+  {% include "components/shared_cluster_list.html" %}
 </div>
 
 {# Manage-users modal: body is loaded via htmx by each row's "Manage users" button. #}
