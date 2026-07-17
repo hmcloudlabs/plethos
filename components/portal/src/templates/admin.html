@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="h3 fw-bold mb-4">Admin</h1>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="bento bento--pad h-100">
+      <span class="bento__label">Owners</span>
+      <div class="h2 fw-bold mb-0 mt-2">{{ stats.owners }}</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="bento bento--pad h-100">
+      <span class="bento__label">Clusters</span>
+      <div class="h2 fw-bold mb-0 mt-2">{{ stats.clusters }}</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="bento bento--pad h-100">
+      <span class="bento__label">Running</span>
+      <div class="h2 fw-bold mb-0 mt-2">{{ stats.running }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="bento mb-4">
+  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
+    <span class="bento__label">All clusters</span>
+  </div>
+  {% include "components/admin_cluster_list.html" %}
+</div>
+
+<div class="bento">
+  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
+    <span class="bento__label">Owners</span>
+  </div>
+  {% include "components/admin_owner_list.html" %}
+</div>
+
+{# Container-logs modal: body loaded via htmx by each cluster's Logs button. #}
+<div class="modal fade" id="admin-logs-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Logs</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="admin-logs-body">
+        <div class="text-body-secondary small py-3">Loading&hellip;</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

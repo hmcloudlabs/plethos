@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from auth import (
     NotAuthenticatedError,
+    NotAuthorizedError,
     User,
     clear_session_user,
     set_session_user,
@@ -14,7 +15,7 @@ from auth import (
 )
 from config import config
 from kube.client import load_kube_config
-from pages import clusters, home
+from pages import admin, clusters, home
 from templating import STATIC_DIR
 
 
@@ -31,11 +32,17 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(home.router)
 app.include_router(clusters.router)
+app.include_router(admin.router)
 
 
 @app.exception_handler(NotAuthenticatedError)
 async def _redirect_to_login(request: Request, _exc: NotAuthenticatedError) -> RedirectResponse:
     return RedirectResponse(url="/login", status_code=303)
+
+
+@app.exception_handler(NotAuthorizedError)
+async def _forbidden(request: Request, _exc: NotAuthorizedError) -> PlainTextResponse:
+    return PlainTextResponse("Forbidden: admins only.", status_code=403)
 
 
 @app.get("/healthz")

@@ -56,10 +56,21 @@ class User:
     def to_session(self) -> dict:
         return {"sub": self.sub, "email": self.email, "name": self.name}
 
+    @property
+    def is_admin(self) -> bool:
+        """Admin if the user's email is in the configured admin list."""
+        return self.email.lower() in config.admin_emails
+
 
 class NotAuthenticatedError(Exception):
     """
     Raised by `require_user` when there is no logged-in user.
+    """
+
+
+class NotAuthorizedError(Exception):
+    """
+    Raised by `require_admin` when a logged-in user is not an admin.
     """
 
 
@@ -89,5 +100,15 @@ def require_user(request: Request) -> User:
     user = get_session_user(request)
     if user is None:
         raise NotAuthenticatedError()
+
+    return user
+
+
+def require_admin(request: Request) -> User:
+    """FastAPI dependency: the logged-in user, but only if they're an admin."""
+
+    user = require_user(request)
+    if not user.is_admin:
+        raise NotAuthorizedError()
 
     return user

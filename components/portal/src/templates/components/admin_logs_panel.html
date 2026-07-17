@@ -1,0 +1,13 @@
+{# Modal body: log viewer for one vcluster's control-plane pod. #}
+<div class="mb-3">
+  <span class="bento__label">Cluster</span>
+  <div class="cluster-name">{{ cluster_name }}</div>
+</div>
+
+{% if logs is not none %}
+<pre class="log-output mb-0">{{ logs if logs else "(no output)" }}</pre>
+{% else %}
+<div class="text-body-secondary small py-3 fst-italic">
+  No logs available yet, the vcluster isn't running.
+</div>
+{% endif %}

@@ -1,4 +1,5 @@
 import base64
+import re
 from hashlib import sha256
 from typing import Any, cast
 
@@ -265,3 +266,87 @@ class VClusterClaimService:
             return None
 
         return vc_claim.spec.name, base64.b64decode(raw).decode("utf-8")
+
+    def list_all_as_admin(self) -> list[VClusterClaim]:
+        """Every VClusterClaim across all users (admin view)."""
+
+        res = self._api.list_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            namespace=self._namespace,
+            plural=PLURAL,
+        )
+        return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+    def get_logs_as_admin(self, object_name: str, tail_lines: int = 200) -> str | None:
+        """Logs of the vcluster control-plane pod, or None if it isn't up yet.
+
+        Our vclusters run a single container, so we just tail that one. We still
+        read the container name off the pod (rather than hardcoding "syncer") so a
+        rename in a future chart version won't break this.
+        """
+
+        namespace = vcluster_namespace(object_name)
+
+        # The vcluster helm release is named after the namespace, so its
+        # StatefulSet's first pod is "<namespace>-0".
+        pod_name = f"{namespace}-0"
+
+        try:
+            pod = cast(Any, self._core.read_namespaced_pod(name=pod_name, namespace=namespace))
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+
+        containers = [c.name for c in (pod.spec.containers or [])]
+        if not containers:
+            return None
+
+        try:
+            resp = cast(
+                Any,
+                self._core.read_namespaced_pod_log(
+                    name=pod_name,
+                    namespace=namespace,
+                    container=containers[0],
+                    tail_lines=tail_lines,
+                    _preload_content=False, # returns the raw HTTP response
+                ),
+            )
+        except ApiException as e:
+            # 400 = container hasn't started yet (still ContainerCreating); 404 = gone.
+            if e.status in (400, 404):
+                return None
+            raise
+
+        ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+        raw = resp.data
+        text = raw.decode("utf-8", "replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
+        
+        return ANSI_ESCAPE_RE.sub("", text)
+
+    def set_state_as_admin(self, object_name: str, state: State) -> None:
+        """Sleep/wake any cluster, regardless of ownership."""
+
+        self._patch_state(object_name, state)
+
+    def delete_as_admin(self, object_name: str) -> None:
+        """Delete any cluster, regardless of ownership."""
+
+        self._delete(object_name)
+
+    def delete_all_user_clusters_as_admin(self, owner_email: str) -> int:
+        """Delete every cluster owned by the given email. Returns the count deleted."""
+
+        owner_email = owner_email.lower()
+        owned = [
+            claim
+            for claim in self.list_all_as_admin()
+            if claim.spec.owner_email.lower() == owner_email
+        ]
+        for claim in owned:
+            self._delete(claim.object_name)
+
+        return len(owned)

@@ -33,11 +33,21 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav me-auto">
+          {% set path = request.url.path %}
+          <ul class="navbar-nav me-auto ms-lg-5">
             {% if user %}
             <li class="nav-item">
-              <a class="nav-link" href="/clusters">clusters</a>
+              <a class="nav-link {{ 'active' if path.startswith('/clusters') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
+                href="/clusters">clusters</a>
             </li>
+            {% if user.is_admin %}
+            <li class="nav-item">
+              <a class="nav-link {{ 'active' if path.startswith('/admin') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/admin') else '' }}
+                href="/admin">admin</a>
+            </li>
+            {% endif %}
             {% endif %}
           </ul>
           <ul class="navbar-nav align-items-lg-center">

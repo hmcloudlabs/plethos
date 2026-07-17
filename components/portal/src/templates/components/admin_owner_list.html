@@ -1,0 +1,44 @@
+{% from "components/icons.html" import icon %}
+<div id="admin-owner-list" class="p-2 p-sm-3">
+  {% if owners %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Clusters</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for owner in owners %}
+        <tr>
+          <td class="text-body-secondary">{{ owner.email }}</td>
+          <td>{{ owner.clusters }}</td>
+          <td>
+            <div class="d-inline-flex gap-2 justify-content-end w-100">
+              <button
+                class="btn btn-sm btn-danger"
+                title="Remove owner"
+                hx-post="/admin/owners/delete"
+                hx-vals='{"email": {{ owner.email | tojson }} }'
+                hx-target="#admin-owner-list"
+                hx-swap="outerHTML"
+                hx-confirm="Remove '{{ owner.email }}'? All {{ owner.clusters }} of their cluster(s) will be permanently deleted."
+              >
+                {{ icon("trash") }} Remove
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center text-body-secondary py-5">
+    <div class="mb-1" style="font-size: 1.5rem;">◇</div>
+    No owners yet.
+  </div>
+  {% endif %}
+</div>
