@@ -46,26 +46,29 @@
   {% if user %}
   <h2 class="h5 fw-bold mb-3">Overview</h2>
   <div class="row g-3">
-    {# --- Tiny dashboard: running / total, plus manage button --- #}
+    {# --- Your clusters: running / total --- #}
     <div class="col-md-6">
-      <div class="bento bento--pad h-100 d-flex flex-column">
+      <div class="bento bento--pad h-100">
         <span class="bento__label">Your clusters</span>
         <div class="h2 fw-bold my-3">
           {{ cluster_summary.running }}/{{ cluster_summary.total }}
           <span class="fs-6 fw-normal text-body-secondary ms-1">running</span>
         </div>
-        <a class="btn btn-primary mt-auto align-self-start" href="/clusters">manage clusters &rarr;</a>
       </div>
     </div>
-    {# --- Placeholder for clusters shared with / invited to the user (not built yet) --- #}
+    {# --- Clusters shared with the user --- #}
     <div class="col-md-6">
-      <div class="bento bento--pad h-100 d-flex flex-column">
-        <span class="bento__label">Clusters shared with you</span>
-        <p class="text-body-secondary small mb-0 mt-auto fst-italic">
-          You have no cluster invitations.
-        </p>
+      <div class="bento bento--pad h-100">
+        <span class="bento__label">Shared with you</span>
+        <div class="h2 fw-bold my-3">
+          {{ cluster_summary.shared }}
+          <span class="fs-6 fw-normal text-body-secondary ms-1">clusters</span>
+        </div>
       </div>
     </div>
+  </div>
+  <div class="mt-3">
+    <a class="btn btn-primary" href="/clusters">manage clusters &rarr;</a>
   </div>
   {% else %}
   <div class="bento bento--pad d-flex flex-wrap align-items-center justify-content-between gap-3">

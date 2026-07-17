@@ -15,10 +15,12 @@ def index(request: Request) -> HTMLResponse:
 
     cluster_summary = None
     if user is not None:
-        claims = VClusterClaimService().list_for_owner(user.sub)
+        service = VClusterClaimService()
+        claims = service.list_for_owner(user.sub)
         cluster_summary = {
             "total": len(claims),
             "running": sum(1 for c in claims if c.status.phase == "Ready"),
+            "shared": len(service.list_shared_with(user.email)),
         }
 
     return templates.TemplateResponse(
