@@ -21,31 +21,26 @@
           <span class="brand-mark" aria-hidden="true"></span>
           vKube
         </a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
+        <div class="navbar-content w-100">
           {% set path = request.url.path %}
           <ul class="navbar-nav me-auto ms-lg-5">
             {% if user %}
             <li class="nav-item">
-              <a class="nav-link {{ 'active' if path.startswith('/clusters') else '' }}"
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
                 {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
-                href="/clusters">clusters</a>
+                href="/clusters">
+                {{ icon("clusters") }}
+                <span>clusters</span>
+              </a>
             </li>
             {% if user.is_admin %}
             <li class="nav-item">
-              <a class="nav-link {{ 'active' if path.startswith('/admin') else '' }}"
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
                 {{ 'aria-current=page' if path.startswith('/admin') else '' }}
-                href="/admin">admin</a>
+                href="/admin">
+                {{ icon("admin") }}
+                <span>admin</span>
+              </a>
             </li>
             {% endif %}
             {% endif %}
