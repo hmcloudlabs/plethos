@@ -36,7 +36,10 @@ def vcluster_namespace(object_name: str) -> str:
 
 
 def kubeconfig_secret_name(object_name: str) -> str:
-    return f"vc-vcluster-{object_name}"
+    """The chart names its kubeconfig secret `vc-<release>`, and the release is
+    named after the claim (see `VClusterNames.vcluster` in the controller)."""
+
+    return f"vc-{object_name}"
 
 
 class VClusterClaimAlreadyExistsError(Exception):
@@ -199,9 +202,9 @@ class VClusterClaimRepository:
 
         namespace = vcluster_namespace(object_name)
 
-        # The vcluster helm release is named after the namespace, so its
-        # StatefulSet's first pod is "<namespace>-0".
-        pod_name = f"{namespace}-0"
+        # The control plane runs as a single-replica StatefulSet named after the
+        # helm release, so its only pod is "<release>-0".
+        pod_name = f"{object_name}-0"
 
         try:
             pod = cast(Any, self._core.read_namespaced_pod(name=pod_name, namespace=namespace))

@@ -25,7 +25,7 @@ class VClusterNames:
 
     @property
     def vcluster(self) -> str:
-        return f"vcluster-{self.name}"
+        return self.name
 
     @property
     def service_account(self) -> str:
