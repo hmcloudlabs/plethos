@@ -37,7 +37,7 @@ def _validate_new_cluster(name: str) -> str | None:
 
     if not name or len(name) > 63 or not NAME_RE.match(name):
         return "Name must be lowercase letters, digits and hyphens (max 63 chars)."
-    
+
     return None
 
 
@@ -128,7 +128,6 @@ def clusters(
     error = request.session.pop("flash_error", None)
     form_name = request.session.pop("flash_form_name", "")
     return _render_clusters(request, user, vcc_service, error=error, form_name=form_name)
-
 
 
 @router.get("/clusters/list", response_class=HTMLResponse)

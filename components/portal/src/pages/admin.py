@@ -13,6 +13,7 @@ router = APIRouter()
 def get_vcc_admin_service() -> VClusterClaimAdminService:
     return VClusterClaimAdminService()
 
+
 def _derive_owners(vcc_claims: list[VClusterClaim]) -> list[dict]:
     """We have no user store, so an "owner" is anyone who owns at least one cluster."""
 
@@ -27,7 +28,7 @@ def _render_admin_cluster_list(
     request: Request, vcc_service: VClusterClaimAdminService
 ) -> HTMLResponse:
     """Self-refreshing table of every cluster (admin)."""
-    
+
     return templates.TemplateResponse(
         request,
         "components/admin_cluster_list.html",

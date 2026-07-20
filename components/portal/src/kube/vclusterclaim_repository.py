@@ -102,7 +102,7 @@ class VClusterClaimRepository:
 
     def create(self, object_name: str, owner_hash: str, spec: VClusterClaimSpec) -> VClusterClaim:
         """Creates a new VClusterClaim."""
-        
+
         try:
             obj = self._api.create_namespaced_custom_object(
                 group=GROUP,

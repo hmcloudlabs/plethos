@@ -22,7 +22,7 @@ from templating import STATIC_DIR
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     load_kube_config()
-    
+
     yield
 
 

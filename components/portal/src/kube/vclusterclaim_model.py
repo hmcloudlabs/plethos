@@ -13,7 +13,6 @@ class AccessType(StrEnum):
 
 @dataclass(frozen=True)
 class VClusterClaim:
-
     object_name: str
     spec: VClusterClaimSpec
     status: VClusterClaimStatus
@@ -34,7 +33,7 @@ class VClusterClaim:
 
         The email is only needed to detect MEMBER access; OWNER-only checks can omit it.
         """
-        
+
         if self.spec.owner_subject == sub:
             return AccessType.OWNER
 

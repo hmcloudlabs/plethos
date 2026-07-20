@@ -12,7 +12,7 @@ def load_kube_config() -> None:
 
 @lru_cache(maxsize=1)
 def custom_objects_api() -> client.CustomObjectsApi:
-    """Shared CustomObjectsApi client, that is cached so we reuse one client/connection pool. """
+    """Shared CustomObjectsApi client, that is cached so we reuse one client/connection pool."""
 
     return client.CustomObjectsApi()
 

@@ -27,7 +27,7 @@ oauth.register(
     server_metadata_url=f"{config.oidc_issuer}/.well-known/openid-configuration",
     client_kwargs={
         "scope": config.oidc_scopes,
-        "code_challenge_method": "S256", # PKCE
+        "code_challenge_method": "S256",  # PKCE
     },
 )
 
@@ -86,7 +86,7 @@ def get_session_user(request: Request) -> User | None:
     data = request.session.get(_SESSION_KEY)
     if not data:
         return None
-    
+
     return User(
         sub=data["sub"],
         email=data.get("email", ""),

@@ -17,6 +17,7 @@ _VCLUSTER_ISOLATION_VALUES = {
     }
 }
 
+
 def make_namespace(namespace: str) -> dict:
     return {
         "apiVersion": "v1",

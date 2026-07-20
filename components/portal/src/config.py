@@ -20,9 +20,7 @@ class Config:
     # Emails (lowercased, comma seperated) that get admin access.
     # TODO: Move to ConfigMap that also carries per-user vcluster quotas.
     admin_emails: tuple[str, ...] = tuple(
-        e.strip().lower()
-        for e in os.getenv("ADMIN_EMAILS", "").split(",")
-        if e.strip()
+        e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
     )
 
     # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
