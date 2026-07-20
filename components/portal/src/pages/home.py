@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from auth import get_session_user
-from kube.vclusterclaim_service import VClusterClaimService
+from kube.vclusterclaim_service import VClusterClaimUserService
 from templating import templates
 
 router = APIRouter()
@@ -15,7 +15,7 @@ def index(request: Request) -> HTMLResponse:
 
     cluster_summary = None
     if user is not None:
-        service = VClusterClaimService()
+        service = VClusterClaimUserService()
         claims = service.list_for_owner(user.sub)
         cluster_summary = {
             "total": len(claims),

@@ -4,6 +4,13 @@ from enum import StrEnum
 from shared.vclusterclaim import VClusterClaimSpec, VClusterClaimStatus
 
 
+class AccessType(StrEnum):
+    """A caller's level of access to a cluster."""
+
+    OWNER = "owner"
+    MEMBER = "member"
+
+
 @dataclass(frozen=True)
 class VClusterClaim:
 
@@ -22,9 +29,17 @@ class VClusterClaim:
             creation_timestamp=meta.get("creationTimestamp"),
         )
 
+    def access_for(self, sub: str, email: str = "") -> AccessType | None:
+        """The caller's access to this claim: OWNER, MEMBER, or None (no access).
 
-class AccessType(StrEnum):
-    """A caller's level of access to a cluster."""
+        The email is only needed to detect MEMBER access; OWNER-only checks can omit it.
+        """
+        
+        if self.spec.owner_subject == sub:
+            return AccessType.OWNER
 
-    OWNER = "owner"
-    MEMBER = "member"
+        email = email.lower()
+        if any(rule.email.lower() == email for rule in self.spec.access_rules):
+            return AccessType.MEMBER
+
+        return None

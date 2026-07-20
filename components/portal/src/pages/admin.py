@@ -3,13 +3,15 @@ from fastapi.responses import HTMLResponse
 
 from auth import User, require_admin
 from kube.vclusterclaim_model import VClusterClaim
-from kube.vclusterclaim_service import VClusterClaimService
-from pages.clusters import get_vcc_service
+from kube.vclusterclaim_service import VClusterClaimAdminService
 from shared.vclusterclaim import State
 from templating import templates
 
 router = APIRouter()
 
+
+def get_vcc_admin_service() -> VClusterClaimAdminService:
+    return VClusterClaimAdminService()
 
 def _derive_owners(vcc_claims: list[VClusterClaim]) -> list[dict]:
     """We have no user store, so an "owner" is anyone who owns at least one cluster."""
@@ -22,26 +24,26 @@ def _derive_owners(vcc_claims: list[VClusterClaim]) -> list[dict]:
 
 
 def _render_admin_cluster_list(
-    request: Request, vcc_service: VClusterClaimService
+    request: Request, vcc_service: VClusterClaimAdminService
 ) -> HTMLResponse:
     """Self-refreshing table of every cluster (admin)."""
     
     return templates.TemplateResponse(
         request,
         "components/admin_cluster_list.html",
-        {"vcluster_claims": vcc_service.list_all_as_admin()},
+        {"vcluster_claims": vcc_service.list_all()},
     )
 
 
 def _render_admin_owner_list(
-    request: Request, vcc_service: VClusterClaimService
+    request: Request, vcc_service: VClusterClaimAdminService
 ) -> HTMLResponse:
     """The owners table (derived from cluster ownership)."""
 
     return templates.TemplateResponse(
         request,
         "components/admin_owner_list.html",
-        {"owners": _derive_owners(vcc_service.list_all_as_admin())},
+        {"owners": _derive_owners(vcc_service.list_all())},
     )
 
 
@@ -49,9 +51,9 @@ def _render_admin_owner_list(
 def admin(
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_claims = vcc_service.list_all_as_admin()
+    vcc_claims = vcc_service.list_all()
     owners = _derive_owners(vcc_claims)
     stats = {
         "owners": len(owners),
@@ -75,7 +77,7 @@ def admin(
 def admin_cluster_list(
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
     return _render_admin_cluster_list(request, vcc_service)
 
@@ -85,10 +87,10 @@ def admin_cluster_logs(
     object_name: str,
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
     vcc_claim = vcc_service.get_by_object_name(object_name)
-    logs = vcc_service.get_logs_as_admin(object_name)
+    logs = vcc_service.get_logs(object_name)
 
     return templates.TemplateResponse(
         request,
@@ -106,9 +108,9 @@ def admin_sleep_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_service.set_state_as_admin(object_name, State.SLEEPING)
+    vcc_service.set_state(object_name, State.SLEEPING)
     return _render_admin_cluster_list(request, vcc_service)
 
 
@@ -117,9 +119,9 @@ def admin_wake_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_service.set_state_as_admin(object_name, State.RUNNING)
+    vcc_service.set_state(object_name, State.RUNNING)
     return _render_admin_cluster_list(request, vcc_service)
 
 
@@ -128,10 +130,9 @@ def admin_delete_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_service.delete_as_admin(object_name)
-
+    vcc_service.delete(object_name)
     return _render_admin_cluster_list(request, vcc_service)
 
 
@@ -140,9 +141,7 @@ def admin_delete_owner(
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_admin),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    # "Removing an owner" = deleting all of their clusters (we have no user store).
-    vcc_service.delete_all_user_clusters_as_admin(email.strip().lower())
-
+    vcc_service.delete_all_for_owner(email.strip().lower())
     return _render_admin_owner_list(request, vcc_service)

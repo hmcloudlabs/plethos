@@ -5,10 +5,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from auth import User, require_user
 from config import config
 from kube.vclusterclaim_model import VClusterClaim
+from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import (
     AccessType,
-    VClusterClaimAlreadyExistsError,
-    VClusterClaimService,
+    VClusterClaimUserService,
 )
 from shared.vclusterclaim import State
 from templating import templates
@@ -16,16 +16,16 @@ from templating import templates
 router = APIRouter()
 
 
-def get_vcc_service() -> VClusterClaimService:
-    return VClusterClaimService()
+def get_vcc_service() -> VClusterClaimUserService:
+    return VClusterClaimUserService()
 
 
 def _owned_claim_or_404(
-    vcc_service: VClusterClaimService, object_name: str, sub: str
+    vcc_service: VClusterClaimUserService, object_name: str, sub: str
 ) -> VClusterClaim:
     """Fetch a claim the user owns, or raise 404 (used by the owner-only access panel)."""
     claim = vcc_service.get_by_object_name(object_name)
-    if claim is None or vcc_service.access_type(claim, sub) is not AccessType.OWNER:
+    if claim is None or claim.access_for(sub) is not AccessType.OWNER:
         raise HTTPException(status_code=404, detail="Cluster not found.")
     return claim
 
@@ -44,7 +44,7 @@ def _validate_new_cluster(name: str) -> str | None:
 def _render_clusters(
     request: Request,
     user: User,
-    vcc_service: VClusterClaimService,
+    vcc_service: VClusterClaimUserService,
     *,
     error: str | None = None,
     form_name: str = "",
@@ -66,7 +66,7 @@ def _render_clusters(
 
 
 def _render_cluster_list(
-    request: Request, user: User, vcc_service: VClusterClaimService
+    request: Request, user: User, vcc_service: VClusterClaimUserService
 ) -> HTMLResponse:
     """Self-refreshing table of the user's own clusters."""
 
@@ -78,7 +78,7 @@ def _render_cluster_list(
 
 
 def _render_shared_cluster_list(
-    request: Request, user: User, vcc_service: VClusterClaimService
+    request: Request, user: User, vcc_service: VClusterClaimUserService
 ) -> HTMLResponse:
     """Self-refreshing table of clusters shared with the user."""
 
@@ -90,7 +90,7 @@ def _render_shared_cluster_list(
 
 
 def _render_after_action(
-    request: Request, user: User, vcc_service: VClusterClaimService
+    request: Request, user: User, vcc_service: VClusterClaimUserService
 ) -> HTMLResponse:
     """Re-render whichever table triggered the action (owned vs shared).
 
@@ -123,7 +123,7 @@ def _render_access_panel(
 def clusters(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     error = request.session.pop("flash_error", None)
     form_name = request.session.pop("flash_form_name", "")
@@ -135,7 +135,7 @@ def clusters(
 def clusters_list(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     return _render_cluster_list(request, user, vcc_service)
 
@@ -144,7 +144,7 @@ def clusters_list(
 def shared_clusters_list(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     return _render_shared_cluster_list(request, user, vcc_service)
 
@@ -154,7 +154,7 @@ def sleep_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     vcc_service.set_state(object_name, user.sub, user.email, State.SLEEPING)
     return _render_after_action(request, user, vcc_service)
@@ -165,7 +165,7 @@ def wake_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     vcc_service.set_state(object_name, user.sub, user.email, State.RUNNING)
     return _render_after_action(request, user, vcc_service)
@@ -176,7 +176,7 @@ def delete_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     # Owner-only (enforced in the service).
     vcc_service.delete(object_name, user.sub)
@@ -187,7 +187,7 @@ def delete_cluster(
 def download_kubeconfig(
     object_name: str,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> Response:
     result = vcc_service.get_kubeconfig(object_name, user.sub, user.email)
     if result is None:
@@ -206,7 +206,7 @@ def cluster_access(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     return _render_access_panel(request, claim)
@@ -218,7 +218,7 @@ def add_cluster_access(
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     email = email.strip().lower()
@@ -245,7 +245,7 @@ def remove_cluster_access(
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     claim = vcc_service.remove_access(object_name, user.sub, email.strip().lower())
 
@@ -260,7 +260,7 @@ def create_cluster(
     request: Request,
     name: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> Response:
     name = name.strip()
 
