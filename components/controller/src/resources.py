@@ -1,15 +1,45 @@
 from shared.vclusterclaim import GROUP
 
 
+_PSA_LABELS = {
+    "pod-security.kubernetes.io/enforce": "baseline",
+    "pod-security.kubernetes.io/audit": "restricted",
+    "pod-security.kubernetes.io/warn": "restricted",
+}
+
+# Isolation values for a vCluster release, passed to `helm install` as `--set` flags.
+_VCLUSTER_ISOLATION_VALUES = {
+    "policies": {
+        "podSecurityStandard": "baseline",
+        "networkPolicy": {"enabled": True},
+        "resourceQuota": {"enabled": False},
+        "limitRange": {"enabled": False},
+    }
+}
+
 def make_namespace(namespace: str) -> dict:
     return {
         "apiVersion": "v1",
         "kind": "Namespace",
         "metadata": {
             "name": namespace,
-            "labels": {f"{GROUP}/managed": "true"},
+            "labels": {f"{GROUP}/managed": "true", **_PSA_LABELS},
         },
     }
+
+
+def _helm_set_args(values: dict, prefix: str = "") -> list[str]:
+    """Flattens a nested values dict into `--set key.path=value` CLI args."""
+
+    args = []
+    for key, value in values.items():
+        path = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            args.extend(_helm_set_args(value, path))
+        else:
+            rendered = str(value).lower() if isinstance(value, bool) else str(value)
+            args.extend(["--set", f"{path}={rendered}"])
+    return args
 
 
 def make_service_account(namespace: str, service_account_name: str) -> dict:
@@ -88,6 +118,7 @@ def make_helm_install_job(
                                 namespace,
                                 "--version",
                                 vcluster_version,
+                                *_helm_set_args(_VCLUSTER_ISOLATION_VALUES),
                             ],
                         }
                     ],
