@@ -1,4 +1,5 @@
 {% from "components/icons.html" import icon %}
+{% from "components/confirm_modal.html" import confirm_modal %}
 
 {% macro cluster_table(vcluster_claims, shared=False, list_id="cluster-list", empty_text="You don't have any clusters yet.") %}
 {% if vcluster_claims %}
@@ -73,14 +74,23 @@
 
             {% if steady_running %}
             <button
+              type="button"
               class="btn btn-sm btn-info"
-              hx-post="/clusters/{{ obj }}/sleep"
-              hx-target="#{{ list_id }}"
-              hx-swap="outerHTML"
-              hx-confirm="Put '{{ name }}' to sleep? Its workloads are stopped, but its data is preserved."
+              data-bs-toggle="modal"
+              data-bs-target="#sleep-modal-{{ obj }}"
             >
               {{ icon("moon") }} Sleep
             </button>
+            {{ confirm_modal(
+              id="sleep-modal-" ~ obj,
+              title="Put cluster to sleep?",
+              body="Put '" ~ name ~ "' to sleep? Its workloads are stopped, but its data is preserved.",
+              confirm_label="Sleep",
+              confirm_class="btn-info",
+              hx_post="/clusters/" ~ obj ~ "/sleep",
+              hx_target="#" ~ list_id,
+              icon_name="moon"
+            ) }}
             {% elif steady_sleeping %}
             <button
               class="btn btn-sm btn-info"
@@ -116,16 +126,27 @@
 
             {% set can_delete = phase != 'Deleting' %}
             <button
+              type="button"
               class="btn btn-sm btn-danger"
               {% if can_delete %}
-              hx-post="/clusters/{{ obj }}/delete"
-              hx-target="#{{ list_id }}"
-              hx-swap="outerHTML"
-              hx-confirm="Delete cluster '{{ name }}'? All of its content will be permanently deleted."
+              data-bs-toggle="modal"
+              data-bs-target="#delete-modal-{{ obj }}"
               {% else %}disabled{% endif %}
             >
               {{ icon("trash") }}
             </button>
+            {% if can_delete %}
+            {{ confirm_modal(
+              id="delete-modal-" ~ obj,
+              title="Delete cluster?",
+              body="Delete cluster '" ~ name ~ "'? All of its content will be permanently deleted.",
+              confirm_label="Delete",
+              confirm_class="btn-danger",
+              hx_post="/clusters/" ~ obj ~ "/delete",
+              hx_target="#" ~ list_id,
+              icon_name="trash"
+            ) }}
+            {% endif %}
             {% endif %}
           </div>
         </td>

@@ -1,4 +1,5 @@
 {% from "components/icons.html" import icon %}
+{% from "components/confirm_modal.html" import confirm_modal %}
 <div id="admin-owner-list" class="p-2 p-sm-3">
   {% if owners %}
   <div class="table-responsive">
@@ -18,16 +19,25 @@
           <td>
             <div class="d-inline-flex gap-2 justify-content-end w-100">
               <button
+                type="button"
                 class="btn btn-sm btn-danger"
                 title="Remove owner"
-                hx-post="/admin/owners/delete"
-                hx-vals='{"email": {{ owner.email | tojson }} }'
-                hx-target="#admin-owner-list"
-                hx-swap="outerHTML"
-                hx-confirm="Remove '{{ owner.email }}'? All {{ owner.clusters }} of their cluster(s) will be permanently deleted."
+                data-bs-toggle="modal"
+                data-bs-target="#remove-owner-modal-{{ loop.index }}"
               >
                 {{ icon("trash") }} Remove
               </button>
+              {{ confirm_modal(
+                id="remove-owner-modal-" ~ loop.index,
+                title="Remove owner?",
+                body="Remove '" ~ owner.email ~ "'? All " ~ owner.clusters ~ " of their cluster(s) will be permanently deleted.",
+                confirm_label="Remove",
+                confirm_class="btn-danger",
+                hx_post="/admin/owners/delete",
+                hx_target="#admin-owner-list",
+                hx_vals='{"email": ' ~ (owner.email | tojson) ~ ' }',
+                icon_name="trash"
+              ) }}
             </div>
           </td>
         </tr>

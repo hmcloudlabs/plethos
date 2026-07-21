@@ -1,5 +1,15 @@
 {% from "components/cluster_table.html" import cluster_table %}
-<div id="shared-cluster-list" class="p-2 p-sm-3" hx-get="/clusters/shared/list" hx-trigger="every 3s" hx-swap="outerHTML">
+{#
+  hx-trigger has a filter so the 3s poll skips while a confirm modal here is open -
+  otherwise the outerHTML swap would rip the open modal out from under the user.
+#}
+<div
+  id="shared-cluster-list"
+  class="p-2 p-sm-3"
+  hx-get="/clusters/shared/list"
+  hx-trigger="every 3s [!document.querySelector('#shared-cluster-list .modal.show')]"
+  hx-swap="outerHTML"
+>
   {{ cluster_table(
       shared_vcluster_claims,
       shared=True,

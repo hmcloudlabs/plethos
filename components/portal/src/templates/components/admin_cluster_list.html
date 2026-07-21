@@ -1,5 +1,16 @@
 {% from "components/icons.html" import icon %}
-<div id="admin-cluster-list" class="p-2 p-sm-3" hx-get="/admin/clusters/list" hx-trigger="every 3s" hx-swap="outerHTML">
+{% from "components/confirm_modal.html" import confirm_modal %}
+{#
+  hx-trigger has a filter so the 3s poll skips while a confirm modal here is open -
+  otherwise the outerHTML swap would rip the open modal out from under the admin.
+#}
+<div
+  id="admin-cluster-list"
+  class="p-2 p-sm-3"
+  hx-get="/admin/clusters/list"
+  hx-trigger="every 3s [!document.querySelector('#admin-cluster-list .modal.show')]"
+  hx-swap="outerHTML"
+>
   {% if vcluster_claims %}
   <div class="table-responsive">
     <table class="table align-middle">
@@ -52,14 +63,23 @@
             <div class="d-inline-flex gap-2 justify-content-end w-100">
               {% if steady_running %}
               <button
+                type="button"
                 class="btn btn-sm btn-info"
-                hx-post="/admin/clusters/{{ obj }}/sleep"
-                hx-target="#admin-cluster-list"
-                hx-swap="outerHTML"
-                hx-confirm="Put '{{ name }}' to sleep? Its workloads are stopped, but its data is preserved."
+                data-bs-toggle="modal"
+                data-bs-target="#admin-sleep-modal-{{ obj }}"
               >
                 {{ icon("moon") }} Sleep
               </button>
+              {{ confirm_modal(
+                id="admin-sleep-modal-" ~ obj,
+                title="Put cluster to sleep?",
+                body="Put '" ~ name ~ "' to sleep? Its workloads are stopped, but its data is preserved.",
+                confirm_label="Sleep",
+                confirm_class="btn-info",
+                hx_post="/admin/clusters/" ~ obj ~ "/sleep",
+                hx_target="#admin-cluster-list",
+                icon_name="moon"
+              ) }}
               {% elif steady_sleeping %}
               <button
                 class="btn btn-sm btn-info"
@@ -88,14 +108,23 @@
               </button>
 
               <button
+                type="button"
                 class="btn btn-sm btn-danger"
-                hx-post="/admin/clusters/{{ obj }}/delete"
-                hx-target="#admin-cluster-list"
-                hx-swap="outerHTML"
-                hx-confirm="Delete cluster '{{ name }}' (owner {{ vcluster_claim.spec.owner_email }})? All of its content will be permanently deleted."
+                data-bs-toggle="modal"
+                data-bs-target="#admin-delete-modal-{{ obj }}"
               >
                 {{ icon("trash") }}
               </button>
+              {{ confirm_modal(
+                id="admin-delete-modal-" ~ obj,
+                title="Delete cluster?",
+                body="Delete cluster '" ~ name ~ "' (owner " ~ vcluster_claim.spec.owner_email ~ ")? All of its content will be permanently deleted.",
+                confirm_label="Delete",
+                confirm_class="btn-danger",
+                hx_post="/admin/clusters/" ~ obj ~ "/delete",
+                hx_target="#admin-cluster-list",
+                icon_name="trash"
+              ) }}
             </div>
           </td>
         </tr>
