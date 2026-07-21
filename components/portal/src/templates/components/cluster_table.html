@@ -46,15 +46,19 @@
           {% if steady_running %}
           <span class="badge text-bg-success">Running</span>
           {% elif steady_sleeping %}
-          <span class="badge text-bg-secondary">Sleeping</span>
+          <span class="badge text-bg-info">Sleeping</span>
           {% elif phase in ['Ready', 'Sleeping', 'Waking'] %}
-          {% if state == 'Sleeping' %}
-          <span class="badge text-bg-warning">Sleeping&hellip;</span>
-          {% else %}
-          <span class="badge text-bg-info">Waking&hellip;</span>
-          {% endif %}
+            {% if state == 'Sleeping' %}
+            <span class="badge text-bg-warning">Sleeping&hellip;</span>
+            {% else %}
+            <span class="badge text-bg-warning">Waking&hellip;</span>
+            {% endif %}
           {% elif phase == 'Error' %}
           <span class="badge text-bg-danger">Error</span>
+          {% elif phase == 'Deleting' %}
+          <span class="badge text-bg-danger">Deleting</span>
+          {% elif phase in ['Pending', 'Provisioning'] %}
+          <span class="badge text-bg-warning">{{ phase }}</span>
           {% elif phase %}
           <span class="badge text-bg-info">{{ phase }}</span>
           {% else %}
