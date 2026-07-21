@@ -60,7 +60,10 @@
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li class="px-3 py-2">
-                  <div class="fw-semibold text-truncate">{{ user.name }}</div>
+                  <div class="fw-semibold d-flex align-items-center gap-2">
+                    <span class="text-truncate" style="min-width: 0;">{{ user.name }}</span>
+                    {% if user.is_admin %}<span class="badge text-bg-secondary flex-shrink-0">Admin</span>{% endif %}
+                  </div>
                   <div class="small text-body-secondary text-truncate">{{ user.email }}</div>
                 </li>
                 <li><hr class="dropdown-divider" /></li>
