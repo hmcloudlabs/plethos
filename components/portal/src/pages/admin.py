@@ -1,7 +1,10 @@
+import re
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
 from auth import User, require_admin
+from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_service import VClusterClaimAdminService
 from shared.vclusterclaim import State
@@ -12,6 +15,10 @@ router = APIRouter()
 
 def get_vcc_admin_service() -> VClusterClaimAdminService:
     return VClusterClaimAdminService()
+
+
+def get_settings_service() -> SettingsService:
+    return SettingsService()
 
 
 def _derive_owners(vcc_claims: list[VClusterClaim]) -> list[dict]:
@@ -48,11 +55,27 @@ def _render_admin_owner_list(
     )
 
 
+def _render_admin_settings(
+    request: Request, user: User, settings_service: SettingsService, *, error: str | None = None
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "components/admin_settings.html",
+        {
+            "user": user,
+            "admin_emails": settings_service.list_admins(),
+            "max_clusters_per_user": settings_service.max_clusters_per_user(),
+            "error": error,
+        },
+    )
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin(
     request: Request,
     user: User = Depends(require_admin),
     vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
+    settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     vcc_claims = vcc_service.list_all()
     owners = _derive_owners(vcc_claims)
@@ -70,6 +93,8 @@ def admin(
             "vcluster_claims": vcc_claims,
             "owners": owners,
             "stats": stats,
+            "admin_emails": settings_service.list_admins(),
+            "max_clusters_per_user": settings_service.max_clusters_per_user(),
         },
     )
 
@@ -146,3 +171,68 @@ def admin_delete_owner(
 ) -> HTMLResponse:
     vcc_service.delete_all_for_owner(email.strip().lower())
     return _render_admin_owner_list(request, vcc_service)
+
+
+@router.post("/admin/settings/max-clusters", response_class=HTMLResponse)
+def admin_set_max_clusters(
+    request: Request,
+    max_clusters_per_user: int = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    error: str | None = None
+    if max_clusters_per_user < 1:
+        error = "Max clusters per user must be at least 1."
+    else:
+        settings_service.set_max_clusters_per_user(max_clusters_per_user)
+
+    return _render_admin_settings(request, user, settings_service, error=error)
+
+
+@router.post("/admin/settings/admins/add")
+def admin_add_admin(
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    email = email.strip().lower()
+
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    error: str | None = None
+    if not EMAIL_RE.match(email):
+        error = "Enter a valid email address."
+    elif email == user.email.lower():
+        error = "You can't add yourself."
+
+    if error is None:
+        settings_service.add_admin(email)
+
+    return _render_admin_settings(request, user, settings_service, error=error)
+
+
+@router.post("/admin/settings/admins/remove", response_class=HTMLResponse)
+def admin_remove_admin(
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    email = email.strip().lower()
+
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    error: str | None = None
+    if not EMAIL_RE.match(email):
+        error = "Enter a valid email address."
+    elif email == user.email.lower():
+        error = "You can't remove yourself."
+
+    if error:
+        return _render_admin_settings(
+            request, user, settings_service, error=error
+        )
+
+    settings_service.remove_admin(email)
+    return _render_admin_settings(request, user, settings_service)

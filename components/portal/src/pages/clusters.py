@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from auth import User, require_user
 from config import config
+from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import (
@@ -18,6 +19,10 @@ router = APIRouter()
 
 def get_vcc_service() -> VClusterClaimUserService:
     return VClusterClaimUserService()
+
+
+def get_settings_service() -> SettingsService:
+    return SettingsService()
 
 
 def _owned_claim_or_404(
@@ -37,6 +42,18 @@ def _validate_new_cluster(name: str) -> str | None:
 
     if not name or len(name) > 63 or not NAME_RE.match(name):
         return "Name must be lowercase letters, digits and hyphens (max 63 chars)."
+
+    return None
+
+
+def _check_quota(
+    vcc_service: VClusterClaimUserService, settings_service: SettingsService, sub: str
+) -> str | None:
+    """Return a user-facing error if the owner is already at their cluster quota, else None."""
+
+    max_clusters = settings_service.max_clusters_per_user()
+    if len(vcc_service.list_for_owner(sub)) >= max_clusters:
+        return f"You've reached the maximum of {max_clusters} cluster(s) per user."
 
     return None
 
@@ -177,7 +194,6 @@ def delete_cluster(
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    # Owner-only (enforced in the service).
     vcc_service.delete(object_name, user.sub)
     return _render_cluster_list(request, user, vcc_service)
 
@@ -260,10 +276,14 @@ def create_cluster(
     name: str = Form(...),
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    settings_service: SettingsService = Depends(get_settings_service),
 ) -> Response:
     name = name.strip()
 
     error = _validate_new_cluster(name)
+    if error is None:
+        error = _check_quota(vcc_service, settings_service, user.sub)
+
     if error is None:
         try:
             vcc_service.create(user.sub, user.email, name, config.latest_vcluster_version)

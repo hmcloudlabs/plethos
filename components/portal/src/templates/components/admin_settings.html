@@ -1,5 +1,84 @@
 {% from "components/icons.html" import icon %}
 {% from "components/confirm_modal.html" import confirm_modal %}
-<div id="admin-settings-list" class="p-2 p-sm-3">
-  TODO
+<div id="admin-settings" class="p-2 p-sm-3">
+  {% if error %}
+  <div class="alert alert-danger py-2 small mb-3">{{ error }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-5">
+      <span class="bento__label">Max clusters per user</span>
+      <form
+        class="d-flex gap-2 mt-2"
+        hx-post="/admin/settings/max-clusters"
+        hx-target="#admin-settings"
+        hx-swap="outerHTML"
+      >
+        <input
+          type="number"
+          name="max_clusters_per_user"
+          class="form-control"
+          min="1"
+          value="{{ max_clusters_per_user }}"
+          required
+        />
+        <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
+      </form>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <span class="bento__label">Admins</span>
+
+      <form
+        class="d-flex gap-2 mt-2 mb-3"
+        hx-post="/admin/settings/admins/add"
+        hx-target="#admin-settings"
+        hx-swap="outerHTML"
+      >
+        <input type="email" name="email" class="form-control" placeholder="name@example.com" required />
+        <button type="submit" class="btn btn-primary flex-shrink-0">{{ icon("plus") }} Add</button>
+      </form>
+
+      {% if admin_emails %}
+      <ul class="list-unstyled mb-0">
+        {% for email in admin_emails %}
+        <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span class="text-body-secondary">{{ email }}</span>
+          {% if email == user.email | lower %}
+          <span class="badge text-bg-secondary flex-shrink-0" title="You can't remove your own admin access">
+            You
+          </span>
+          {% else %}
+          <button
+            type="button"
+            class="btn btn-sm btn-danger flex-shrink-0"
+            title="Remove admin"
+            data-bs-toggle="modal"
+            data-bs-target="#remove-admin-modal-{{ loop.index }}"
+          >
+            {{ icon("trash") }}
+          </button>
+          {{ confirm_modal(
+            id="remove-admin-modal-" ~ loop.index,
+            title="Remove admin?",
+            body="Remove admin access for '" ~ email ~ "'? They will lose access to the admin panel immediately.",
+            confirm_label="Remove",
+            confirm_class="btn-danger",
+            hx_post="/admin/settings/admins/remove",
+            hx_target="#admin-settings",
+            hx_vals='{"email": ' ~ (email | tojson) ~ ' }',
+            icon_name="trash"
+          ) }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-center text-body-secondary py-5">
+        <div class="mb-1" style="font-size: 1.5rem;">◇</div>
+        No admins configured.
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>

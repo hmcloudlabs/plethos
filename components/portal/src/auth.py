@@ -15,6 +15,7 @@ from authlib.integrations.starlette_client import OAuth
 from starlette.requests import Request
 
 from config import config
+from kube.settings_service import SettingsService
 
 
 SSO_PROVIDER = "sso"
@@ -58,8 +59,7 @@ class User:
 
     @property
     def is_admin(self) -> bool:
-        """Admin if the user's email is in the configured admin list."""
-        return self.email.lower() in config.admin_emails
+        return SettingsService().is_admin(self.email)
 
 
 class NotAuthenticatedError(Exception):

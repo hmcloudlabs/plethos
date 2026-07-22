@@ -17,12 +17,6 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "vkube-system")
 
-    # Emails (lowercased, comma seperated) that get admin access.
-    # TODO: Move to ConfigMap that also carries per-user vcluster quotas.
-    admin_emails: tuple[str, ...] = tuple(
-        e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
-    )
-
     # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
     # The portal always provisions the newest of these; it isn't user-selectable.
     supported_vcluster_versions: tuple[str, ...] = tuple(
