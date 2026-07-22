@@ -25,19 +25,64 @@
   </div>
 </div>
 
-<div class="bento mb-4">
-  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
-    <span class="bento__label">All clusters</span>
+<div class="bento">
+  <ul class="nav nav-tabs tabs-bar pe-3 pe-sm-4 pt-3 pt-sm-4" id="admin-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link bento__label active"
+        id="admin-tab-clusters"
+        data-bs-toggle="tab"
+        data-bs-target="#admin-pane-clusters"
+        type="button"
+        role="tab"
+        aria-controls="admin-pane-clusters"
+        aria-selected="true"
+      >
+        All clusters
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link bento__label"
+        id="admin-tab-owners"
+        data-bs-toggle="tab"
+        data-bs-target="#admin-pane-owners"
+        type="button"
+        role="tab"
+        aria-controls="admin-pane-owners"
+        aria-selected="false"
+      >
+        Owners
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link bento__label"
+        id="admin-tab-settings"
+        data-bs-toggle="tab"
+        data-bs-target="#admin-pane-settings"
+        type="button"
+        role="tab"
+        aria-controls="admin-pane-settings"
+        aria-selected="false"
+      >
+        Settings
+      </button>
+    </li>
+  </ul>
+  <div class="tab-content" id="admin-tabs-content">
+    <div class="tab-pane show active" id="admin-pane-clusters" role="tabpanel" aria-labelledby="admin-tab-clusters">
+      {% include "components/admin_cluster_list.html" %}
+    </div>
+    <div class="tab-pane" id="admin-pane-owners" role="tabpanel" aria-labelledby="admin-tab-owners">
+      {% include "components/admin_owner_list.html" %}
+    </div>
+    <div class="tab-pane" id="admin-pane-settings" role="tabpanel" aria-labelledby="admin-tab-settings">
+      {% include "components/admin_settings.html" %}
+    </div>
   </div>
-  {% include "components/admin_cluster_list.html" %}
 </div>
 
-<div class="bento">
-  <div class="px-3 px-sm-4 pt-3 pt-sm-4">
-    <span class="bento__label">Owners</span>
-  </div>
-  {% include "components/admin_owner_list.html" %}
-</div>
 
 {# Container-logs modal: body loaded via htmx by each cluster's Logs button. #}
 <div class="modal fade" id="admin-logs-modal" tabindex="-1" aria-hidden="true">

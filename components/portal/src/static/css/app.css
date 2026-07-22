@@ -1,1 +1,38 @@
 /* Custom overrides on top of Bootstrap. Bootstrap handles the base styling. */
+
+.tabs-bar {
+  background: var(--gray-50);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.tabs-bar .nav-link,
+.tabs-bar .nav-link:hover,
+.tabs-bar .nav-link:focus {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--gray-900);
+  outline: none;
+  box-shadow: none;
+  transition: none;
+}
+
+.tabs-bar .nav-link:hover {
+  background: var(--gray-100);
+}
+
+.tabs-bar .nav-link.active,
+.tabs-bar .nav-link.active:hover,
+.tabs-bar .nav-link.active:focus {
+  background: var(--gray-0);
+  border: none;
+  color: var(--red-600);
+  outline: none;
+  box-shadow: none;
+}
+
+#admin-tabs-content {
+  min-height: 320px;
+}
