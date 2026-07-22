@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vkube-portal
-  namespace: vkube
+  namespace: vkube-system
 spec:
   replicas: 1
   selector:
@@ -13,6 +13,7 @@ spec:
       labels:
         app: vkube-portal
     spec:
+      serviceAccountName: vkube-portal
       containers:
         - name: portal
           image: vkube-portal:latest
