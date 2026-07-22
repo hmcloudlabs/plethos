@@ -56,3 +56,16 @@ cd components/portal      && uv run pytest
 cd components/controller  && uv run pytest
 cd components/shared      && uv run pytest
 ```
+
+
+## TODO
+
+### Portal:
+- [x] ConfigMap for storing admin emails, per user vCluster quota
+- [] per specific user vCluster quota override
+- [] per vCluster ingress
+- [] PVC export
+- [] Backup strategy
+- [] Caching
+- [] vCluster expiration
+- [] Fix potential isloation escape because of per vCluster ClusterRole
