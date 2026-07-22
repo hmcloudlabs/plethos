@@ -26,9 +26,12 @@ def owner_subject_hash(sub: str) -> str:
 
 
 def vcc_name(sub: str, name: str) -> str:
-    """The VClusterClaim object name: owner-hash prefix + the user-chosen cluster name."""
+    """The VClusterClaim object name: owner-hash prefix + the user-chosen cluster name.
 
-    return f"{owner_subject_hash(sub)}-{name}"
+    The name must start with a letter (RFC 1035) hence the "u" prefix.
+    """
+
+    return f"u{owner_subject_hash(sub)}-{name}"
 
 
 def vcluster_namespace(object_name: str) -> str:
