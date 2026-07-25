@@ -13,6 +13,7 @@ from kube.vclusterclaim_service import (
 )
 from shared.vclusterclaim import State
 from templating import templates
+from utils import is_valid_email
 
 router = APIRouter()
 
@@ -238,10 +239,8 @@ def add_cluster_access(
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     email = email.strip().lower()
 
-    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
     error: str | None = None
-    if not EMAIL_RE.match(email):
+    if not is_valid_email(email):
         error = "Enter a valid email address."
     elif email == user.email.lower():
         error = "You can't add yourself."

@@ -1,5 +1,3 @@
-import re
-
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
@@ -9,6 +7,7 @@ from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_service import VClusterClaimAdminService
 from shared.vclusterclaim import State
 from templating import templates
+from utils import is_valid_email
 
 router = APIRouter()
 
@@ -198,10 +197,8 @@ def admin_add_admin(
 ) -> HTMLResponse:
     email = email.strip().lower()
 
-    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
     error: str | None = None
-    if not EMAIL_RE.match(email):
+    if not is_valid_email(email):
         error = "Enter a valid email address."
     elif email == user.email.lower():
         error = "You can't add yourself."
@@ -221,10 +218,8 @@ def admin_remove_admin(
 ) -> HTMLResponse:
     email = email.strip().lower()
 
-    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
     error: str | None = None
-    if not EMAIL_RE.match(email):
+    if not is_valid_email(email):
         error = "Enter a valid email address."
     elif email == user.email.lower():
         error = "You can't remove yourself."
