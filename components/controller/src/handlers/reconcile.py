@@ -181,6 +181,8 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
                     ctx.names.install_job,
                     ctx.names.vcluster,
                     vcluster_version=version,
+                    base_domain=config.base_domain,
+                    ingress_namespace=config.ingress_namespace,
                 ),
             )
             ctx.logger.info(f"Created Job {ctx.names.install_job}.")

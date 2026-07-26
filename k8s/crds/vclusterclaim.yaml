@@ -35,7 +35,6 @@ spec:
                 type: string
               vClusterVersion:
                 type: string
-                # Format only. The controller gates the actually supported versions via the SUPPORTED_VCLUSTER_VERSIONS.
                 pattern: ^\d+\.\d+\.\d+$
                 default: "0.35.0"
                 x-kubernetes-validations:

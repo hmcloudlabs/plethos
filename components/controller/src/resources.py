@@ -1,3 +1,5 @@
+import json
+
 from shared.vclusterclaim import GROUP
 
 
@@ -37,6 +39,9 @@ def _helm_set_args(values: dict, prefix: str = "") -> list[str]:
         path = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
             args.extend(_helm_set_args(value, path))
+        elif isinstance(value, list):
+            rendered = "{" + ",".join(str(v) for v in value) + "}"
+            args.extend(["--set", f"{path}={rendered}"])
         else:
             rendered = str(value).lower() if isinstance(value, bool) else str(value)
             args.extend(["--set", f"{path}={rendered}"])
@@ -76,12 +81,62 @@ def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
     }
 
 
+def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: str) -> list[str]:
+    """Extra `helm` args exposing the vCluster via ingress, or `[]` if `base_domain` is unset.
+
+    Requires an ingress controller with SSL passthrough enabled, since the control plane
+    speaks mTLS directly (there's no TLS termination to do). The NetworkPolicy rule is
+    passed via `--set-json` (not `--set`, which can't represent a list of nested dicts):
+    vCluster's own `policies.networkPolicy` otherwise only allows traffic between the
+    vCluster's own control-plane/workload pods, so without it the ingress controller
+    can route to the Service but the packets get dropped.
+    """
+
+    if not base_domain:
+        return []
+
+    host = f"{vcluster_name}.{base_domain}"
+    
+    values = {
+        "controlPlane": {
+            "endpoint": f"https://{host}",
+            "ingress": {
+                "enabled": True,
+                "host": host,
+            },
+            "proxy": {
+                "extraSANs": [host],
+            },
+        },
+    }
+    network_policy_rule = [
+        {
+            "from": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": ingress_namespace}
+                    }
+                }
+            ],
+            "ports": [{"port": 443, "protocol": "TCP"}],
+        }
+    ]
+
+    return [
+        *_helm_set_args(values),
+        "--set-json",
+        f"policies.networkPolicy.controlPlane.ingress={json.dumps(network_policy_rule)}",
+    ]
+
+
 def make_helm_install_job(
     claim_name: str,
     namespace: str,
     helm_install_name: str,
     vcluster_name: str,
     vcluster_version: str,
+    base_domain: str,
+    ingress_namespace: str,
 ) -> dict:
     return {
         "apiVersion": "batch/v1",
@@ -120,6 +175,7 @@ def make_helm_install_job(
                                 "--version",
                                 vcluster_version,
                                 *_helm_set_args(_VCLUSTER_ISOLATION_VALUES),
+                                *_ingress_helm_args(vcluster_name, base_domain, ingress_namespace),
                             ],
                         }
                     ],
