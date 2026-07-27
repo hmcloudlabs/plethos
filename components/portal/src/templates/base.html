@@ -1,4 +1,5 @@
 <!doctype html>
+{% from "components/toast.html" import toast %}
 <html lang="en" data-bs-theme="light">
   <head>
     <meta charset="utf-8" />
@@ -80,6 +81,12 @@
       </div>
     </nav>
 
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+      {% if flash_message %}
+      {{ toast(flash_message, flash_level) }}
+      {% endif %}
+    </div>
+
     <main class="container py-4">{% block content %}{% endblock %}</main>
 
     {# Deployers can add org-specific links (docs, imprint, privacy, contact) here. #}
@@ -92,18 +99,22 @@
     <script src="{{ url_for('static', path='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', path='vendor/htmx/htmx.min.js') }}"></script>
     <script>
-      // Dismiss any dismissible alert on the first click anywhere on the page.
-      (function () {
-        var alert = document.querySelector(".alert-dismissible");
-        if (!alert) return;
-        document.addEventListener(
-          "click",
-          function () {
-            alert.remove();
-          },
-          { once: true }
-        );
-      })();
+      // Shows a toast and removes it from the DOM once it's dismissed/hidden.
+      function showToast(toastEl) {
+        toastEl.addEventListener("hidden.bs.toast", function () {
+          toastEl.remove();
+        });
+        new bootstrap.Toast(toastEl).show();
+      }
+
+      // Auto-show any server-rendered toast (e.g. flash messages) on page load.
+      document.querySelectorAll("#toast-container .toast").forEach(showToast);
+
+      // Show toasts that htmx fragments appended into #toast-container
+      document.body.addEventListener("htmx:oobAfterSwap", function (evt) {
+        if (evt.detail.target.id !== "toast-container") return;
+        showToast(evt.detail.target.querySelector(".toast:not(.show)"));
+      });
     </script>
   </body>
 </html>

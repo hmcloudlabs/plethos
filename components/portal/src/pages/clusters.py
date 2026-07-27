@@ -13,7 +13,7 @@ from kube.vclusterclaim_service import (
 )
 from shared.vclusterclaim import State
 from templating import templates
-from utils import is_valid_email
+from utils import FlashLevel, is_valid_email, pop_flash, set_flash
 
 router = APIRouter()
 
@@ -30,6 +30,7 @@ def _owned_claim_or_404(
     vcc_service: VClusterClaimUserService, object_name: str, sub: str
 ) -> VClusterClaim:
     """Fetch a claim the user owns, or raise 404 (used by the owner-only access panel)."""
+
     claim = vcc_service.get_by_object_name(object_name)
     if claim is None or claim.access_for(sub) is not AccessType.OWNER:
         raise HTTPException(status_code=404, detail="Cluster not found.")
@@ -40,7 +41,6 @@ def _validate_new_cluster(name: str) -> str | None:
     """Return a user-facing error message, or None if the name is valid."""
 
     NAME_RE = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
-
     if not name or len(name) > 63 or not NAME_RE.match(name):
         return "Name must be lowercase letters, digits and hyphens (max 63 chars)."
 
@@ -64,7 +64,7 @@ def _render_clusters(
     user: User,
     vcc_service: VClusterClaimUserService,
     *,
-    error: str | None = None,
+    flash: tuple[str, FlashLevel] | None = None,
     form_name: str = "",
     status_code: int = 200,
 ) -> HTMLResponse:
@@ -76,7 +76,8 @@ def _render_clusters(
             "user": user,
             "vcluster_claims": vcc_service.list_for_owner(user.sub),
             "shared_vcluster_claims": vcc_service.list_shared_with(user.email),
-            "error": error,
+            "flash_message": flash[0] if flash else None,
+            "flash_level": flash[1] if flash else None,
             "form_name": form_name,
         },
         status_code=status_code,
@@ -143,9 +144,9 @@ def clusters(
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    error = request.session.pop("flash_error", None)
+    flash = pop_flash(request)
     form_name = request.session.pop("flash_form_name", "")
-    return _render_clusters(request, user, vcc_service, error=error, form_name=form_name)
+    return _render_clusters(request, user, vcc_service, flash=flash, form_name=form_name)
 
 
 @router.get("/clusters/list", response_class=HTMLResponse)
@@ -208,7 +209,7 @@ def download_kubeconfig(
 ) -> Response:
     result = vcc_service.get_kubeconfig(object_name, user.sub, user.email)
     if result is None:
-        request.session["flash_error"] = "Kubeconfig not available yet."
+        set_flash(request, "Kubeconfig not available yet.", level="warning")
         return RedirectResponse("/clusters", status_code=303)
 
     display_name, kubeconfig = result
@@ -228,7 +229,7 @@ def download_data(
 ) -> Response:
     result = vcc_service.get_mounted_volume_contents(object_name, user.sub, user.email)
     if result is None:
-        request.session["flash_error"] = "No data available to download."
+        set_flash(request, "No data available to download.", level="warning")
         return RedirectResponse("/clusters", status_code=303)
 
     display_name, data = result
@@ -312,7 +313,9 @@ def create_cluster(
             error = f"You already have a cluster named '{name}'."
 
     if error is not None:
-        request.session["flash_error"] = error
+        set_flash(request, error)
         request.session["flash_form_name"] = name
+    else:
+        set_flash(request, f"Cluster '{name}' created.", level="success")
 
     return RedirectResponse("/clusters", status_code=303)

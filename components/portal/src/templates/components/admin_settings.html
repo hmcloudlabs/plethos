@@ -1,8 +1,12 @@
 {% from "components/icons.html" import icon %}
 {% from "components/confirm_modal.html" import confirm_modal %}
+{% from "components/toast.html" import toast %}
 <div id="admin-settings" class="p-2 p-sm-3">
   {% if error %}
-  <div class="alert alert-danger py-2 small mb-3">{{ error }}</div>
+  <div hx-swap-oob="beforeend:#toast-container">{{ toast(error, "error") }}</div>
+  {% endif %}
+  {% if success %}
+  <div hx-swap-oob="beforeend:#toast-container">{{ toast(success, "success") }}</div>
   {% endif %}
 
   <div class="row g-4">

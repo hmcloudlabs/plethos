@@ -6,12 +6,6 @@
   <h1 class="h3 fw-bold mb-0">Manage Clusters</h1>
 </div>
 
-{% if error %}
-<div class="alert alert-danger alert-dismissible" role="alert">
-  {{ error }}
-</div>
-{% endif %}
-
 <div class="bento bento--pad mb-4">
   <span class="bento__label">New cluster</span>
   <form method="post" action="/clusters" class="d-flex flex-wrap align-items-end gap-2 mt-2">

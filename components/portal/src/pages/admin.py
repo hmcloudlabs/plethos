@@ -55,7 +55,12 @@ def _render_admin_owner_list(
 
 
 def _render_admin_settings(
-    request: Request, user: User, settings_service: SettingsService, *, error: str | None = None
+    request: Request,
+    user: User,
+    settings_service: SettingsService,
+    *,
+    error: str | None = None,
+    success: str | None = None,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
@@ -65,6 +70,7 @@ def _render_admin_settings(
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
             "error": error,
+            "success": success,
         },
     )
 
@@ -180,12 +186,14 @@ def admin_set_max_clusters(
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     error: str | None = None
+    success: str | None = None
     if max_clusters_per_user < 1:
         error = "Max clusters per user must be at least 1."
     else:
         settings_service.set_max_clusters_per_user(max_clusters_per_user)
+        success = f"Max clusters per user set to {max_clusters_per_user}."
 
-    return _render_admin_settings(request, user, settings_service, error=error)
+    return _render_admin_settings(request, user, settings_service, error=error, success=success)
 
 
 @router.post("/admin/settings/admins/add")
