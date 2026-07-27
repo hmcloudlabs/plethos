@@ -202,18 +202,40 @@ def delete_cluster(
 @router.get("/clusters/{object_name}/kubeconfig")
 def download_kubeconfig(
     object_name: str,
+    request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> Response:
     result = vcc_service.get_kubeconfig(object_name, user.sub, user.email)
     if result is None:
-        raise HTTPException(status_code=404, detail="Kubeconfig not available yet.")
+        request.session["flash_error"] = "Kubeconfig not available yet."
+        return RedirectResponse("/clusters", status_code=303)
 
     display_name, kubeconfig = result
     return Response(
         content=kubeconfig,
         media_type="application/yaml",
         headers={"Content-Disposition": f'attachment; filename="{display_name}-kubeconfig.yaml"'},
+    )
+
+
+@router.get("/clusters/{object_name}/data")
+def download_data(
+    object_name: str,
+    request: Request,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+) -> Response:
+    result = vcc_service.get_mounted_volume_contents(object_name, user.sub, user.email)
+    if result is None:
+        request.session["flash_error"] = "No data available to download."
+        return RedirectResponse("/clusters", status_code=303)
+
+    display_name, data = result
+    return Response(
+        content=data,
+        media_type="application/x-tar",
+        headers={"Content-Disposition": f'attachment; filename="{display_name}-data.tar"'},
     )
 
 

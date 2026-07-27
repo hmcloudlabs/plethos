@@ -1,9 +1,15 @@
 import base64
+import io
+import os
 import re
+import shlex
+import tarfile
+import tempfile
 from hashlib import sha256
 from typing import Any, cast
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from kubernetes.stream import stream
 
 from config import config
 from kube.client import core_v1_api, custom_objects_api
@@ -228,11 +234,11 @@ class VClusterClaimRepository:
                     namespace=namespace,
                     container=containers[0],
                     tail_lines=tail_lines,
-                    _preload_content=False,  # returns the raw HTTP response
+                    _preload_content=False,
                 ),
             )
         except ApiException as e:
-            if e.status in (400, 404):  # 400 = container hasn't started yet; 404 = gone.
+            if e.status in (400, 404):  # 400 = container hasn't started yet
                 return None
             raise
 
@@ -242,3 +248,89 @@ class VClusterClaimRepository:
         text = raw.decode("utf-8", "replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
 
         return ANSI_ESCAPE_RE.sub("", text)
+
+    def read_mounted_volume_contents(self, object_name: str) -> bytes | None:
+        """Tars up volumes mounted by the vCluster's workload pods if there are any."""
+
+        namespace = vcluster_namespace(object_name)
+        pods = cast(Any, self._core.list_namespaced_pod(namespace=namespace)).items
+
+        workload_pods = [
+            pod
+            for pod in pods
+            if not pod.metadata.owner_references
+            or pod.metadata.owner_references[0].kind != "StatefulSet"
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            has_data = False
+            for pod in workload_pods:
+
+                pod_dir = os.path.join(tmp_dir, pod.metadata.name)
+                if self._extract_pvc_mounts(pod, namespace, pod_dir):
+                    has_data = True
+
+            if not has_data:
+                return None
+
+            buffer = io.BytesIO()
+            with tarfile.open(fileobj=buffer, mode="w") as archive:
+                archive.add(tmp_dir, arcname=object_name)
+
+            return buffer.getvalue()
+
+    def _extract_pvc_mounts(self, pod: Any, namespace: str, dest_dir: str) -> bool:
+        """
+        Execs into a pod, tars each of its volume mounts, extracts them 
+        into `dest_dir` and returns whether any data was written.
+        """
+
+        pvc_volume_names = {volume.name for volume in (pod.spec.volumes or []) if volume.persistent_volume_claim}
+        if not pvc_volume_names:
+            return False
+
+        wrote_data = False
+        for container in pod.spec.containers:
+            mounts = [mount for mount in (container.volume_mounts or []) if mount.name in pvc_volume_names]
+
+            for mount in mounts:
+                archive_bytes = self._tar_remote_path(pod.metadata.name, namespace, mount.mount_path)
+                if not archive_bytes:
+                    continue
+
+                os.makedirs(dest_dir, exist_ok=True)
+                with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as tar:
+                    tar.extractall(path=dest_dir, filter="data")
+                wrote_data = True
+
+        return wrote_data
+
+    def _tar_remote_path(self, pod_name: str, namespace: str, mount_path: str) -> bytes:
+        """Runs `tar cf -` for `mount_path` inside a pod and returns the resulting bytes."""
+
+        dirname = shlex.quote(os.path.dirname(mount_path))
+        basename = shlex.quote(os.path.basename(mount_path))
+
+        res = stream(
+            self._core.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=["/bin/sh", "-c", f"cd {dirname} && tar cf - {basename}"],
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            binary=True,
+            _preload_content=False,
+        )
+
+        data = io.BytesIO()
+        try:
+            while res.is_open():
+                res.update(timeout=1)
+                if res.peek_stdout():
+                    data.write(res.read_stdout())
+        finally:
+            res.close()
+
+        return data.getvalue()

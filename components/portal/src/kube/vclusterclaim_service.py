@@ -124,6 +124,24 @@ class VClusterClaimUserService:
 
         return claim.spec.name, kubeconfig
 
+    def get_mounted_volume_contents(
+        self, object_name: str, sub: str, email: str
+    ) -> tuple[str, bytes] | None:
+        """
+        Returns the VClusterClaim name and a tar archive of the data in 
+        its workload pods PVC volumes, for the owner or a shared member.
+        """
+
+        claim = self._get_for_member(object_name, sub, email)
+        if claim is None:
+            return None
+
+        data = self._repo.read_mounted_volume_contents(object_name)
+        if data is None:
+            return None
+
+        return claim.spec.name, data
+
 
 class VClusterClaimAdminService:
     def __init__(self, repo: VClusterClaimRepository | None = None) -> None:
