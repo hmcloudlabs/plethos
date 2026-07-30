@@ -6,3 +6,4 @@ metadata:
 data:
   adminEmails: "testuser@example.com"
   maxVclustersPerUser: "5"
+  maxTeamSize: "5"

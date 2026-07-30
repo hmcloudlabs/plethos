@@ -29,6 +29,38 @@
         <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
       </form>
 
+      <span class="text-body-secondary small d-block mt-2 mb-1">Per-user overrides</span>
+      <form
+        class="d-flex gap-2 mb-2"
+        hx-post="/admin/settings/max-clusters/override"
+        hx-target="#admin-settings"
+        hx-swap="outerHTML"
+      >
+        <input type="email" name="email" class="form-control form-control-sm" placeholder="name@example.com" required />
+        <input type="number" name="max_clusters" class="form-control form-control-sm" min="1" style="max-width: 5rem;" required />
+        <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }}</button>
+      </form>
+      {% if max_clusters_overrides %}
+      <ul class="list-unstyled mb-0">
+        {% for email, value in max_clusters_overrides.items() %}
+        <li class="d-flex align-items-center justify-content-between py-1 border-bottom">
+          <span class="text-body-secondary small">{{ email }}: {{ value }}</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-danger flex-shrink-0"
+            title="Remove override"
+            hx-post="/admin/settings/max-clusters/override/remove"
+            hx-vals='{"email": {{ email | tojson }} }'
+            hx-target="#admin-settings"
+            hx-swap="outerHTML"
+          >
+            {{ icon("trash") }}
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
       <span class="bento__label d-block mt-4">Max shared members per cluster</span>
       <form
         class="d-flex gap-2 mt-2"
@@ -46,6 +78,38 @@
         />
         <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
       </form>
+
+      <span class="text-body-secondary small d-block mt-2 mb-1">Per-user overrides</span>
+      <form
+        class="d-flex gap-2 mb-2"
+        hx-post="/admin/settings/max-team-size/override"
+        hx-target="#admin-settings"
+        hx-swap="outerHTML"
+      >
+        <input type="email" name="email" class="form-control form-control-sm" placeholder="name@example.com" required />
+        <input type="number" name="max_team_size" class="form-control form-control-sm" min="1" style="max-width: 5rem;" required />
+        <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }}</button>
+      </form>
+      {% if max_team_size_overrides %}
+      <ul class="list-unstyled mb-0">
+        {% for email, value in max_team_size_overrides.items() %}
+        <li class="d-flex align-items-center justify-content-between py-1 border-bottom">
+          <span class="text-body-secondary small">{{ email }}: {{ value }}</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-danger flex-shrink-0"
+            title="Remove override"
+            hx-post="/admin/settings/max-team-size/override/remove"
+            hx-vals='{"email": {{ email | tojson }} }'
+            hx-target="#admin-settings"
+            hx-swap="outerHTML"
+          >
+            {{ icon("trash") }}
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
     </div>
 
     <div class="col-12 col-lg-7">

@@ -48,11 +48,11 @@ def _validate_new_cluster(name: str) -> str | None:
 
 
 def _check_quota(
-    vcc_service: VClusterClaimUserService, settings_service: SettingsService, sub: str
+    vcc_service: VClusterClaimUserService, settings_service: SettingsService, sub: str, email: str
 ) -> str | None:
     """Return a user-facing error if the owner is already at their cluster quota, else None."""
 
-    max_clusters = settings_service.max_clusters_per_user()
+    max_clusters = settings_service.max_clusters_per_user(email)
     if len(vcc_service.list_for_owner(sub)) >= max_clusters:
         return f"You've reached the maximum of {max_clusters} cluster(s) per user."
 
@@ -68,7 +68,7 @@ def _check_team_quota(
     if any(member.email == member_email for member in claim.spec.members):
         return None
 
-    max_team_size = settings_service.max_team_size()
+    max_team_size = settings_service.max_team_size(claim.spec.owner_email)
     if len(claim.spec.members) >= max_team_size:
         return f"This cluster already has the maximum of {max_team_size} shared member(s)."
 
@@ -324,7 +324,7 @@ def create_cluster(
 
     error = _validate_new_cluster(name)
     if error is None:
-        error = _check_quota(vcc_service, settings_service, user.sub)
+        error = _check_quota(vcc_service, settings_service, user.sub, user.email)
 
     if error is None:
         try:

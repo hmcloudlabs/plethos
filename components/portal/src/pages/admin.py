@@ -69,7 +69,9 @@ def _render_admin_settings(
             "user": user,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
+            "max_clusters_overrides": settings_service.max_clusters_overrides(),
             "max_team_size": settings_service.max_team_size(),
+            "max_team_size_overrides": settings_service.max_team_size_overrides(),
             "error": error,
             "success": success,
         },
@@ -101,7 +103,9 @@ def admin(
             "stats": stats,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
+            "max_clusters_overrides": settings_service.max_clusters_overrides(),
             "max_team_size": settings_service.max_team_size(),
+            "max_team_size_overrides": settings_service.max_team_size_overrides(),
         },
     )
 
@@ -214,6 +218,70 @@ def admin_set_max_team_size(
         success = f"Max team size set to {max_team_size}."
 
     return _render_admin_settings(request, user, settings_service, error=error, success=success)
+
+
+@router.post("/admin/settings/max-clusters/override", response_class=HTMLResponse)
+def admin_set_max_clusters_override(
+    request: Request,
+    email: str = Form(...),
+    max_clusters: int = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    email = email.strip().lower()
+
+    error: str | None = None
+    if not is_valid_email(email):
+        error = "Enter a valid email address."
+    elif max_clusters < 1:
+        error = "Max clusters per user must be at least 1."
+    else:
+        settings_service.set_max_clusters_override(email, max_clusters)
+
+    return _render_admin_settings(request, user, settings_service, error=error)
+
+
+@router.post("/admin/settings/max-clusters/override/remove", response_class=HTMLResponse)
+def admin_remove_max_clusters_override(
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    settings_service.set_max_clusters_override(email.strip().lower(), None)
+    return _render_admin_settings(request, user, settings_service)
+
+
+@router.post("/admin/settings/max-team-size/override", response_class=HTMLResponse)
+def admin_set_max_team_size_override(
+    request: Request,
+    email: str = Form(...),
+    max_team_size: int = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    email = email.strip().lower()
+
+    error: str | None = None
+    if not is_valid_email(email):
+        error = "Enter a valid email address."
+    elif max_team_size < 1:
+        error = "Max team size must be at least 1."
+    else:
+        settings_service.set_max_team_size_override(email, max_team_size)
+
+    return _render_admin_settings(request, user, settings_service, error=error)
+
+
+@router.post("/admin/settings/max-team-size/override/remove", response_class=HTMLResponse)
+def admin_remove_max_team_size_override(
+    request: Request,
+    email: str = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    settings_service.set_max_team_size_override(email.strip().lower(), None)
+    return _render_admin_settings(request, user, settings_service)
 
 
 @router.post("/admin/settings/admins/add")
