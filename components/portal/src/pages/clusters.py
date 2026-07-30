@@ -132,7 +132,7 @@ def _render_access_panel(
         {
             "object_name": claim.object_name,
             "cluster_name": claim.spec.name,
-            "access_rules": claim.spec.access_rules,
+            "members": claim.spec.members,
             "error": error,
         },
     )

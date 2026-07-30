@@ -38,7 +38,7 @@ class VClusterClaim:
             return AccessType.OWNER
 
         email = email.lower()
-        if any(rule.email.lower() == email for rule in self.spec.access_rules):
+        if any(member.email.lower() == email for member in self.spec.members):
             return AccessType.MEMBER
 
         return None

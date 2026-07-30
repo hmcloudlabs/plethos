@@ -22,14 +22,14 @@
 </form>
 
 <ul class="list-unstyled mb-0">
-  {% for rule in access_rules %}
+  {% for member in members %}
   <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
-    <span>{{ rule.email }}</span>
+    <span>{{ member.email }}</span>
     <button
       class="btn btn-sm btn-danger flex-shrink-0"
       title="Remove access"
       hx-post="/clusters/{{ object_name }}/access/remove"
-      hx-vals='{"email": {{ rule.email | tojson }} }'
+      hx-vals='{"email": {{ member.email | tojson }} }'
       hx-target="#access-modal-body"
     >
       {{ icon("trash") }}

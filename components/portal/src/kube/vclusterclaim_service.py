@@ -1,10 +1,6 @@
 from kube.vclusterclaim_model import AccessType, VClusterClaim
-from kube.vclusterclaim_repository import (
-    VClusterClaimRepository,
-    owner_subject_hash,
-    vcc_name,
-)
-from shared.vclusterclaim import AccessRule, State, VClusterClaimSpec
+from kube.vclusterclaim_repository import VClusterClaimRepository
+from shared.vclusterclaim import Member, State, VClusterClaimSpec
 
 
 class VClusterClaimUserService:
@@ -16,24 +12,23 @@ class VClusterClaimUserService:
     def list_for_owner(self, sub: str) -> list[VClusterClaim]:
         """List all VClusterClaims owned by a user given their subject id."""
 
-        claims = self._repo.list_by_owner_hash(owner_subject_hash(sub))
+        claims = self._repo.list_by_owner(sub)
 
         # The label-selector only embeds the sub's hash so re-check raw sub to avoid hash collisions
         return [claim for claim in claims if claim.spec.owner_subject == sub]
 
     def list_shared_with(self, email: str) -> list[VClusterClaim]:
-        """Lists all clusters that a user's email was invited to (ie. written into the `accessRules`).
-
-        Access is keyed by email, which no label indexes, so we list every VClusterClaim in the (single)
-        namespace and filter in memory. This is fine for now (as long as the amount of clusters stay in small scale).
-        """
+        """Lists all clusters that a user's email was invited to (ie. written into `members`)."""
 
         email = email.lower()
+        claims = self._repo.list_by_shared_member(email)
+
+        # The label-selector only embeds the email's hash so re-check raw email to avoid hash collisions
         return [
             claim
-            for claim in self._repo.list_all()
+            for claim in claims
             if claim.spec.owner_email.lower() != email
-            and any(rule.email.lower() == email for rule in claim.spec.access_rules)
+            and any(member.email.lower() == email for member in claim.spec.members)
         ]
 
     def get_by_object_name(self, object_name: str) -> VClusterClaim | None:
@@ -48,7 +43,7 @@ class VClusterClaimUserService:
             owner_email=email,
             v_cluster_version=vcluster_version,
         )
-        return self._repo.create(vcc_name(sub, name), owner_subject_hash(sub), spec)
+        return self._repo.create(sub, name, spec)
 
     def _get_for_owner(self, object_name: str, sub: str) -> VClusterClaim | None:
         """Load a claim if `sub` owns it, None if it doesn't exist or isn't theirs."""
@@ -92,24 +87,24 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
-        # Drop any existing rule for this email in the current VClusterClaim before re-adding.
-        rules = [rule for rule in claim.spec.access_rules if rule.email != member_email]
-        rules.append(AccessRule(email=member_email))
+        # Drop any existing entry for this email in the current VClusterClaim before re-adding.
+        members = [member for member in claim.spec.members if member.email != member_email]
+        members.append(Member(email=member_email))
 
-        return self._repo.patch_access_rules(object_name, rules)
+        return self._repo.add_member(object_name, members, member_email)
 
     def remove_access(
         self, object_name: str, owner_sub: str, member_email: str
     ) -> VClusterClaim | None:
-        """Revoke a member's access. Owner only; returns None if not found/not owned."""
+        """Revoke a member's access (owner only), returns None if not found/owned."""
 
         claim = self._get_for_owner(object_name, owner_sub)
         if claim is None:
             return None
 
-        rules = [rule for rule in claim.spec.access_rules if rule.email != member_email]
+        members = [member for member in claim.spec.members if member.email != member_email]
 
-        return self._repo.patch_access_rules(object_name, rules)
+        return self._repo.remove_member(object_name, members, member_email)
 
     def get_kubeconfig(self, object_name: str, sub: str, email: str) -> tuple[str, str] | None:
         """Returns the VClusterClaim name and its vCluster kubeconfig for the owner or shared member."""

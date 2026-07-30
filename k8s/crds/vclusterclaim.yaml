@@ -44,7 +44,7 @@ spec:
                 type: string
                 enum: [Running, Sleeping]
                 default: Running
-              accessRules:
+              members:
                 type: array
                 x-kubernetes-list-type: map
                 x-kubernetes-list-map-keys: [email]

@@ -19,36 +19,25 @@ from shared.vclusterclaim import (
     KIND,
     PLURAL,
     VERSION,
-    AccessRule,
+    Member,
     State,
     VClusterClaimSpec,
 )
 
 OWNER_LABEL = f"{GROUP}/owner-subject-hash"
+MEMBER_LABEL_PREFIX = f"{GROUP}/shared-"
 
 
 def owner_subject_hash(sub: str) -> str:
     return sha256(sub.encode()).hexdigest()[:16]
 
 
-def vcc_name(sub: str, name: str) -> str:
-    """The VClusterClaim object name: owner-hash prefix + the user-chosen cluster name.
-
-    The name must start with a letter (RFC 1035) hence the "u" prefix.
-    """
-
-    return f"u{owner_subject_hash(sub)}-{name}"
+def shared_member_hash(email: str) -> str:
+    return sha256(email.lower().encode()).hexdigest()[:16]
 
 
 def vcluster_namespace(object_name: str) -> str:
     return f"vcluster-{object_name}"
-
-
-def kubeconfig_secret_name(object_name: str) -> str:
-    """The chart names its kubeconfig secret `vc-<release>`, and the release is
-    named after the claim (see `VClusterNames.vcluster` in the controller)."""
-
-    return f"vc-{object_name}"
 
 
 class VClusterClaimAlreadyExistsError(Exception):
@@ -79,15 +68,27 @@ class VClusterClaimRepository:
         )
         return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
 
-    def list_by_owner_hash(self, owner_hash: str) -> list[VClusterClaim]:
-        """VClusterClaims labeled with the given owner identifier."""
+    def list_by_owner(self, sub: str) -> list[VClusterClaim]:
+        """VClusterClaims labeled as owned by the given subject id."""
 
         res = self._api.list_namespaced_custom_object(
             group=GROUP,
             version=VERSION,
             namespace=self._namespace,
             plural=PLURAL,
-            label_selector=f"{OWNER_LABEL}={owner_hash}",
+            label_selector=f"{OWNER_LABEL}={owner_subject_hash(sub)}",
+        )
+        return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+    def list_by_shared_member(self, email: str) -> list[VClusterClaim]:
+        """VClusterClaims labeled as shared with the given email."""
+
+        res = self._api.list_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            namespace=self._namespace,
+            plural=PLURAL,
+            label_selector=f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}=true",
         )
         return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
 
@@ -109,8 +110,11 @@ class VClusterClaimRepository:
 
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
-    def create(self, object_name: str, owner_hash: str, spec: VClusterClaimSpec) -> VClusterClaim:
+    def create(self, sub: str, given_name: str, spec: VClusterClaimSpec) -> VClusterClaim:
         """Creates a new VClusterClaim."""
+
+        # Object name must start with a letter (RFC 1035) hence the "u" prefix.
+        object_name = f"u{owner_subject_hash(sub)}-{given_name}"
 
         try:
             obj = self._api.create_namespaced_custom_object(
@@ -123,7 +127,7 @@ class VClusterClaimRepository:
                     "kind": KIND,
                     "metadata": {
                         "name": object_name,
-                        "labels": {OWNER_LABEL: owner_hash},
+                        "labels": {OWNER_LABEL: owner_subject_hash(sub)},
                     },
                     "spec": spec.model_dump(by_alias=True),
                 },
@@ -151,8 +155,10 @@ class VClusterClaimRepository:
             if e.status != 404:
                 raise
 
-    def patch_access_rules(self, object_name: str, rules: list[AccessRule]) -> VClusterClaim:
-        """Upadates the access rules of a VClusterClaim (i.e emails invited to the cluster)."""
+    def add_member(self, object_name: str, members: list[Member], email: str) -> VClusterClaim:
+        """Sets `members` and labels the claim as shared with `email`, in a single patch."""
+
+        member_label = f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}"
 
         obj = self._api.patch_namespaced_custom_object(
             group=GROUP,
@@ -160,8 +166,31 @@ class VClusterClaimRepository:
             namespace=self._namespace,
             plural=PLURAL,
             name=object_name,
-            body={"spec": {"accessRules": [rule.model_dump(by_alias=True) for rule in rules]}},
+            body={
+                "spec": {"members": [member.model_dump(by_alias=True) for member in members]},
+                "metadata": {"labels": {member_label: "true"}},
+            },
         )
+
+        return VClusterClaim.from_obj(cast(dict[str, Any], obj))
+
+    def remove_member(self, object_name: str, members: list[Member], email: str) -> VClusterClaim:
+        """Sets `members` and removes the shared-with-`email` label, in a single patch."""
+
+        member_label = f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}"
+
+        obj = self._api.patch_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            namespace=self._namespace,
+            plural=PLURAL,
+            name=object_name,
+            body={
+                "spec": {"members": [member.model_dump(by_alias=True) for member in members]},
+                "metadata": {"labels": {member_label: None}},
+            },
+        )
+
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
     def delete(self, object_name: str) -> None:
@@ -182,11 +211,14 @@ class VClusterClaimRepository:
     def read_kubeconfig(self, object_name: str) -> str | None:
         """Returns the kubeconfig for a vCluster (or None if the kubeconfig secret doesn't exist)."""
 
+        # The chart names its kubeconfig secret `vc-<release>`, and the release is
+        # named after the claim (see `VClusterNames.vcluster` in the controller).
+        kubeconfig_secret_name = f"vc-{object_name}"
         try:
             secret = cast(
                 client.V1Secret,
                 self._core.read_namespaced_secret(
-                    name=kubeconfig_secret_name(object_name),
+                    name=kubeconfig_secret_name,
                     namespace=vcluster_namespace(object_name),
                 ),
             )

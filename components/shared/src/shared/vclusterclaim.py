@@ -29,7 +29,7 @@ class _Model(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class AccessRule(_Model):
+class Member(_Model):
     email: str
 
 
@@ -39,7 +39,7 @@ class VClusterClaimSpec(_Model):
     owner_email: str
     v_cluster_version: str = "0.35.0"
     state: State = State.RUNNING
-    access_rules: list[AccessRule] = Field(default_factory=list)
+    members: list[Member] = Field(default_factory=list)
 
 
 class Condition(_Model):
