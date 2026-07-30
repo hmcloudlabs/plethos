@@ -69,6 +69,7 @@ def _render_admin_settings(
             "user": user,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
+            "max_team_size": settings_service.max_team_size(),
             "error": error,
             "success": success,
         },
@@ -100,6 +101,7 @@ def admin(
             "stats": stats,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
+            "max_team_size": settings_service.max_team_size(),
         },
     )
 
@@ -192,6 +194,24 @@ def admin_set_max_clusters(
     else:
         settings_service.set_max_clusters_per_user(max_clusters_per_user)
         success = f"Max clusters per user set to {max_clusters_per_user}."
+
+    return _render_admin_settings(request, user, settings_service, error=error, success=success)
+
+
+@router.post("/admin/settings/max-team-size", response_class=HTMLResponse)
+def admin_set_max_team_size(
+    request: Request,
+    max_team_size: int = Form(...),
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    error: str | None = None
+    success: str | None = None
+    if max_team_size < 1:
+        error = "Max team size must be at least 1."
+    else:
+        settings_service.set_max_team_size(max_team_size)
+        success = f"Max team size set to {max_team_size}."
 
     return _render_admin_settings(request, user, settings_service, error=error, success=success)
 

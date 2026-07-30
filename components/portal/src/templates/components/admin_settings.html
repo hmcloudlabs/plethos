@@ -28,6 +28,24 @@
         />
         <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
       </form>
+
+      <span class="bento__label d-block mt-4">Max shared members per cluster</span>
+      <form
+        class="d-flex gap-2 mt-2"
+        hx-post="/admin/settings/max-team-size"
+        hx-target="#admin-settings"
+        hx-swap="outerHTML"
+      >
+        <input
+          type="number"
+          name="max_team_size"
+          class="form-control"
+          min="1"
+          value="{{ max_team_size }}"
+          required
+        />
+        <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
+      </form>
     </div>
 
     <div class="col-12 col-lg-7">

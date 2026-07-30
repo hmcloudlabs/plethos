@@ -59,6 +59,22 @@ def _check_quota(
     return None
 
 
+def _check_team_quota(
+    claim: VClusterClaim, settings_service: SettingsService, member_email: str
+) -> str | None:
+    """Return a user-facing error if adding `member_email` would exceed the team-size quota, else None."""
+
+    # Re-inviting an existing member doesn't grow the team, so it's exempt from the quota.
+    if any(member.email == member_email for member in claim.spec.members):
+        return None
+
+    max_team_size = settings_service.max_team_size()
+    if len(claim.spec.members) >= max_team_size:
+        return f"This cluster already has the maximum of {max_team_size} shared member(s)."
+
+    return None
+
+
 def _render_clusters(
     request: Request,
     user: User,
@@ -258,6 +274,7 @@ def add_cluster_access(
     email: str = Form(...),
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     email = email.strip().lower()
@@ -267,6 +284,9 @@ def add_cluster_access(
         error = "Enter a valid email address."
     elif email == user.email.lower():
         error = "You can't add yourself."
+
+    if error is None:
+        error = _check_team_quota(claim, settings_service, email)
 
     if error is None:
         updated = vcc_service.add_access(object_name, user.sub, email)

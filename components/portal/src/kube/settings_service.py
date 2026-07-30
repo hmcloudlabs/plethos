@@ -10,6 +10,8 @@ SETTINGS_CONFIGMAP_NAME = "vkube-portal-settings"
 _ADMIN_EMAILS_KEY = "adminEmails"
 _MAX_VCLUSTERS_PER_USER_KEY = "maxVclustersPerUser"
 _DEFAULT_MAX_VCLUSTERS_PER_USER = 5
+_MAX_TEAM_SIZE_KEY = "maxTeamSize"
+_DEFAULT_MAX_TEAM_SIZE = 5
 
 
 class SettingsService:
@@ -46,6 +48,13 @@ class SettingsService:
 
     def set_max_clusters_per_user(self, max_clusters: int) -> None:
         self._patch_data({_MAX_VCLUSTERS_PER_USER_KEY: str(max_clusters)})
+
+    def max_team_size(self) -> int:
+        raw = self._read_data().get(_MAX_TEAM_SIZE_KEY)
+        return int(raw) if raw is not None else _DEFAULT_MAX_TEAM_SIZE
+
+    def set_max_team_size(self, max_team_size: int) -> None:
+        self._patch_data({_MAX_TEAM_SIZE_KEY: str(max_team_size)})
 
     def list_admins(self) -> list[str]:
         raw = self._read_data().get(_ADMIN_EMAILS_KEY, "")
