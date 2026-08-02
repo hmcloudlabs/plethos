@@ -28,38 +28,17 @@
         />
         <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
       </form>
-
-      <span class="text-body-secondary small d-block mt-2 mb-1">Per-user overrides</span>
-      <form
-        class="d-flex gap-2 mb-2"
-        hx-post="/admin/settings/max-clusters/override"
-        hx-target="#admin-settings"
-        hx-swap="outerHTML"
+      <button
+        type="button"
+        class="btn btn-link btn-sm text-body-secondary p-0 mt-1"
+        data-bs-toggle="modal"
+        data-bs-target="#max-clusters-overrides-modal"
+        hx-get="/admin/settings/max-clusters/overrides"
+        hx-target="#max-clusters-overrides-modal-body"
+        hx-swap="innerHTML"
       >
-        <input type="email" name="email" class="form-control form-control-sm" placeholder="name@example.com" required />
-        <input type="number" name="max_clusters" class="form-control form-control-sm" min="1" style="max-width: 5rem;" required />
-        <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }}</button>
-      </form>
-      {% if max_clusters_overrides %}
-      <ul class="list-unstyled mb-0">
-        {% for email, value in max_clusters_overrides.items() %}
-        <li class="d-flex align-items-center justify-content-between py-1 border-bottom">
-          <span class="text-body-secondary small">{{ email }}: {{ value }}</span>
-          <button
-            type="button"
-            class="btn btn-sm btn-danger flex-shrink-0"
-            title="Remove override"
-            hx-post="/admin/settings/max-clusters/override/remove"
-            hx-vals='{"email": {{ email | tojson }} }'
-            hx-target="#admin-settings"
-            hx-swap="outerHTML"
-          >
-            {{ icon("trash") }}
-          </button>
-        </li>
-        {% endfor %}
-      </ul>
-      {% endif %}
+        Manage overrides
+      </button>
 
       <span class="bento__label d-block mt-4">Max shared members per cluster</span>
       <form
@@ -78,93 +57,74 @@
         />
         <button type="submit" class="btn btn-primary flex-shrink-0">Save</button>
       </form>
-
-      <span class="text-body-secondary small d-block mt-2 mb-1">Per-user overrides</span>
-      <form
-        class="d-flex gap-2 mb-2"
-        hx-post="/admin/settings/max-team-size/override"
-        hx-target="#admin-settings"
-        hx-swap="outerHTML"
+      <button
+        type="button"
+        class="btn btn-link btn-sm text-body-secondary p-0 mt-1"
+        data-bs-toggle="modal"
+        data-bs-target="#max-team-size-overrides-modal"
+        hx-get="/admin/settings/max-team-size/overrides"
+        hx-target="#max-team-size-overrides-modal-body"
+        hx-swap="innerHTML"
       >
-        <input type="email" name="email" class="form-control form-control-sm" placeholder="name@example.com" required />
-        <input type="number" name="max_team_size" class="form-control form-control-sm" min="1" style="max-width: 5rem;" required />
-        <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }}</button>
-      </form>
-      {% if max_team_size_overrides %}
-      <ul class="list-unstyled mb-0">
-        {% for email, value in max_team_size_overrides.items() %}
-        <li class="d-flex align-items-center justify-content-between py-1 border-bottom">
-          <span class="text-body-secondary small">{{ email }}: {{ value }}</span>
-          <button
-            type="button"
-            class="btn btn-sm btn-danger flex-shrink-0"
-            title="Remove override"
-            hx-post="/admin/settings/max-team-size/override/remove"
-            hx-vals='{"email": {{ email | tojson }} }'
-            hx-target="#admin-settings"
-            hx-swap="outerHTML"
-          >
-            {{ icon("trash") }}
-          </button>
-        </li>
-        {% endfor %}
-      </ul>
-      {% endif %}
+        Manage overrides
+      </button>
     </div>
 
     <div class="col-12 col-lg-7">
-      <span class="bento__label">Admins</span>
+      <div class="d-flex flex-column" style="height: 18rem;">
+        <span class="bento__label">Admins</span>
 
-      <form
-        class="d-flex gap-2 mt-2 mb-3"
-        hx-post="/admin/settings/admins/add"
-        hx-target="#admin-settings"
-        hx-swap="outerHTML"
-      >
-        <input type="email" name="email" class="form-control" placeholder="name@example.com" required />
-        <button type="submit" class="btn btn-primary flex-shrink-0">{{ icon("plus") }} Add</button>
-      </form>
+        <form
+          class="d-flex gap-2 mt-2 mb-3"
+          hx-post="/admin/settings/admins/add"
+          hx-target="#admin-settings"
+          hx-swap="outerHTML"
+        >
+          <input type="email" name="email" class="form-control" placeholder="name@example.com" required />
+          <button type="submit" class="btn btn-primary flex-shrink-0">{{ icon("plus") }} Add</button>
+        </form>
 
-      {% if admin_emails %}
-      <ul class="list-unstyled mb-0">
-        {% for email in admin_emails %}
-        <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
-          <span class="text-body-secondary">{{ email }}</span>
-          {% if email == user.email | lower %}
-          <span class="badge text-bg-secondary flex-shrink-0" title="You can't remove your own admin access">
-            You
-          </span>
-          {% else %}
-          <button
-            type="button"
-            class="btn btn-sm btn-danger flex-shrink-0"
-            title="Remove admin"
-            data-bs-toggle="modal"
-            data-bs-target="#remove-admin-modal-{{ loop.index }}"
-          >
-            {{ icon("trash") }}
-          </button>
-          {{ confirm_modal(
-            id="remove-admin-modal-" ~ loop.index,
-            title="Remove admin?",
-            body="Remove admin access for '" ~ email ~ "'? They will lose access to the admin panel immediately.",
-            confirm_label="Remove",
-            confirm_class="btn-danger",
-            hx_post="/admin/settings/admins/remove",
-            hx_target="#admin-settings",
-            hx_vals='{"email": ' ~ (email | tojson) ~ ' }',
-            icon_name="trash"
-          ) }}
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <div class="text-center text-body-secondary py-5">
-        <div class="mb-1" style="font-size: 1.5rem;">◇</div>
-        No admins configured.
+        {% if admin_emails %}
+        <ul class="list-unstyled mb-0 flex-grow-1" style="overflow-y: auto; min-height: 0;">
+          {% for email in admin_emails %}
+          <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
+            <span class="text-body-secondary">{{ email }}</span>
+            {% if email == user.email | lower %}
+            <span class="badge text-bg-secondary flex-shrink-0" title="You can't remove your own admin access">
+              You
+            </span>
+            {% else %}
+            <button
+              type="button"
+              class="btn btn-sm btn-danger flex-shrink-0"
+              title="Remove admin"
+              data-bs-toggle="modal"
+              data-bs-target="#remove-admin-modal-{{ loop.index }}"
+            >
+              {{ icon("trash") }}
+            </button>
+            {{ confirm_modal(
+              id="remove-admin-modal-" ~ loop.index,
+              title="Remove admin?",
+              body="Remove admin access for '" ~ email ~ "'? They will lose access to the admin panel immediately.",
+              confirm_label="Remove",
+              confirm_class="btn-danger",
+              hx_post="/admin/settings/admins/remove",
+              hx_target="#admin-settings",
+              hx_vals=({"email": email} | tojson),
+              icon_name="trash"
+            ) }}
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="flex-grow-1 d-flex flex-column align-items-center justify-content-center text-body-secondary">
+          <div class="mb-1" style="font-size: 1.5rem;">◇</div>
+          No admins configured.
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
 </div>

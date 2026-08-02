@@ -35,7 +35,7 @@
                 confirm_class="btn-danger",
                 hx_post="/admin/owners/delete",
                 hx_target="#admin-owner-list",
-                hx_vals='{"email": ' ~ (owner.email | tojson) ~ ' }',
+                hx_vals=({"email": owner.email} | tojson),
                 icon_name="trash"
               ) }}
             </div>

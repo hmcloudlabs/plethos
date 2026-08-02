@@ -69,11 +69,43 @@ def _render_admin_settings(
             "user": user,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
-            "max_clusters_overrides": settings_service.max_clusters_overrides(),
             "max_team_size": settings_service.max_team_size(),
-            "max_team_size_overrides": settings_service.max_team_size_overrides(),
             "error": error,
             "success": success,
+        },
+    )
+
+
+def _render_max_clusters_overrides(
+    request: Request, settings_service: SettingsService, *, error: str | None = None
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "components/override_panel.html",
+        {
+            "target": "#max-clusters-overrides-modal-body",
+            "add_url": "/admin/settings/max-clusters/override",
+            "remove_url": "/admin/settings/max-clusters/override/remove",
+            "value_field": "max_clusters",
+            "overrides": settings_service.max_clusters_overrides(),
+            "error": error,
+        },
+    )
+
+
+def _render_max_team_size_overrides(
+    request: Request, settings_service: SettingsService, *, error: str | None = None
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "components/override_panel.html",
+        {
+            "target": "#max-team-size-overrides-modal-body",
+            "add_url": "/admin/settings/max-team-size/override",
+            "remove_url": "/admin/settings/max-team-size/override/remove",
+            "value_field": "max_team_size",
+            "overrides": settings_service.max_team_size_overrides(),
+            "error": error,
         },
     )
 
@@ -103,9 +135,7 @@ def admin(
             "stats": stats,
             "admin_emails": settings_service.list_admins(),
             "max_clusters_per_user": settings_service.max_clusters_per_user(),
-            "max_clusters_overrides": settings_service.max_clusters_overrides(),
             "max_team_size": settings_service.max_team_size(),
-            "max_team_size_overrides": settings_service.max_team_size_overrides(),
         },
     )
 
@@ -220,6 +250,15 @@ def admin_set_max_team_size(
     return _render_admin_settings(request, user, settings_service, error=error, success=success)
 
 
+@router.get("/admin/settings/max-clusters/overrides", response_class=HTMLResponse)
+def admin_max_clusters_overrides(
+    request: Request,
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    return _render_max_clusters_overrides(request, settings_service)
+
+
 @router.post("/admin/settings/max-clusters/override", response_class=HTMLResponse)
 def admin_set_max_clusters_override(
     request: Request,
@@ -238,7 +277,7 @@ def admin_set_max_clusters_override(
     else:
         settings_service.set_max_clusters_override(email, max_clusters)
 
-    return _render_admin_settings(request, user, settings_service, error=error)
+    return _render_max_clusters_overrides(request, settings_service, error=error)
 
 
 @router.post("/admin/settings/max-clusters/override/remove", response_class=HTMLResponse)
@@ -249,7 +288,16 @@ def admin_remove_max_clusters_override(
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     settings_service.set_max_clusters_override(email.strip().lower(), None)
-    return _render_admin_settings(request, user, settings_service)
+    return _render_max_clusters_overrides(request, settings_service)
+
+
+@router.get("/admin/settings/max-team-size/overrides", response_class=HTMLResponse)
+def admin_max_team_size_overrides(
+    request: Request,
+    user: User = Depends(require_admin),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> HTMLResponse:
+    return _render_max_team_size_overrides(request, settings_service)
 
 
 @router.post("/admin/settings/max-team-size/override", response_class=HTMLResponse)
@@ -270,7 +318,7 @@ def admin_set_max_team_size_override(
     else:
         settings_service.set_max_team_size_override(email, max_team_size)
 
-    return _render_admin_settings(request, user, settings_service, error=error)
+    return _render_max_team_size_overrides(request, settings_service, error=error)
 
 
 @router.post("/admin/settings/max-team-size/override/remove", response_class=HTMLResponse)
@@ -281,7 +329,7 @@ def admin_remove_max_team_size_override(
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     settings_service.set_max_team_size_override(email.strip().lower(), None)
-    return _render_admin_settings(request, user, settings_service)
+    return _render_max_team_size_overrides(request, settings_service)
 
 
 @router.post("/admin/settings/admins/add")
@@ -321,9 +369,7 @@ def admin_remove_admin(
         error = "You can't remove yourself."
 
     if error:
-        return _render_admin_settings(
-            request, user, settings_service, error=error
-        )
+        return _render_admin_settings(request, user, settings_service, error=error)
 
     settings_service.remove_admin(email)
     return _render_admin_settings(request, user, settings_service)

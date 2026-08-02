@@ -84,7 +84,7 @@
 </div>
 
 
-{# Container-logs modal: body loaded via htmx by each cluster's Logs button. #}
+{# Container-logs modal: body loaded via htmx by each cluster's 'Logs' button. #}
 <div class="modal fade" id="admin-logs-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -93,6 +93,35 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="admin-logs-body">
+        <div class="text-body-secondary small py-3">Loading&hellip;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Override modals: bodies loaded via htmx by the 'Manage overrides' buttons. #}
+<div class="modal fade" id="max-clusters-overrides-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Max clusters per user overrides</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="max-clusters-overrides-modal-body">
+        <div class="text-body-secondary small py-3">Loading&hellip;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="max-team-size-overrides-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Max shared members overrides</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="max-team-size-overrides-modal-body">
         <div class="text-body-secondary small py-3">Loading&hellip;</div>
       </div>
     </div>

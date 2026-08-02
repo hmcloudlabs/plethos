@@ -1,0 +1,42 @@
+{% from "components/icons.html" import icon %}
+{% from "components/toast.html" import toast %}
+{% if error %}
+<div hx-swap-oob="beforeend:#toast-container">{{ toast(error, "error") }}</div>
+{% endif %}
+
+<form
+  class="d-flex gap-2 mb-3"
+  hx-post="{{ add_url }}"
+  hx-target="{{ target }}"
+  hx-swap="innerHTML"
+>
+  <input type="email" name="email" class="form-control form-control-sm" placeholder="name@example.com" required />
+  <input type="number" name="{{ value_field }}" class="form-control form-control-sm" min="1" style="max-width: 5rem;" required />
+  <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">{{ icon("plus") }}</button>
+</form>
+
+{% if overrides %}
+<ul class="list-unstyled mb-0">
+  {% for email, value in overrides.items() %}
+  <li class="d-flex align-items-center justify-content-between py-2 border-bottom">
+    <span class="text-body-secondary small">{{ email }}: {{ value }}</span>
+    <button
+      type="button"
+      class="btn btn-sm btn-danger flex-shrink-0"
+      title="Remove override"
+      hx-post="{{ remove_url }}"
+      hx-vals='{{ {"email": email} | tojson }}'
+      hx-target="{{ target }}"
+      hx-swap="innerHTML"
+    >
+      {{ icon("trash") }}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="text-center text-body-secondary py-5">
+  <div class="mb-1" style="font-size: 1.5rem;">◇</div>
+  No overrides configured.
+</div>
+{% endif %}

@@ -62,9 +62,11 @@ cd components/shared      && uv run pytest
 
 ### Portal:
 - [x] ConfigMap for storing admin emails, per user vCluster quota
-- [] per specific user vCluster quota override
-- [] per vCluster ingress
-- [] PVC export
+- [x] per specific user vCluster quota override
+- [x] per vCluster ingress
+- [x] PVC export
+- [ ] max team/member size admin config
+- [ ] per specific user
 - [] Backup strategy
 - [] Caching
 - [] vCluster expiration

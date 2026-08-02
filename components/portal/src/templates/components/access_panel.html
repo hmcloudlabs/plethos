@@ -29,7 +29,7 @@
       class="btn btn-sm btn-danger flex-shrink-0"
       title="Remove access"
       hx-post="/clusters/{{ object_name }}/access/remove"
-      hx-vals='{"email": {{ member.email | tojson }} }'
+      hx-vals='{{ {"email": member.email} | tojson }}'
       hx-target="#access-modal-body"
     >
       {{ icon("trash") }}
