@@ -23,17 +23,21 @@ from shared.vclusterclaim import (
     State,
     VClusterClaimSpec,
 )
-
-OWNER_LABEL = f"{GROUP}/owner-subject-hash"
-MEMBER_LABEL_PREFIX = f"{GROUP}/shared-"
+from ttl_cache import TTLCache
 
 
-def owner_subject_hash(sub: str) -> str:
-    return sha256(sub.encode()).hexdigest()[:16]
+_OWNER_LABEL = f"{GROUP}/owner-subject-hash"
+_MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
+
+_vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_seconds)
 
 
-def shared_member_hash(email: str) -> str:
-    return sha256(email.lower().encode()).hexdigest()[:16]
+def get_owner_hash(sub: str) -> str:
+    return sha256(sub.encode()).hexdigest()[:32]
+
+
+def get_member_hash(email: str) -> str:
+    return sha256(email.lower().encode()).hexdigest()[:32]
 
 
 def vcluster_namespace(object_name: str) -> str:
@@ -60,37 +64,50 @@ class VClusterClaimRepository:
     def list_all(self) -> list[VClusterClaim]:
         """Lists every VClusterClaim in the global namespace."""
 
-        res = self._api.list_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            namespace=self._namespace,
-            plural=PLURAL,
-        )
-        return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+        def fetch() -> list[VClusterClaim]:
+            res = self._api.list_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+            )
+            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+        return _vclusterclaim_cache.get_or_set("all", fetch)
 
     def list_by_owner(self, sub: str) -> list[VClusterClaim]:
         """VClusterClaims labeled as owned by the given subject id."""
 
-        res = self._api.list_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            namespace=self._namespace,
-            plural=PLURAL,
-            label_selector=f"{OWNER_LABEL}={owner_subject_hash(sub)}",
-        )
-        return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+        owner_hash = get_owner_hash(sub)
+
+        def fetch() -> list[VClusterClaim]:
+            res = self._api.list_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+                label_selector=f"{_OWNER_LABEL}={owner_hash}",
+            )
+            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+        return _vclusterclaim_cache.get_or_set(owner_hash, fetch)
 
     def list_by_shared_member(self, email: str) -> list[VClusterClaim]:
         """VClusterClaims labeled as shared with the given email."""
 
-        res = self._api.list_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            namespace=self._namespace,
-            plural=PLURAL,
-            label_selector=f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}=true",
-        )
-        return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+        member_hash = get_member_hash(email)
+
+        def fetch() -> list[VClusterClaim]:
+            res = self._api.list_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+                label_selector=f"{_MEMBER_LABEL_PREFIX}{member_hash}=true",
+            )
+            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+
+        return _vclusterclaim_cache.get_or_set(member_hash, fetch)
 
     def get(self, object_name: str) -> VClusterClaim | None:
         """Gets a VClusterClaim by its resource name"""
@@ -114,7 +131,7 @@ class VClusterClaimRepository:
         """Creates a new VClusterClaim."""
 
         # Object name must start with a letter (RFC 1035) hence the "u" prefix.
-        object_name = f"u{owner_subject_hash(sub)}-{given_name}"
+        object_name = f"u{get_owner_hash(sub)}-{given_name}"
 
         try:
             obj = self._api.create_namespaced_custom_object(
@@ -127,7 +144,7 @@ class VClusterClaimRepository:
                     "kind": KIND,
                     "metadata": {
                         "name": object_name,
-                        "labels": {OWNER_LABEL: owner_subject_hash(sub)},
+                        "labels": {_OWNER_LABEL: get_owner_hash(sub)},
                     },
                     "spec": spec.model_dump(by_alias=True),
                 },
@@ -136,6 +153,9 @@ class VClusterClaimRepository:
             if e.status == 409:
                 raise VClusterClaimAlreadyExistsError(object_name) from e
             raise
+
+        _vclusterclaim_cache.invalidate("all")
+        _vclusterclaim_cache.invalidate(get_owner_hash(sub))
 
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
@@ -154,11 +174,14 @@ class VClusterClaimRepository:
         except ApiException as e:
             if e.status != 404:
                 raise
+            return
+
+        _vclusterclaim_cache.invalidate_all()
 
     def add_member(self, object_name: str, members: list[Member], email: str) -> VClusterClaim:
         """Sets `members` and labels the claim as shared with `email`, in a single patch."""
 
-        member_label = f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}"
+        member_label = f"{_MEMBER_LABEL_PREFIX}{get_member_hash(email)}"
 
         obj = self._api.patch_namespaced_custom_object(
             group=GROUP,
@@ -172,12 +195,15 @@ class VClusterClaimRepository:
             },
         )
 
+        _vclusterclaim_cache.invalidate("all")
+        _vclusterclaim_cache.invalidate(get_member_hash(email))
+
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
     def remove_member(self, object_name: str, members: list[Member], email: str) -> VClusterClaim:
         """Sets `members` and removes the shared-with-`email` label, in a single patch."""
 
-        member_label = f"{MEMBER_LABEL_PREFIX}{shared_member_hash(email)}"
+        member_label = f"{_MEMBER_LABEL_PREFIX}{get_member_hash(email)}"
 
         obj = self._api.patch_namespaced_custom_object(
             group=GROUP,
@@ -190,6 +216,9 @@ class VClusterClaimRepository:
                 "metadata": {"labels": {member_label: None}},
             },
         )
+
+        _vclusterclaim_cache.invalidate("all")
+        _vclusterclaim_cache.invalidate(get_member_hash(email))
 
         return VClusterClaim.from_obj(cast(dict[str, Any], obj))
 
@@ -207,6 +236,9 @@ class VClusterClaimRepository:
         except ApiException as e:
             if e.status != 404:
                 raise
+            return
+
+        _vclusterclaim_cache.invalidate_all()
 
     def read_kubeconfig(self, object_name: str) -> str | None:
         """Returns the kubeconfig for a vCluster (or None if the kubeconfig secret doesn't exist)."""

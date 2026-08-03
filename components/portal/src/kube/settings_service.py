@@ -1,19 +1,26 @@
 import json
+from enum import StrEnum
 from typing import cast
 from kubernetes import client
 
 from config import config
 from kube.client import core_v1_api
+from ttl_cache import TTLCache
 
-SETTINGS_CONFIGMAP_NAME = "vkube-portal-settings"
 
-_ADMIN_EMAILS_KEY = "adminEmails"
-_MAX_VCLUSTERS_PER_USER_KEY = "maxVclustersPerUser"
-_DEFAULT_MAX_VCLUSTERS_PER_USER = 5
-_MAX_VCLUSTERS_PER_USER_OVERRIDES_KEY = "maxVclustersPerUserOverrides"
-_MAX_TEAM_SIZE_KEY = "maxTeamSize"
-_DEFAULT_MAX_TEAM_SIZE = 5
-_MAX_TEAM_SIZE_OVERRIDES_KEY = "maxTeamSizeOverrides"
+_SETTINGS_CONFIGMAP_NAME = "vkube-portal-settings"
+
+_SETTINGS_CACHE_KEY = "settings"
+_settings_cache: TTLCache[dict[str, str]] = TTLCache(config.cache_ttl_seconds)
+
+
+
+class _SettingsKey(StrEnum):
+    ADMIN_EMAILS = "adminEmails"
+    MAX_VCLUSTERS_PER_USER = "maxVclustersPerUser"
+    MAX_VCLUSTERS_PER_USER_OVERRIDES = "maxVclustersPerUserOverrides"
+    MAX_TEAM_SIZE = "maxTeamSize"
+    MAX_TEAM_SIZE_OVERRIDES = "maxTeamSizeOverrides"
 
 
 class SettingsService:
@@ -28,27 +35,37 @@ class SettingsService:
         self._namespace = namespace or config.claims_namespace
 
     def _read_data(self) -> dict[str, str]:
-        cm = cast(
-            client.V1ConfigMap,
-            self._core.read_namespaced_config_map(
-                name=SETTINGS_CONFIGMAP_NAME,
-                namespace=self._namespace,
-            ),
-        )
-        return cm.data or {}
+        def fetch() -> dict[str, str]:
+            cm = cast(
+                client.V1ConfigMap,
+                self._core.read_namespaced_config_map(
+                    name=_SETTINGS_CONFIGMAP_NAME,
+                    namespace=self._namespace,
+                ),
+            )
+            return cm.data or {}
+
+        return _settings_cache.get_or_set(_SETTINGS_CACHE_KEY, fetch)
 
     def _patch_config(self, data: dict[str, str]) -> None:
         self._core.patch_namespaced_config_map(
-            name=SETTINGS_CONFIGMAP_NAME,
+            name=_SETTINGS_CONFIGMAP_NAME,
             namespace=self._namespace,
             body={"data": data},
         )
+        _settings_cache.invalidate(_SETTINGS_CACHE_KEY)
 
-    def _get_overrides(self, key: str) -> dict[str, int]:
+    def _require(self, key: _SettingsKey) -> str:
+        value = self._read_data().get(key)
+        if value is None:
+            raise RuntimeError(f"{_SETTINGS_CONFIGMAP_NAME} is missing required key {key!r}")
+        return value
+
+    def _get_overrides(self, key: _SettingsKey) -> dict[str, int]:
         raw = self._read_data().get(key)
         return json.loads(raw) if raw else {}
 
-    def _set_override(self, key: str, email: str, value: int | None) -> None:
+    def _set_override(self, key: _SettingsKey, email: str, value: int | None) -> None:
         """Upserts the override for `email` or clears it if `value` is None."""
 
         overrides = self._get_overrides(key)
@@ -62,42 +79,40 @@ class SettingsService:
 
     def max_clusters_per_user(self, email: str | None = None) -> int:
         if email is not None:
-            override = self._get_overrides(_MAX_VCLUSTERS_PER_USER_OVERRIDES_KEY).get(email.strip().lower())
+            override = self._get_overrides(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES).get(email.strip().lower())
             if override is not None:
                 return override
 
-        raw = self._read_data().get(_MAX_VCLUSTERS_PER_USER_KEY)
-        return int(raw) if raw is not None else _DEFAULT_MAX_VCLUSTERS_PER_USER
+        return int(self._require(_SettingsKey.MAX_VCLUSTERS_PER_USER))
 
     def set_max_clusters_per_user(self, max_clusters: int) -> None:
-        self._patch_config({_MAX_VCLUSTERS_PER_USER_KEY: str(max_clusters)})
+        self._patch_config({_SettingsKey.MAX_VCLUSTERS_PER_USER: str(max_clusters)})
 
     def max_clusters_overrides(self) -> dict[str, int]:
-        return self._get_overrides(_MAX_VCLUSTERS_PER_USER_OVERRIDES_KEY)
+        return self._get_overrides(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES)
 
     def set_max_clusters_override(self, email: str, max_clusters: int | None) -> None:
-        self._set_override(_MAX_VCLUSTERS_PER_USER_OVERRIDES_KEY, email, max_clusters)
+        self._set_override(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES, email, max_clusters)
 
     def max_team_size(self, email: str | None = None) -> int:
         if email is not None:
-            override = self._get_overrides(_MAX_TEAM_SIZE_OVERRIDES_KEY).get(email.strip().lower())
+            override = self._get_overrides(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES).get(email.strip().lower())
             if override is not None:
                 return override
 
-        raw = self._read_data().get(_MAX_TEAM_SIZE_KEY)
-        return int(raw) if raw is not None else _DEFAULT_MAX_TEAM_SIZE
+        return int(self._require(_SettingsKey.MAX_TEAM_SIZE))
 
     def set_max_team_size(self, max_team_size: int) -> None:
-        self._patch_config({_MAX_TEAM_SIZE_KEY: str(max_team_size)})
+        self._patch_config({_SettingsKey.MAX_TEAM_SIZE: str(max_team_size)})
 
     def max_team_size_overrides(self) -> dict[str, int]:
-        return self._get_overrides(_MAX_TEAM_SIZE_OVERRIDES_KEY)
+        return self._get_overrides(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES)
 
     def set_max_team_size_override(self, email: str, max_team_size: int | None) -> None:
-        self._set_override(_MAX_TEAM_SIZE_OVERRIDES_KEY, email, max_team_size)
+        self._set_override(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES, email, max_team_size)
 
     def list_admins(self) -> list[str]:
-        raw = self._read_data().get(_ADMIN_EMAILS_KEY, "")
+        raw = self._read_data().get(_SettingsKey.ADMIN_EMAILS, "")
         return [e.strip().lower() for e in raw.split(",") if e.strip()]
 
     def is_admin(self, email: str) -> bool:
@@ -105,13 +120,15 @@ class SettingsService:
 
     def add_admin(self, email: str) -> None:
         admins = self.list_admins()
-        
+
         email = email.strip().lower()
         if email not in admins:
             admins.append(email)
 
-        self._patch_config({_ADMIN_EMAILS_KEY: ",".join(admins)})
+        self._patch_config({_SettingsKey.ADMIN_EMAILS: ",".join(admins)})
 
     def remove_admin(self, email: str) -> None:
         email = email.strip().lower()
-        self._patch_config({_ADMIN_EMAILS_KEY: ",".join(a for a in self.list_admins() if a != email)})
+        self._patch_config(
+            {_SettingsKey.ADMIN_EMAILS: ",".join(a for a in self.list_admins() if a != email)}
+        )

@@ -7,7 +7,7 @@
 #}
 {% macro confirm_modal(id, title, body, confirm_label, confirm_class, hx_post, hx_target, hx_swap="outerHTML", icon_name=none, hx_vals=none) %}
 <div class="modal fade" id="{{ id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">{{ title }}</h5>
