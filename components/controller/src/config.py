@@ -19,5 +19,8 @@ class Config:
     base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
     ingress_namespace: str = os.getenv("VCLUSTERS_INGRESS_NAMESPACE", "ingress-nginx")
 
+    inactivity_threshold_days: float = float(os.getenv("INACTIVITY_THRESHOLD_DAYS", "30"))
+    expiration_grace_period_days: float = float(os.getenv("EXPIRATION_GRACE_PERIOD_DAYS", "7"))
+
 
 config = Config()

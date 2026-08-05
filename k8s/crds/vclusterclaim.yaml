@@ -65,6 +65,9 @@ spec:
               observedGeneration:
                 type: integer
                 format: int64
+              lastActiveAt:
+                type: string
+                format: date-time
               conditions:
                 type: array
                 x-kubernetes-list-type: map
@@ -107,6 +110,9 @@ spec:
     - name: Ready
       type: string
       jsonPath: .status.conditions[?(@.type=="Ready")].status
+    - name: LastActive
+      type: date
+      jsonPath: .status.lastActiveAt
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp

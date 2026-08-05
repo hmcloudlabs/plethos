@@ -1,10 +1,11 @@
-from datetime import datetime, UTC
+from dataclasses import dataclass
+from datetime import datetime, timedelta, UTC
 import kopf
 from kubernetes import client
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
-from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase, State
+from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
 from context import ReconciliationContext
 from resources import (
     make_namespace,
@@ -52,6 +53,8 @@ def on_reconcile(
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
 
+    track_activity(ctx)
+
     ensure_namespace(ctx)
     ensure_service_account(ctx)
     ensure_rbac(ctx)
@@ -62,9 +65,23 @@ def reconcile(ctx: ReconciliationContext) -> None:
     else:
         reconcile_vcluster(ctx, vc_set)
 
+    sync_conditions(ctx)
+
     ctx.patch.status["observedGeneration"] = ctx.generation
 
-    sync_conditions(ctx)
+
+def track_activity(ctx: ReconciliationContext) -> None:
+    """
+    Tracks the time of last activity, ie. the last time the owner made a spec change
+    like toggling sleep/wake, editing members, etc. Detected by `metadata.generation
+    advancing past the last generation observed in a reconcile.
+    """
+
+    observed_generation = ctx.status.get("observedGeneration")
+    last_active_at = ctx.status.get("lastActiveAt")
+
+    if last_active_at is None or observed_generation != ctx.generation:
+        ctx.patch.status["lastActiveAt"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def sync_conditions(ctx: ReconciliationContext) -> None:
@@ -84,18 +101,36 @@ def sync_conditions(ctx: ReconciliationContext) -> None:
     if phase is not None:
         set_condition(
             ctx,
-            cond_type="Ready",
+            cond_type=ConditionType.READY,
             cond_status="True" if phase == Phase.READY else "False",
             reason=str(phase),
             message=ctx.patch.status.get("message", ""),
         )
+
+    # Sync `Inactive` condition
+    last_active_at = ctx.patch.status.get("lastActiveAt") or ctx.status["lastActiveAt"]
+    last_active_at_fmt = datetime.strptime(last_active_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+
+    is_inactive = datetime.now(UTC) - last_active_at_fmt >= timedelta(days=config.inactivity_threshold_days)
+    set_condition(
+        ctx,
+        cond_type=ConditionType.INACTIVE,
+        cond_status="True" if is_inactive else "False",
+        reason="InactivityThresholdReached" if is_inactive else "Active",
+        message=(
+            f"vCluster has been inactive since {last_active_at}."
+            if is_inactive else "vCluster is within its inactivity window."
+        )
+    )
 
 
 def set_condition(
     ctx: ReconciliationContext, *, cond_type: str, cond_status: str, reason: str, message: str
 ) -> None:
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    conditions = {c["type"]: dict(c) for c in (ctx.status.get("conditions") or [])}
+
+    conditions = ctx.patch.status.get("conditions") or ctx.status.get("conditions") or []
+    conditions = {c["type"]: dict(c) for c in conditions}
 
     previous = conditions.get(cond_type)
     if previous and previous.get("status") == cond_status:

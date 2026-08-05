@@ -25,6 +25,11 @@ class Phase(StrEnum):
     DELETING = "Deleting"
 
 
+class ConditionType(StrEnum):
+    READY = "Ready"
+    INACTIVE = "Inactive"
+    
+
 class _Model(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -55,4 +60,5 @@ class VClusterClaimStatus(_Model):
     phase: Phase | None = None
     message: str | None = None
     observed_generation: int | None = None
+    last_active_at: str | None = None
     conditions: list[Condition] = Field(default_factory=list)
