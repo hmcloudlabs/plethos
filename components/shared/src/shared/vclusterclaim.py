@@ -28,7 +28,9 @@ class Phase(StrEnum):
 class ConditionType(StrEnum):
     READY = "Ready"
     INACTIVE = "Inactive"
-    
+    SCHEDULED_FOR_SLEEP = "ScheduledForSleep"
+    SCHEDULED_FOR_DELETION = "ScheduledForDeletion"
+
 
 class _Model(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)

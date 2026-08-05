@@ -11,7 +11,7 @@ metadata:
 rules:
   - apiGroups: ["vkube.cs.hm.edu"]
     resources: ["vclusterclaims", "vclusterclaims/status"]
-    verbs: ["get", "list", "watch", "patch", "update"]
+    verbs: ["get", "list", "watch", "patch", "update", "delete"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create", "patch"]

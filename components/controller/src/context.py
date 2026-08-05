@@ -44,6 +44,14 @@ class VClusterNames:
         return f"helm-uninstall-{self.name}"
 
 
+@dataclass(frozen=True, slots=True)
+class ExpirationStatus:
+    last_active_at: str
+    is_inactive: bool
+    is_scheduled_for_sleep: bool
+    is_scheduled_for_deletion: bool
+
+
 @dataclass(slots=True)
 class ReconciliationContext:
     name: str
