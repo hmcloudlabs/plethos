@@ -154,7 +154,7 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
 
     # Running -> installation in progress, will retry on failures
     if status is JobStatus.RUNNING:
-        ctx.patch.status["phase"] = Phase.PENDING
+        ctx.patch.status["phase"] = Phase.PROVISIONING
         ctx.patch.status["message"] = "Helm install job running."
 
     # Failed after all retries -> will be deleted by the Job's TTL and retried next reconciliation loop
