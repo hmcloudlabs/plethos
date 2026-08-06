@@ -69,6 +69,6 @@ cd components/shared      && uv run pytest
 - [x] per specific user
 - [x] Caching
 - [ ] Backup strategy
-- [ ] vCluster expiration
+- [x] vCluster expiration
 - [ ] portal testing
 - [ ] Fix potential isloation escape because of per vCluster ClusterRole

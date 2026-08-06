@@ -52,8 +52,9 @@ def on_reconcile(
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
 
-    track_activity(ctx)
-    sync_expiration_conditions(ctx)
+    if handle_claim_expiration(ctx).is_scheduled_for_deletion:
+        delete_expired_claim(ctx)
+        return
 
     ensure_namespace(ctx)
     ensure_service_account(ctx)
@@ -68,128 +69,6 @@ def reconcile(ctx: ReconciliationContext) -> None:
     sync_ready_condition(ctx)
 
     ctx.patch.status["observedGeneration"] = ctx.generation
-
-
-def track_activity(ctx: ReconciliationContext) -> None:
-    """
-    Tracks the time of last activity, ie. the last time the owner made a spec change
-    like toggling sleep/wake, editing members, etc. Detected by `metadata.generation
-    advancing past the last generation observed in a reconcile.
-    """
-
-    observed_generation = ctx.status.get("observedGeneration")
-    last_active_at = ctx.status.get("lastActiveAt")
-
-    if last_active_at is None or observed_generation != ctx.generation:
-        ctx.patch.status["lastActiveAt"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def compute_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
-    """
-    Derives the expiration lifecycle from `status.lastActiveAt`:
-        * inactive once the owner hasn't made a spec change for
-          `config.inactivity_threshold_days`.
-        * scheduled for sleep one `config.expiration_grace_period_days` after that.
-        * scheduled for deletion one more `config.expiration_grace_period_days` after that.
-    """
-
-    last_active_at = ctx.patch.status.get("lastActiveAt") or ctx.status["lastActiveAt"]
-    inactive_for = datetime.now(UTC) - datetime.strptime(last_active_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-
-    inactive_after = timedelta(days=config.inactivity_threshold_days)
-    sleep_after = inactive_after + timedelta(days=config.expiration_grace_period_days)
-    delete_after = inactive_after + 2 * timedelta(days=config.expiration_grace_period_days)
-
-    return ExpirationStatus(
-        last_active_at=last_active_at,
-        is_inactive=inactive_for >= inactive_after,
-        is_scheduled_for_sleep=inactive_for >= sleep_after,
-        is_scheduled_for_deletion=inactive_for >= delete_after,
-    )
-
-
-def sync_ready_condition(ctx: ReconciliationContext) -> None:
-    """Derives `Ready` from `status.phase`, so `kubectl wait --for=condition=Ready` works."""
-
-    phase = ctx.patch.status.get("phase")
-    if phase is not None:
-        set_condition(
-            ctx,
-            cond_type=ConditionType.READY,
-            cond_status="True" if phase == Phase.READY else "False",
-            reason=str(phase),
-            message=ctx.patch.status.get("message", ""),
-        )
-
-
-def sync_expiration_conditions(ctx: ReconciliationContext) -> None:
-    """
-    Derives the `Inactive`, `ScheduledForSleep` and `ScheduledForDeletion` conditions
-    from the expiration lifecycle computed by `compute_expiration`.
-    """
-
-    expiration = compute_expiration(ctx)
-
-    # Sync `Inactive` condition
-    set_condition(
-        ctx,
-        cond_type=ConditionType.INACTIVE,
-        cond_status="True" if expiration.is_inactive else "False",
-        reason="InactivityThresholdReached" if expiration.is_inactive else "Active",
-        message=(
-            f"vCluster has been inactive since {expiration.last_active_at}."
-            if expiration.is_inactive else "vCluster is within its inactivity window."
-        )
-    )
-
-    # Sync `ScheduledForSleep` condition
-    set_condition(
-        ctx,
-        cond_type=ConditionType.SCHEDULED_FOR_SLEEP,
-        cond_status="True" if expiration.is_scheduled_for_sleep else "False",
-        reason="InactivityGracePeriodElapsed" if expiration.is_scheduled_for_sleep else "NotDue",
-        message=(
-            "vCluster is put to sleep automatically due to prolonged inactivity."
-            if expiration.is_scheduled_for_sleep else "Not yet scheduled for automatic sleep."
-        )
-    )
-
-    # Sync `ScheduledForDeletion` condition
-    set_condition(
-        ctx,
-        cond_type=ConditionType.SCHEDULED_FOR_DELETION,
-        cond_status="True" if expiration.is_scheduled_for_deletion else "False",
-        reason="SleepGracePeriodElapsed" if expiration.is_scheduled_for_deletion else "NotDue",
-        message=(
-            "VClusterClaim is deleted automatically due to prolonged inactivity."
-            if expiration.is_scheduled_for_deletion else "Not yet scheduled for automatic deletion."
-        )
-    )
-
-
-def set_condition(
-    ctx: ReconciliationContext, *, cond_type: str, cond_status: str, reason: str, message: str
-) -> None:
-    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    conditions = ctx.patch.status.get("conditions") or ctx.status.get("conditions") or []
-    conditions = {c["type"]: dict(c) for c in conditions}
-
-    previous = conditions.get(cond_type)
-    if previous and previous.get("status") == cond_status:
-        last_transition = previous.get("lastTransitionTime", now)
-    else:
-        last_transition = now
-
-    conditions[cond_type] = {
-        "type": cond_type,
-        "status": cond_status,
-        "reason": reason,
-        "message": message,
-        "lastTransitionTime": last_transition,
-        "observedGeneration": ctx.generation,
-    }
-    ctx.patch.status["conditions"] = list(conditions.values())
 
 
 def ensure_namespace(ctx: ReconciliationContext) -> None:
@@ -308,12 +187,19 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
     vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
 
     currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"
-    should_be_sleeping = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
+    manual_sleep = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
+    should_be_sleeping = manual_sleep or compute_claim_expiration(ctx).is_scheduled_for_sleep
+
+    sleeping_message = (
+        "vCluster sleeping."
+        if manual_sleep
+        else "vCluster put to sleep automatically due to inactivity."
+    )
 
     if should_be_sleeping and not currently_sleeping:
         sleep_vcluster(ctx.clients.apps, vc_set, ctx.logger)
         ctx.patch.status["phase"] = Phase.SLEEPING
-        ctx.patch.status["message"] = "vCluster sleeping."
+        ctx.patch.status["message"] = sleeping_message
         return
 
     if not should_be_sleeping and currently_sleeping:
@@ -325,7 +211,7 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
     # Desired and actual sleep state already agree -> nothing to change
     if should_be_sleeping and currently_sleeping:
         ctx.patch.status["phase"] = Phase.SLEEPING
-        ctx.patch.status["message"] = "vCluster sleeping."
+        ctx.patch.status["message"] = sleeping_message
         return
 
     # Last case: should not be sleeping, is not sleeping -> either ready or getting ready after wakeup
@@ -423,3 +309,137 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
 @kopf.on.field("batch/v1", "jobs", field="status", labels={f"{GROUP}/job-type": "install"})
 def on_install_job_event(labels, logger, **_: object) -> None:
     reconcile_claim_by_name(labels[f"{GROUP}/vcluster-claim"], logger)
+
+
+def compute_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
+    """
+    Computes the expiration lifecycle from `status.lastActiveAt`:
+        * inactive once the owner hasn't made a spec change for
+            `config.inactivity_threshold_days`.
+        * scheduled for sleep one `config.expiration_grace_period_days` after that.
+        * scheduled for deletion one more `config.expiration_grace_period_days` after that.
+    """
+
+    last_active_at = ctx.patch.status.get("lastActiveAt") or ctx.status["lastActiveAt"]
+    inactive_for = datetime.now(UTC) - datetime.strptime(last_active_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+
+    inactive_after = timedelta(days=config.inactivity_threshold_days)
+    sleep_after = inactive_after + timedelta(days=config.expiration_grace_period_days)
+    delete_after = inactive_after + 2 * timedelta(days=config.expiration_grace_period_days)
+
+    return ExpirationStatus(
+        last_active_at=last_active_at,
+        is_inactive=inactive_for >= inactive_after,
+        is_scheduled_for_sleep=inactive_for >= sleep_after,
+        is_scheduled_for_deletion=inactive_for >= delete_after,
+    )
+
+
+def handle_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
+    """Tracks activity and syncs the `Inactive`, `ScheduledForSleep` and `ScheduledForDeletion` conditions."""
+
+    # Tracks the time of last activity, ie. the last time the owner made a spec change
+    # like toggling sleep/wake, editing members, etc. (detected by `metadata.generation`)
+    observed_generation = ctx.status.get("observedGeneration")
+    last_active_at = ctx.status.get("lastActiveAt")
+    if last_active_at is None or observed_generation != ctx.generation:
+        ctx.patch.status["lastActiveAt"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    expiration = compute_claim_expiration(ctx)
+    
+    # Sync `Inactive` condition
+    set_condition(
+        ctx,
+        cond_type=ConditionType.INACTIVE,
+        cond_status="True" if expiration.is_inactive else "False",
+        reason="InactivityThresholdReached" if expiration.is_inactive else "Active",
+        message=(
+            f"vCluster has been inactive since {expiration.last_active_at}."
+            if expiration.is_inactive else "vCluster is within its inactivity window."
+        )
+    )
+
+    # Sync `ScheduledForSleep` condition
+    set_condition(
+        ctx,
+        cond_type=ConditionType.SCHEDULED_FOR_SLEEP,
+        cond_status="True" if expiration.is_scheduled_for_sleep else "False",
+        reason="InactivityGracePeriodElapsed" if expiration.is_scheduled_for_sleep else "NotDue",
+        message=(
+            "vCluster is put to sleep automatically due to prolonged inactivity."
+            if expiration.is_scheduled_for_sleep else "Not yet scheduled for automatic sleep."
+        )
+    )
+
+    # Sync `ScheduledForDeletion` condition
+    set_condition(
+        ctx,
+        cond_type=ConditionType.SCHEDULED_FOR_DELETION,
+        cond_status="True" if expiration.is_scheduled_for_deletion else "False",
+        reason="SleepGracePeriodElapsed" if expiration.is_scheduled_for_deletion else "NotDue",
+        message=(
+            "VClusterClaim is deleted automatically due to prolonged inactivity."
+            if expiration.is_scheduled_for_deletion else "Not yet scheduled for automatic deletion."
+        )
+    )
+
+    return expiration
+
+
+def sync_ready_condition(ctx: ReconciliationContext) -> None:
+    """Derives `Ready` from `status.phase`, so `kubectl wait --for=condition=Ready` works."""
+
+    phase = ctx.patch.status.get("phase")
+    if phase is not None:
+        set_condition(
+            ctx,
+            cond_type=ConditionType.READY,
+            cond_status="True" if phase == Phase.READY else "False",
+            reason=str(phase),
+            message=ctx.patch.status.get("message", ""),
+        )
+
+
+def delete_expired_claim(ctx: ReconciliationContext) -> None:
+    """
+    Deletes the claim once `ScheduledForDeletion` is reached. `on_delete` in
+    `delete.py` handles the actual vCluster teardown via kopf's finalizer.
+    """
+
+    ctx.logger.info(f"Deleting VClusterClaim {ctx.name} after prolonged inactivity.")
+    try:
+        ctx.clients.custom.delete_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=config.namespace,
+            name=ctx.name,
+        )
+    except ApiException as e:
+        if e.status != 404:
+            raise
+
+
+def set_condition(
+    ctx: ReconciliationContext, *, cond_type: str, cond_status: str, reason: str, message: str
+) -> None:
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    conditions = ctx.patch.status.get("conditions") or ctx.status.get("conditions") or []
+    conditions = {c["type"]: dict(c) for c in conditions}
+
+    previous = conditions.get(cond_type)
+    if previous and previous.get("status") == cond_status:
+        last_transition = previous.get("lastTransitionTime", now)
+    else:
+        last_transition = now
+
+    conditions[cond_type] = {
+        "type": cond_type,
+        "status": cond_status,
+        "reason": reason,
+        "message": message,
+        "lastTransitionTime": last_transition,
+        "observedGeneration": ctx.generation,
+    }
+    ctx.patch.status["conditions"] = list(conditions.values())
