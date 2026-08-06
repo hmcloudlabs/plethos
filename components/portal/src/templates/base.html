@@ -34,7 +34,6 @@
                 <span>docs</span>
               </a>
             </li>
-            {% if user %}
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
                 {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
@@ -43,7 +42,7 @@
                 <span>clusters</span>
               </a>
             </li>
-            {% if user.is_admin %}
+            {% if user and user.is_admin %}
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
                 {{ 'aria-current=page' if path.startswith('/admin') else '' }}
@@ -52,7 +51,6 @@
                 <span>admin</span>
               </a>
             </li>
-            {% endif %}
             {% endif %}
           </ul>
           <ul class="navbar-nav align-items-lg-center">
