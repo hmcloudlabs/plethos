@@ -8,30 +8,21 @@
     A self-service platform for creating and managing Kubernetes clusters.
   </p>
 
-  {# --- Resources: guides + source (dummy links for now) --- #}
-  <h2 class="h5 fw-bold mb-3">Guides</h2>
+  {# --- Resources: guides + source --- #}
+  <h2 class="h5 fw-bold mb-3">Documentation</h2>
   <div class="row g-3 mb-5">
     <div class="col-sm-6">
-      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
+      <a class="resource-link resource-tile" href="/docs">
         {{ icon("book") }}
         <span class="resource-link__body">
-          <span class="resource-link__title">Getting started</span>
-          <span class="resource-link__desc">Create your first cluster and connect to it.</span>
+          <span class="resource-link__title">Guide</span>
+          <span class="resource-link__desc">Create, connect to, and manage your clusters.</span>
         </span>
-        {{ icon("arrow-up-right") }}
+        {{ icon("arrow-right") }}
       </a>
     </div>
     <div class="col-sm-6">
-      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
-        {{ icon("book") }}
-        <span class="resource-link__body">
-          <span class="resource-link__title">User guide</span>
-          <span class="resource-link__desc">Sleeping, waking and downloading your data.</span>
-        </span>
-        {{ icon("arrow-up-right") }}
-      </a>
-    </div>
-    <div class="col-sm-6">
+      {# TODO: point at the real repo URL once confirmed - see conversation #}
       <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
         {{ icon("github") }}
         <span class="resource-link__body">
@@ -74,6 +65,7 @@
     </a>
   </div>
   {% else %}
+  <h2 class="h5 fw-bold mb-3">Get Started</h2>
   <div class="bento bento--pad d-flex flex-wrap align-items-center justify-content-between gap-3">
     <div>
       <div class="fw-semibold">Sign in to get started</div>

@@ -15,7 +15,7 @@ from auth import (
 )
 from config import config
 from kube.client import load_kube_config
-from pages import admin, clusters, home
+from pages import admin, clusters, docs, home
 from templating import STATIC_DIR
 
 
@@ -26,13 +26,14 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="vkube Portal", lifespan=lifespan)
+app = FastAPI(title="vkube Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(home.router)
 app.include_router(clusters.router)
 app.include_router(admin.router)
+app.include_router(docs.router)
 
 
 @app.exception_handler(NotAuthenticatedError)

@@ -1,5 +1,6 @@
 <!doctype html>
 {% from "components/toast.html" import toast %}
+{% from "components/icons.html" import icon %}
 <html lang="en" data-bs-theme="light">
   <head>
     <meta charset="utf-8" />
@@ -25,6 +26,14 @@
         <div class="navbar-content w-100">
           {% set path = request.url.path %}
           <ul class="navbar-nav me-auto ms-lg-5">
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/docs') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/docs') else '' }}
+                href="/docs">
+                {{ icon("book") }}
+                <span>docs</span>
+              </a>
+            </li>
             {% if user %}
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
@@ -89,10 +98,13 @@
 
     <main class="container py-4">{% block content %}{% endblock %}</main>
 
-    {# Deployers can add org-specific links (docs, imprint, privacy, contact) here. #}
+    {# Deployers can add org-specific links (imprint, privacy, ...) here. #}
     <footer class="app-footer">
-      <div class="container d-flex align-items-center gap-2">
-        <span>vKube - self-serivce multi-tenant Kubernetes platform</span>
+      <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <span>vKube - a self-service platform for creating and managing Kubernetes clusters.</span>
+        {% if config.support_email %}
+        <span>Need help? Contact your platform admin at <a href="mailto:{{ config.support_email }}">{{ config.support_email }}</a></span>
+        {% endif %}
       </div>
     </footer>
 

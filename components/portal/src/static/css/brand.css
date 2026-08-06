@@ -104,6 +104,9 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 
 /* --- Navbar --- */
 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--gray-200);
@@ -414,6 +417,96 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 }
 .modal-header .modal-title { font-size: 1rem; font-weight: 600; }
 .modal-body { padding: 1.25rem; }
+
+/* --- Docs content (rendered Markdown) --- */
+.docs-content {
+  color: var(--gray-700);
+  line-height: 1.65;
+}
+.docs-content > :first-child { margin-top: 0; }
+.docs-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.01em;
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+.docs-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--red-500);
+  letter-spacing: -0.01em;
+  margin: 2.25rem 0 0.85rem;
+}
+.docs-content h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 1.75rem 0 0.6rem;
+}
+.docs-content p { margin: 0 0 1rem; }
+.docs-content ul,
+.docs-content ol { margin: 0 0 1rem; padding-left: 1.4rem; }
+.docs-content li + li { margin-top: 0.35rem; }
+.docs-content a { color: var(--bs-link-color); text-decoration: underline; text-decoration-color: var(--gray-300); }
+.docs-content a:hover { color: var(--bs-link-hover-color); }
+.docs-content code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+}
+.docs-content pre {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--gray-100);
+  background: var(--gray-900);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  margin: 0 0 1.25rem;
+  overflow-x: auto;
+}
+.docs-content pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+.docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+}
+.docs-content th, .docs-content td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--gray-200);
+  text-align: left;
+}
+.docs-content thead th {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gray-500);
+  font-weight: 600;
+}
+.docs-content blockquote {
+  margin: 0 0 1.25rem;
+  padding: 0.1rem 1rem;
+  border-left: 3px solid var(--gray-200);
+  color: var(--gray-500);
+}
+.docs-content hr {
+  border: none;
+  border-top: 1px solid var(--gray-200);
+  margin: 2rem 0;
+}
 
 /* Container log output */
 .log-output {

@@ -99,6 +99,7 @@ dashboard (`/admin`), never directly:
 | `OIDC_SCOPES` | `openid email profile` | Requested OIDC scopes |
 | `VCLUSTERCLAIMS_NAMESPACE` | `vkube-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
+| `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Must match the controller's value, the portal always provisions the highest version |
 
 ## Testing

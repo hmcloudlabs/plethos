@@ -20,6 +20,8 @@ class Config:
     # How long the in-process TTL caches (VClusterClaim lists, settings) stay fresh.
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 
+    support_email: str = os.getenv("SUPPORT_EMAIL", "")
+
     # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
     # The portal always provisions the newest of these; it isn't user-selectable.
     supported_vcluster_versions: tuple[str, ...] = tuple(

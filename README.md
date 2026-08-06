@@ -68,11 +68,12 @@ cd components/shared      && uv run pytest
 - [x] PVC export
 - [x] max team/member size admin config
 - [x] per specific user
-- [x] Caching
+- [x] caching
 - [x] vCluster expiration
 - [ ] portal testing
-- [ ] Backup strategy
-- [ ] Fix potential isloation escape because of per vCluster ClusterRole
-- [ ] Documentation
+- [ ] backup strategy
+- [ ] fix potential isloation escape because of per vCluster ClusterRole
+- [x] documentation
 - [ ] initial GitLab CI pipeline
 - [ ] k8s setup files
+- [ ] email notification for expiring clusters
