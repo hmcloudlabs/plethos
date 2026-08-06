@@ -3,11 +3,14 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import kopf
+from kubernetes import client
 
 from config import config
-from context import ReconciliationContext
+from conftest import NAMESPACE, wait_for_404, wait_for_condition, wait_for_phase
+from context import ReconciliationContext, VClusterNames
 from handlers.reconcile import compute_claim_expiration, handle_claim_expiration
-from shared.vclusterclaim import ConditionType
+from kube import get_statefulset, unwrap_statefulset
+from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -107,3 +110,132 @@ class TestHandleClaimExpiration:
             ConditionType.SCHEDULED_FOR_DELETION,
         }
         assert condition(ctx, ConditionType.INACTIVE)["status"] == "False"
+
+
+class TestExpirationLifecycle:
+    def _patch_last_active_days_ago(self, clients, name: str, days_ago: float) -> None:
+        """Used to simulate inactivity by patching an old date into `status.lastActiveAt`"""
+
+        last_active_at = _iso(datetime.now(UTC) - timedelta(days=days_ago))
+        clients.custom.patch_namespaced_custom_object_status(
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=name,
+            body={"status": {"lastActiveAt": last_active_at}},
+        )
+
+    def test_inactive_condition_after_inactivity_threshold(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """
+        Crossing the inactivity threshold sets `Inactive` condition to true 
+        but without yet triggering sleep or deletion.
+        """
+
+        create_vcluster_claim()
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
+
+        self._patch_last_active_days_ago(clients, resource_name, config.inactivity_threshold_days + 1)
+
+        obj = wait_for_condition(clients.custom, resource_name, "Inactive", "True")
+        conditions = {c["type"]: c["status"] for c in obj["status"]["conditions"]}
+
+        # But not yet scheduled for sleep or deletion
+        assert conditions["ScheduledForSleep"] == "False"
+        assert conditions["ScheduledForDeletion"] == "False"
+
+    def test_auto_sleep_after_inactivity_and_grace_period(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """
+        Crossing inactivity threshold and one grace period, the vCluster is 
+        put to sleep automatically.
+        """
+
+        names = VClusterNames(resource_name)
+        create_vcluster_claim()
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
+
+        self._patch_last_active_days_ago(
+            clients,
+            resource_name,
+            config.inactivity_threshold_days + config.expiration_grace_period_days + 1,
+        )
+
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
+
+        apps = client.AppsV1Api()
+        vc_set = get_statefulset(apps, names.vcluster, names.namespace)
+        vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
+
+        assert vc_set_spec.replicas == 0
+        assert vc_set_metadata.annotations.get("loft.sh/paused") == "true"
+
+    def test_auto_delete_after_inactivity_and_two_grace_periods(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """
+        Crossing inactivity threshold and two grace periods, the VClusterClaim
+        resource is deleted automatically and tthe vCluster therefore cleaned up.
+        """
+
+        names = VClusterNames(resource_name)
+        create_vcluster_claim()
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
+
+        self._patch_last_active_days_ago(
+            clients,
+            resource_name,
+            config.inactivity_threshold_days + 2 * config.expiration_grace_period_days + 1,
+        )
+
+        wait_for_404(
+            lambda: clients.custom.get_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                plural=PLURAL,
+                namespace=NAMESPACE,
+                name=resource_name,
+            ),
+            resource_type="VClusterClaim",
+        )
+        wait_for_404(
+            lambda: clients.core.read_namespace(name=names.namespace),
+            resource_type="Namespace",
+        )
+
+    def test_owner_action_resets_expiration_clock(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """
+        Any owner spec change resets lastActiveAt, clearing the expiration
+        conditions and waking the vCluster even though it was auto-slept.
+        """
+
+        create_vcluster_claim()
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
+
+        self._patch_last_active_days_ago(
+            clients,
+            resource_name,
+            config.inactivity_threshold_days + config.expiration_grace_period_days + 1,
+        )
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
+
+        # Making a spec change by adding a member to a VClusterClaim should
+        # mark the VClusterClaim as active, ie. `Inactive` is False
+        clients.custom.patch_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
+            body={"spec": {"members": [{"email": "member@example.com"}]}},
+        )
+
+        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
+        conditions = {c["type"]: c["status"] for c in obj["status"]["conditions"]}
+        assert conditions["Inactive"] == "False"
+        assert conditions["ScheduledForSleep"] == "False"
