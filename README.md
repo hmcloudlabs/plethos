@@ -27,6 +27,7 @@ uv add --package shared <pkg>
 ## Run
 
 ### Portal:
+Please refer to the [components/portal/README.md](components/portal/README.md) for setup (auth, admin settings, etc.).
 ```bash
 # portal  -> http://localhost:8000
 uv run uvicorn main:app --reload --app-dir components/portal/src
@@ -68,7 +69,10 @@ cd components/shared      && uv run pytest
 - [x] max team/member size admin config
 - [x] per specific user
 - [x] Caching
-- [ ] Backup strategy
 - [x] vCluster expiration
 - [ ] portal testing
+- [ ] Backup strategy
 - [ ] Fix potential isloation escape because of per vCluster ClusterRole
+- [ ] Documentation
+- [ ] initial GitLab CI pipeline
+- [ ] k8s setup files
