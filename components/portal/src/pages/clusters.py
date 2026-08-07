@@ -30,7 +30,7 @@ def get_settings_service() -> SettingsService:
 def _owned_claim_or_404(
     vcc_service: VClusterClaimUserService, object_name: str, sub: str
 ) -> VClusterClaim:
-    """Fetch a claim the user owns, or raise 404 (used by the owner-only access panel)."""
+    """Fetch a claim the user owns, or raise 404 (used by the owner-only member panel)."""
 
     claim = vcc_service.get_by_object_name(object_name)
     if claim is None or claim.access_for(sub) is not AccessType.OWNER:
@@ -138,14 +138,14 @@ def _render_after_action(
     return _render_cluster_list(request, user, vcc_service)
 
 
-def _render_access_panel(
+def _render_member_panel(
     request: Request, claim: VClusterClaim, *, error: str | None = None, message: str | None = None
 ) -> HTMLResponse:
     """The manage-users modal body."""
 
     return templates.TemplateResponse(
         request,
-        "components/access_panel.html",
+        "components/member_panel.html",
         {
             "object_name": claim.object_name,
             "cluster_name": claim.spec.name,
@@ -258,19 +258,19 @@ def download_data(
     )
 
 
-@router.get("/clusters/{object_name}/access", response_class=HTMLResponse)
-def cluster_access(
+@router.get("/clusters/{object_name}/members", response_class=HTMLResponse)
+def cluster_members(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
-    return _render_access_panel(request, claim)
+    return _render_member_panel(request, claim)
 
 
-@router.post("/clusters/{object_name}/access", response_class=HTMLResponse)
-def add_cluster_access(
+@router.post("/clusters/{object_name}/members", response_class=HTMLResponse)
+def invite_cluster_member(
     object_name: str,
     request: Request,
     email: str = Form(...),
@@ -292,7 +292,7 @@ def add_cluster_access(
 
     message: str | None = None
     if error is None:
-        result = vcc_service.invite_access(object_name, user.sub, email)
+        result = vcc_service.invite_member(object_name, user.sub, email)
         if result is not None:
             claim, token = result
             accept_url = str(request.url_for("accept_invite")) + f"?token={token}"
@@ -306,7 +306,7 @@ def add_cluster_access(
             )
             message = f"Invite sent to {email}."
 
-    return _render_access_panel(request, claim, error=error, message=message)
+    return _render_member_panel(request, claim, error=error, message=message)
 
 
 @router.get("/invites/accept", name="accept_invite")
@@ -327,20 +327,20 @@ def accept_invite(
     return RedirectResponse("/clusters", status_code=303)
 
 
-@router.post("/clusters/{object_name}/access/remove", response_class=HTMLResponse)
-def remove_cluster_access(
+@router.post("/clusters/{object_name}/members/remove", response_class=HTMLResponse)
+def remove_cluster_member(
     object_name: str,
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
-    claim = vcc_service.remove_access(object_name, user.sub, email.strip().lower())
+    claim = vcc_service.remove_member(object_name, user.sub, email.strip().lower())
 
     if claim is None:
         raise HTTPException(status_code=404, detail="Cluster not found.")
 
-    return _render_access_panel(request, claim)
+    return _render_member_panel(request, claim)
 
 
 @router.post("/clusters")

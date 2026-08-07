@@ -80,7 +80,7 @@ class VClusterClaimUserService:
             return
         self._repo.delete(object_name)
 
-    def invite_access(
+    def invite_member(
         self, object_name: str, owner_sub: str, member_email: str
     ) -> tuple[VClusterClaim, str] | None:
         """Starts an invite (owner only): returns the claim and a signed accept token."""
@@ -117,7 +117,7 @@ class VClusterClaimUserService:
         members = [*claim.spec.members, Member(email=member_email)]
         return self._repo.add_member(object_name, members, member_email)
 
-    def remove_access(
+    def remove_member(
         self, object_name: str, owner_sub: str, member_email: str
     ) -> VClusterClaim | None:
         """Revoke a member's access (owner only), returns None if not found/owned."""

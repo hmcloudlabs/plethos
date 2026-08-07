@@ -122,9 +122,9 @@
               class="btn btn-sm btn-secondary"
               title="Manage users"
               data-bs-toggle="modal"
-              data-bs-target="#access-modal"
-              hx-get="/clusters/{{ obj }}/access"
-              hx-target="#access-modal-body"
+              data-bs-target="#member-modal"
+              hx-get="/clusters/{{ obj }}/members"
+              hx-target="#member-modal-body"
               {# override the outerHTML swap inherited from #cluster-list, which would
                  otherwise replace (delete) the modal body the form needs to target #}
               hx-swap="innerHTML"

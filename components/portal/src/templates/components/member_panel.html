@@ -12,7 +12,7 @@
 <div hx-swap-oob="beforeend:#toast-container">{{ toast(message, "success") }}</div>
 {% endif %}
 
-<form hx-post="/clusters/{{ object_name }}/access" hx-target="#access-modal-body" class="d-flex gap-2 mb-3">
+<form hx-post="/clusters/{{ object_name }}/members" hx-target="#member-modal-body" class="d-flex gap-2 mb-3">
   <input
     type="email"
     name="email"
@@ -30,9 +30,9 @@
     <button
       class="btn btn-sm btn-danger flex-shrink-0"
       title="Remove access"
-      hx-post="/clusters/{{ object_name }}/access/remove"
+      hx-post="/clusters/{{ object_name }}/members/remove"
       hx-vals='{{ {"email": member.email} | tojson }}'
-      hx-target="#access-modal-body"
+      hx-target="#member-modal-body"
     >
       {{ icon("trash") }}
     </button>
