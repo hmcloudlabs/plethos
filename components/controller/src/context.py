@@ -48,8 +48,8 @@ class VClusterNames:
 class ExpirationStatus:
     last_active_at: str
     is_inactive: bool
-    is_scheduled_for_sleep: bool
-    is_scheduled_for_deletion: bool
+    is_suspended: bool
+    is_expired: bool
 
 
 @dataclass(slots=True)

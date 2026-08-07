@@ -41,8 +41,8 @@ class TestComputeClaimExpiration:
         expiration = compute_claim_expiration(ctx)
 
         assert not expiration.is_inactive
-        assert not expiration.is_scheduled_for_sleep
-        assert not expiration.is_scheduled_for_deletion
+        assert not expiration.is_suspended
+        assert not expiration.is_expired
 
     def test_inactive_after_threshold(self):
         last_active = datetime.now(UTC) - timedelta(days=config.inactivity_threshold_days, hours=1)
@@ -51,8 +51,8 @@ class TestComputeClaimExpiration:
         expiration = compute_claim_expiration(ctx)
 
         assert expiration.is_inactive
-        assert not expiration.is_scheduled_for_sleep
-        assert not expiration.is_scheduled_for_deletion
+        assert not expiration.is_suspended
+        assert not expiration.is_expired
 
     def test_scheduled_for_sleep_after_one_grace_period(self):
         last_active = datetime.now(UTC) - timedelta(
@@ -63,8 +63,8 @@ class TestComputeClaimExpiration:
         expiration = compute_claim_expiration(ctx)
 
         assert expiration.is_inactive
-        assert expiration.is_scheduled_for_sleep
-        assert not expiration.is_scheduled_for_deletion
+        assert expiration.is_suspended
+        assert not expiration.is_expired
 
     def test_scheduled_for_deletion_after_two_grace_periods(self):
         last_active = datetime.now(UTC) - timedelta(
@@ -75,8 +75,8 @@ class TestComputeClaimExpiration:
         expiration = compute_claim_expiration(ctx)
 
         assert expiration.is_inactive
-        assert expiration.is_scheduled_for_sleep
-        assert expiration.is_scheduled_for_deletion
+        assert expiration.is_suspended
+        assert expiration.is_expired
 
 
 class TestHandleClaimExpiration:
@@ -98,7 +98,7 @@ class TestHandleClaimExpiration:
         assert "lastActiveAt" not in ctx.patch.status
         assert expiration.is_inactive
 
-    def test_writes_all_three_conditions(self):
+    def test_writes_both_conditions(self):
         ctx = make_ctx(status={"lastActiveAt": _iso(datetime.now(UTC))})
 
         handle_claim_expiration(ctx)
@@ -106,8 +106,7 @@ class TestHandleClaimExpiration:
         types = {c["type"] for c in ctx.patch.status["conditions"]}
         assert types == {
             ConditionType.INACTIVE,
-            ConditionType.SCHEDULED_FOR_SLEEP,
-            ConditionType.SCHEDULED_FOR_DELETION,
+            ConditionType.SUSPENDED,
         }
         assert condition(ctx, ConditionType.INACTIVE)["status"] == "False"
 
@@ -142,9 +141,8 @@ class TestExpirationLifecycle:
         obj = wait_for_condition(clients.custom, resource_name, "Inactive", "True")
         conditions = {c["type"]: c["status"] for c in obj["status"]["conditions"]}
 
-        # But not yet scheduled for sleep or deletion
-        assert conditions["ScheduledForSleep"] == "False"
-        assert conditions["ScheduledForDeletion"] == "False"
+        # But not yet scheduled for deletion
+        assert conditions["Suspended"] == "False"
 
     def test_auto_sleep_after_inactivity_and_grace_period(
         self, operator, clients, create_vcluster_claim, resource_name
@@ -238,4 +236,4 @@ class TestExpirationLifecycle:
         obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
         conditions = {c["type"]: c["status"] for c in obj["status"]["conditions"]}
         assert conditions["Inactive"] == "False"
-        assert conditions["ScheduledForSleep"] == "False"
+        assert conditions["Suspended"] == "False"

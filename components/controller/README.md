@@ -83,13 +83,12 @@ Claims that go unused for too long are put to sleep and eventually deleted autom
 Inactivity is tracked via `status.lastActiveAt`, which resets to *now* whenever the owner
 makes any spec change (toggling sleep/wake, editing members, etc):
 
-1. After `INACTIVITY_THRESHOLD_DAYS` days of inactivity, the `Inactive` condition becomes `True` (this can be used as the signal for the portal to, e.g. send a notification email (not yet implemented).
-2. One `EXPIRATION_GRACE_PERIOD_DAYS` days after that, the vCluster is put to sleep automatically
-   (`ScheduledForSleep`), independently of `spec.state`.
-3. One more `EXPIRATION_GRACE_PERIOD_DAYS` days after that, the claim is deleted automatically
-   (`ScheduledForDeletion`).
+1. After `INACTIVITY_THRESHOLD_DAYS` days of inactivity, the `Inactive` condition becomes `True`.
+2. One `EXPIRATION_GRACE_PERIOD_DAYS` days after that, the vCluster is put to sleep automatically,
+   independently of `spec.state`, and the `Suspended` condition becomes `True`.
+3. One more `EXPIRATION_GRACE_PERIOD_DAYS` days after that, the claim is deleted automatically.
 
-Any owner spec change resets the clock at any stage, clearing all three conditions.
+Any owner spec change resets the clock at any stage, clearing both conditions.
 
 ## Version selection
 
@@ -130,8 +129,7 @@ The `status.phase` field described the operator-controlled status of a `VCluster
 |---|---|
 | `Ready` | The vCluster is actually up (`False` otherwise, with the current phase as `reason`) |
 | `Inactive` | The claim has been inactive past `INACTIVITY_THRESHOLD_DAYS` (see [Expiration](#expiration)) |
-| `ScheduledForSleep` | The vCluster has been put to sleep automatically due to inactivity |
-| `ScheduledForDeletion` | The claim has been deleted automatically due to inactivity |
+| `Suspended` | The vCluster has been put to sleep automatically due to inactivity, and the claim will be deleted after one more grace period |
 
 `Ready` supports:
 

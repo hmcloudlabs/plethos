@@ -28,8 +28,7 @@ class Phase(StrEnum):
 class ConditionType(StrEnum):
     READY = "Ready"
     INACTIVE = "Inactive"
-    SCHEDULED_FOR_SLEEP = "ScheduledForSleep"
-    SCHEDULED_FOR_DELETION = "ScheduledForDeletion"
+    SUSPENDED = "Suspended"
 
 
 class _Model(BaseModel):

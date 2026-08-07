@@ -52,7 +52,7 @@ def on_reconcile(
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
 
-    if handle_claim_expiration(ctx).is_scheduled_for_deletion:
+    if handle_claim_expiration(ctx).is_expired:
         delete_expired_claim(ctx)
         return
 
@@ -188,7 +188,7 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
 
     currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"
     manual_sleep = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
-    should_be_sleeping = manual_sleep or compute_claim_expiration(ctx).is_scheduled_for_sleep
+    should_be_sleeping = manual_sleep or compute_claim_expiration(ctx).is_suspended
 
     sleeping_message = (
         "vCluster sleeping."
@@ -330,13 +330,13 @@ def compute_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
     return ExpirationStatus(
         last_active_at=last_active_at,
         is_inactive=inactive_for >= inactive_after,
-        is_scheduled_for_sleep=inactive_for >= sleep_after,
-        is_scheduled_for_deletion=inactive_for >= delete_after,
+        is_suspended=inactive_for >= sleep_after,
+        is_expired=inactive_for >= delete_after,
     )
 
 
 def handle_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
-    """Tracks activity and syncs the `Inactive`, `ScheduledForSleep` and `ScheduledForDeletion` conditions."""
+    """Tracks activity and syncs the `Inactive` and `Suspended` conditions."""
 
     # Tracks the time of last activity, ie. the last time the owner made a spec change
     # like toggling sleep/wake, editing members, etc. (detected by `metadata.generation`)
@@ -344,9 +344,9 @@ def handle_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
     last_active_at = ctx.status.get("lastActiveAt")
     if last_active_at is None or observed_generation != ctx.generation:
         ctx.patch.status["lastActiveAt"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    
+
     expiration = compute_claim_expiration(ctx)
-    
+
     # Sync `Inactive` condition
     set_condition(
         ctx,
@@ -359,27 +359,16 @@ def handle_claim_expiration(ctx: ReconciliationContext) -> ExpirationStatus:
         )
     )
 
-    # Sync `ScheduledForSleep` condition
+    # Sync `Suspended` condition
     set_condition(
         ctx,
-        cond_type=ConditionType.SCHEDULED_FOR_SLEEP,
-        cond_status="True" if expiration.is_scheduled_for_sleep else "False",
-        reason="InactivityGracePeriodElapsed" if expiration.is_scheduled_for_sleep else "NotDue",
+        cond_type=ConditionType.SUSPENDED,
+        cond_status="True" if expiration.is_suspended else "False",
+        reason="InactivityGracePeriodElapsed" if expiration.is_suspended else "NotDue",
         message=(
-            "vCluster is put to sleep automatically due to prolonged inactivity."
-            if expiration.is_scheduled_for_sleep else "Not yet scheduled for automatic sleep."
-        )
-    )
-
-    # Sync `ScheduledForDeletion` condition
-    set_condition(
-        ctx,
-        cond_type=ConditionType.SCHEDULED_FOR_DELETION,
-        cond_status="True" if expiration.is_scheduled_for_deletion else "False",
-        reason="SleepGracePeriodElapsed" if expiration.is_scheduled_for_deletion else "NotDue",
-        message=(
-            "VClusterClaim is deleted automatically due to prolonged inactivity."
-            if expiration.is_scheduled_for_deletion else "Not yet scheduled for automatic deletion."
+            "vCluster put to sleep automatically due to prolonged inactivity; "
+            "the claim will be deleted automatically after one more grace period."
+            if expiration.is_suspended else "Not yet scheduled for automatic sleep or deletion."
         )
     )
 
@@ -402,7 +391,7 @@ def sync_ready_condition(ctx: ReconciliationContext) -> None:
 
 def delete_expired_claim(ctx: ReconciliationContext) -> None:
     """
-    Deletes the claim once `ScheduledForDeletion` is reached. `on_delete` in
+    Deletes the claim after two full grace periods of inactivity. `on_delete` in
     `delete.py` handles the actual vCluster teardown via kopf's finalizer.
     """
 
