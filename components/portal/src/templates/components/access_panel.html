@@ -8,6 +8,8 @@
 
 {% if error %}
 <div hx-swap-oob="beforeend:#toast-container">{{ toast(error, "error") }}</div>
+{% elif message %}
+<div hx-swap-oob="beforeend:#toast-container">{{ toast(message, "success") }}</div>
 {% endif %}
 
 <form hx-post="/clusters/{{ object_name }}/access" hx-target="#access-modal-body" class="d-flex gap-2 mb-3">

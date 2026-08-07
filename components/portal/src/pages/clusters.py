@@ -11,6 +11,7 @@ from kube.vclusterclaim_service import (
     AccessType,
     VClusterClaimUserService,
 )
+from mailer import send_email
 from shared.vclusterclaim import State
 from templating import templates
 from utils import FlashLevel, is_valid_email, pop_flash, set_flash
@@ -138,7 +139,7 @@ def _render_after_action(
 
 
 def _render_access_panel(
-    request: Request, claim: VClusterClaim, *, error: str | None = None
+    request: Request, claim: VClusterClaim, *, error: str | None = None, message: str | None = None
 ) -> HTMLResponse:
     """The manage-users modal body."""
 
@@ -150,6 +151,7 @@ def _render_access_panel(
             "cluster_name": claim.spec.name,
             "members": claim.spec.members,
             "error": error,
+            "message": message,
         },
     )
 
@@ -288,12 +290,41 @@ def add_cluster_access(
     if error is None:
         error = _check_team_quota(claim, settings_service, email)
 
+    message: str | None = None
     if error is None:
-        updated = vcc_service.add_access(object_name, user.sub, email)
-        if updated is not None:
-            claim = updated
+        result = vcc_service.invite_access(object_name, user.sub, email)
+        if result is not None:
+            claim, token = result
+            accept_url = str(request.url_for("accept_invite")) + f"?token={token}"
+            send_email(
+                to=email,
+                subject=f"You've been invited to cluster '{claim.spec.name}'",
+                body=(
+                    f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.\n\n"
+                    f"Accept the invite: {accept_url}"
+                ),
+            )
+            message = f"Invite sent to {email}."
 
-    return _render_access_panel(request, claim, error=error)
+    return _render_access_panel(request, claim, error=error, message=message)
+
+
+@router.get("/invites/accept", name="accept_invite")
+def accept_invite(
+    request: Request,
+    token: str,
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> RedirectResponse:
+    """Grants the invited email access. Doesn't require login - the signed token is the proof."""
+
+    claim = vcc_service.accept_invite(token, settings_service)
+    if claim is None:
+        set_flash(request, "This invite link is invalid or has expired.", level="error")
+    else:
+        set_flash(request, f"You now have access to cluster '{claim.spec.name}'. Sign in to view it.", level="success")
+
+    return RedirectResponse("/clusters", status_code=303)
 
 
 @router.post("/clusters/{object_name}/access/remove", response_class=HTMLResponse)

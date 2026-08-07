@@ -1,3 +1,5 @@
+from invites import generate_invite_token, verify_invite_token
+from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import AccessType, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from shared.vclusterclaim import Member, State, VClusterClaimSpec
@@ -78,19 +80,41 @@ class VClusterClaimUserService:
             return
         self._repo.delete(object_name)
 
-    def add_access(
+    def invite_access(
         self, object_name: str, owner_sub: str, member_email: str
-    ) -> VClusterClaim | None:
-        """Grants a member access (owner only), returns None if not found/owned."""
+    ) -> tuple[VClusterClaim, str] | None:
+        """Starts an invite (owner only): returns the claim and a signed accept token."""
 
         claim = self._get_for_owner(object_name, owner_sub)
         if claim is None:
             return None
 
-        # Drop any existing entry for this email in the current VClusterClaim before re-adding.
-        members = [member for member in claim.spec.members if member.email != member_email]
-        members.append(Member(email=member_email))
+        return claim, generate_invite_token(object_name, member_email)
 
+    def accept_invite(self, token: str, settings_service: SettingsService) -> VClusterClaim | None:
+        """
+        Grants access to a cluster from a signed invite token.
+
+        Returns None if the token is invalid/expired, the cluster is gone or the
+        team-size quota has since been reached.
+        """
+
+        payload = verify_invite_token(token)
+        if payload is None:
+            return None
+
+        object_name, member_email = payload["object_name"], payload["email"]
+        claim = self._repo.get(object_name)
+        if claim is None:
+            return None
+
+        if any(member.email == member_email for member in claim.spec.members):
+            return claim  # already a member, nothing to do
+
+        if len(claim.spec.members) >= settings_service.max_team_size(claim.spec.owner_email):
+            return None
+
+        members = [*claim.spec.members, Member(email=member_email)]
         return self._repo.add_member(object_name, members, member_email)
 
     def remove_access(

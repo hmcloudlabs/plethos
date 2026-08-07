@@ -22,6 +22,12 @@ class Config:
 
     support_email: str = os.getenv("SUPPORT_EMAIL", "")
 
+    smtp_host: str = os.getenv("SMTP_HOST", "")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_username: str = os.getenv("SMTP_USERNAME", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_from_address: str = os.getenv("SMTP_FROM_ADDRESS", "vkube@example.com")
+
     # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
     # The portal always provisions the newest of these; it isn't user-selectable.
     supported_vcluster_versions: tuple[str, ...] = tuple(
