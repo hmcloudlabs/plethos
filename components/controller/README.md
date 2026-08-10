@@ -22,8 +22,10 @@ kubectl create namespace vkube-system
 Apply the `VClusterClaim` CRD:
 
 ```bash
-kubectl apply -f k8s/crds/vclusterclaim.yaml
+kubectl apply -f k8s/base/crds/vclusterclaim.yaml
 ```
+
+(For a full cluster deployment rather than local development, see [k8s/README.md](../../k8s/README.md).)
 
 ## Running the controller
 

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vkube-portal
+  namespace: vkube-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: portal
+          env:
+            - name: VCLUSTERCLAIMS_NAMESPACE  # must match in kustomization.yaml
+              value: vkube-system
+            - name: OIDC_ISSUER
+              value: https://idp.yourcompany.com/realms/vkube-portal
+            - name: OIDC_CLIENT_ID
+              value: vkube-portal
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vkube-portal-secrets
+                  key: OIDC_CLIENT_SECRET
+            - name: PORTAL_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vkube-portal-secrets
+                  key: PORTAL_SESSION_SECRET
+            - name: SUPPORT_EMAIL
+              value: support@yourcompany.com
+            - name: SUPPORTED_VCLUSTER_VERSIONS
+              value: "0.20.0,0.35.0"
+            - name: SMTP_HOST
+              value: smtp.yourcompany.com
+            - name: SMTP_FROM_ADDRESS
+              value: vkube@yourcompany.com
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: vkube-portal-secrets
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vkube-portal-secrets
+                  key: SMTP_PASSWORD

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vkube-controller
+  namespace: vkube-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: controller
+          env:
+            - name: VCLUSTERCLAIMS_NAMESPACE  # must match in kustomization.yaml
+              value: vkube-system
+            - name: VCLUSTERS_BASE_DOMAIN
+              value: vclusters.yourcompany.com
+            - name: VCLUSTERS_INGRESS_NAMESPACE
+              value: ingress-nginx
+            - name: SUPPORTED_VCLUSTER_VERSIONS
+              value: "0.20.0,0.35.0"

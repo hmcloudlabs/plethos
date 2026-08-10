@@ -23,11 +23,13 @@ kubectl create namespace vkube-system
 Seed the settings `ConfigMap` the portal requires to start (admin emails, quotas):
 
 ```bash
-kubectl apply -f k8s/portal/configmap.yaml
+kubectl apply -f k8s/base/portal/configmap.yaml
 ```
 
 **Note:** the shipped ConfigMap only lists `testuser@example.com` as an admin. Add your own
 email (see [Admin settings](#admin-settings)) or edit the ConfigMap directly for local admin access.
+
+(For a full cluster deployment rather than local development, see [k8s/README.md](../../k8s/README.md).)
 
 ## Running the portal
 
@@ -71,7 +73,7 @@ the stable identifier a claim is scoped to, not the email (which can change).
   controller supports, see `SUPPORTED_VCLUSTER_VERSIONS`)
 - Download a cluster's kubeconfig, view control-plane logs, export PVC/workload data as a tar
 - Share a cluster with other users by email, subject to the team-size quota; shared members can
-  sleep/wake, only the owner can delete
+  sleep/wake, only the owner can delete (all `SMTP_*` env vars must be set for invites to work)
 - Admins additionally get: every cluster across all users, with sleep/wake/delete/log access
   regardless of owner; an owners overview with bulk-delete; and the settings below
 
@@ -101,6 +103,11 @@ dashboard (`/admin`), never directly:
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
 | `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Must match the controller's value, the portal always provisions the highest version |
+| `SMTP_HOST` | _(unset)_ | SMTP server for sending member-invite emails |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
+| `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
+| `SMTP_FROM_ADDRESS` | `vkube@example.com` | `From` address on invite emails |
 
 ## Testing
 

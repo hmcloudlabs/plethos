@@ -8,7 +8,7 @@ vkube-manager/
 │   ├── portal/        # FastAPI + HTMX app
 │   ├── controller/    # KOPF k8s controller
 │   └── shared/        # shared package
-└── k8s/               # cluster manifests
+└── k8s/               # cluster manifests (Kustomize base + overlays, see k8s/README.md)
 ```
 
 ## Install
@@ -70,10 +70,11 @@ cd components/shared      && uv run pytest
 - [x] per specific user
 - [x] caching
 - [x] vCluster expiration
+- [x] email invite for members
+- [x] documentation
 - [ ] portal testing
 - [ ] backup strategy
 - [ ] fix potential isloation escape because of per vCluster ClusterRole
-- [x] documentation
 - [ ] initial GitLab CI pipeline
-- [ ] k8s setup files
+- [x] k8s setup files
 - [ ] email notification for expiring clusters
