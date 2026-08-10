@@ -1,12 +1,7 @@
-"""
-Signed, stateless cluster-invite tokens (itsdangerous). No server-side storage:
-the token itself embeds the target claim and invited email, signed and
-time-limited, so accepting an invite needs nothing beyond decoding it.
-"""
-
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from config import config
+
 
 _SALT = "cluster-invite"
 _MAX_AGE_SECONDS = 7 * 24 * 60 * 60  # 7 days
