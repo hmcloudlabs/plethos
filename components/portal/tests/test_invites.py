@@ -13,7 +13,7 @@ class TestVerifyInviteToken:
     def test_rejects_a_tampered_token(self):
         token = generate_invite_token("u123-my-cluster", "bob@example.com")
 
-        tampered = token[:-1] + ("a" if token[-1] != "a" else "b")  # structurally valid token
+        tampered = ("a" if token[0] != "a" else "b") + token[1:]  # structurally valid token
         assert verify_invite_token(tampered) is None
 
     def test_rejects_a_malformed_token(self):
