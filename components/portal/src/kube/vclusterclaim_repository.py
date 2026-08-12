@@ -45,7 +45,7 @@ def vcluster_namespace(object_name: str) -> str:
 
 
 class VClusterClaimAlreadyExistsError(Exception):
-    """Raised when a claim with the requested object name already exists."""
+    """Raised when a VClusterClaim with the requested object name already exists."""
 
 
 class VClusterClaimRepository:
