@@ -16,8 +16,8 @@ class TTLCache(Generic[V]):
         self._locks_guard = threading.Lock()
 
     def get_or_set(self, key: str, loader: Callable[[], V]) -> V:
-        """Returns the cached value for `key`, or calls `loader` and caches its result.
-
+        """
+        Returns the cached value for `key`, or calls `loader` and caches its result.
         Locks per key, so a miss for one key never blocks lookups of other keys.
         """
 
