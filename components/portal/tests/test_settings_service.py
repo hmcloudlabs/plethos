@@ -163,7 +163,7 @@ class TestMaxTeamSize:
 
     def test_set_override_none_clears_existing_override(self, settings, core_api):
         core_api.read_namespaced_config_map.return_value.data = {
-            _SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"bob@example.com": 7})
+            _SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"bob@example.com": 7, "ted@example.com": 7})
         }
 
         settings.set_max_team_size_override("bob@example.com", None)
@@ -171,7 +171,7 @@ class TestMaxTeamSize:
         core_api.patch_namespaced_config_map.assert_called_once_with(
             name=_SETTINGS_CONFIGMAP_NAME,
             namespace=_NAMESPACE,
-            body={"data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({})}},
+            body={"data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"ted@example.com": 7})}},
         )
 
 
