@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from auth import (
@@ -67,20 +69,22 @@ class TestRequireUser:
 
 
 class TestRequireAdmin:
-    def test_raises_when_logged_in_but_not_admin(self, monkeypatch):
-        monkeypatch.setattr(SettingsService, "is_admin", lambda _self, _email: False)
+    def test_raises_when_logged_in_but_not_admin(self):
+        settings_service = MagicMock(spec=SettingsService)
+        settings_service.is_admin.return_value = False
 
         request = make_request()
         set_session_user(request, make_user())
 
         with pytest.raises(NotAuthorizedError):
-            require_admin(request)
+            require_admin(request, settings_service)
 
-    def test_returns_the_user_when_admin(self, monkeypatch):
-        monkeypatch.setattr(SettingsService, "is_admin", lambda _self, _email: True)
+    def test_returns_the_user_when_admin(self):
+        settings_service = MagicMock(spec=SettingsService)
+        settings_service.is_admin.return_value = True
 
         request = make_request()
         user = make_user()
         set_session_user(request, user)
 
-        assert require_admin(request) == user
+        assert require_admin(request, settings_service) == user
