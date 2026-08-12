@@ -12,6 +12,7 @@ are kept in the signed session cookie.
 from dataclasses import dataclass
 
 from authlib.integrations.starlette_client import OAuth
+from fastapi import Depends
 from starlette.requests import Request
 
 from config import config
@@ -57,9 +58,8 @@ class User:
     def to_session(self) -> dict:
         return {"sub": self.sub, "email": self.email, "name": self.name}
 
-    @property
-    def is_admin(self) -> bool:
-        return SettingsService().is_admin(self.email)
+    def is_admin(self, settings_service: SettingsService | None = None) -> bool:
+        return (settings_service or SettingsService()).is_admin(self.email)
 
 
 class NotAuthenticatedError(Exception):
@@ -104,11 +104,17 @@ def require_user(request: Request) -> User:
     return user
 
 
-def require_admin(request: Request) -> User:
+def get_settings_service() -> SettingsService:
+    return SettingsService()
+
+
+def require_admin(
+    request: Request, settings_service: SettingsService = Depends(get_settings_service)
+) -> User:
     """FastAPI dependency: the logged-in user, but only if they're an admin."""
 
     user = require_user(request)
-    if not user.is_admin:
+    if not user.is_admin(settings_service):
         raise NotAuthorizedError()
 
     return user
