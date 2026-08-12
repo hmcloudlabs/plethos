@@ -1,7 +1,12 @@
 import pytest
+from starlette.requests import Request
 
 from kube.vclusterclaim_model import VClusterClaim
 from shared.vclusterclaim import Member, VClusterClaimSpec, VClusterClaimStatus
+
+
+def make_request() -> Request:
+    return Request({"type": "http", "session": {}})
 
 
 @pytest.fixture
