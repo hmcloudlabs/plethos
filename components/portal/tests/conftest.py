@@ -12,15 +12,18 @@ def make_request() -> Request:
 @pytest.fixture
 def make_vcluster_claim():
     def _make(
-        object_name: str = "u123-test-cluster",
+        name: str = "test-cluster",
+        object_name: str | None = None,
         owner_subject: str = "owner-sub",
         owner_email: str = "owner@example.com",
         members: list[Member] | None = None,
     ) -> VClusterClaim:
         return VClusterClaim(
-            object_name=object_name,
+            # In reality object_name is derived from the given name but still 
+            # allow passing fabricated object_name for tests that need one.
+            object_name=object_name or f"u123-{name}",
             spec=VClusterClaimSpec(
-                name="test-cluster",
+                name=name,
                 owner_subject=owner_subject,
                 owner_email=owner_email,
                 members=members or [],
