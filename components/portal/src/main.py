@@ -51,7 +51,6 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# SSO login/logout routes: the OIDC authorization-code round-trip.
 @app.get("/login")
 async def login(request: Request):
     redirect_uri = request.url_for("auth_callback")
