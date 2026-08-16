@@ -31,8 +31,7 @@ def setup_logging() -> None:
 
     logging.getLogger("uvicorn.access").disabled = True
 
-    # uvicorn's own startup/shutdown/reload messages (logged via "uvicorn"/"uvicorn.error")
-    # keep their own handler, set up before this runs - just restyle it to match ours.
+    # Make uvicorn use our formatter.
     for uvicorn_logger_name in ("uvicorn", "uvicorn.error"):
         for handler in logging.getLogger(uvicorn_logger_name).handlers:
             handler.setFormatter(formatter)

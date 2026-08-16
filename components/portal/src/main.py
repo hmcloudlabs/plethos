@@ -19,7 +19,7 @@ from auth import (
 )
 from config import config
 from kube.client import load_kube_config
-from logging_config import setup_logging
+from logging_setup import setup_logging
 from pages import admin, clusters, docs, home
 from templating import STATIC_DIR
 
