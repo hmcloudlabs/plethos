@@ -1,4 +1,5 @@
 import json
+import logging
 from enum import StrEnum
 from typing import cast
 from kubernetes import client
@@ -6,6 +7,8 @@ from kubernetes import client
 from config import config
 from kube.client import core_v1_api
 from ttl_cache import TTLCache
+
+logger = logging.getLogger(__name__)
 
 
 _SETTINGS_CONFIGMAP_NAME = "vkube-portal-settings"
@@ -87,12 +90,17 @@ class SettingsService:
 
     def set_max_clusters_per_user(self, max_clusters: int) -> None:
         self._patch_config({_SettingsKey.MAX_VCLUSTERS_PER_USER: str(max_clusters)})
+        logger.info(f"Admin set max clusters per user to {max_clusters}")
 
     def max_clusters_overrides(self) -> dict[str, int]:
         return self._get_overrides(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES)
 
     def set_max_clusters_override(self, email: str, max_clusters: int | None) -> None:
         self._set_override(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES, email, max_clusters)
+        if max_clusters is None:
+            logger.info(f"Admin cleared max-clusters override for {email}")
+        else:
+            logger.info(f"Admin set max-clusters override for {email} to {max_clusters}")
 
     def max_team_size(self, email: str | None = None) -> int:
         if email is not None:
@@ -104,12 +112,17 @@ class SettingsService:
 
     def set_max_team_size(self, max_team_size: int) -> None:
         self._patch_config({_SettingsKey.MAX_TEAM_SIZE: str(max_team_size)})
+        logger.info(f"Admin set max team size to {max_team_size}")
 
     def max_team_size_overrides(self) -> dict[str, int]:
         return self._get_overrides(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES)
 
     def set_max_team_size_override(self, email: str, max_team_size: int | None) -> None:
         self._set_override(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES, email, max_team_size)
+        if max_team_size is None:
+            logger.info(f"Admin cleared max-team-size override for {email}")
+        else:
+            logger.info(f"Admin set max-team-size override for {email} to {max_team_size}")
 
     def list_admins(self) -> list[str]:
         raw = self._read_data().get(_SettingsKey.ADMIN_EMAILS, "")
@@ -126,9 +139,11 @@ class SettingsService:
             admins.append(email)
 
         self._patch_config({_SettingsKey.ADMIN_EMAILS: ",".join(admins)})
+        logger.info(f"Admin access granted to {email}")
 
     def remove_admin(self, email: str) -> None:
         email = email.strip().lower()
         self._patch_config(
             {_SettingsKey.ADMIN_EMAILS: ",".join(a for a in self.list_admins() if a != email)}
         )
+        logger.info(f"Admin access revoked from {email}")

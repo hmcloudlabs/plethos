@@ -4,12 +4,12 @@ from email.message import EmailMessage
 
 from config import config
 
-logger = logging.getLogger("mailer")
+logger = logging.getLogger(__name__)
 
 
 def send_email(*, to: str, subject: str, body: str) -> None:
     if not config.smtp_host:
-        logger.info(f"SMTP not configured, skipping email to {to}: {subject}")
+        logger.info(f"SMTP not configured, skipping email to")
         return
 
     message = EmailMessage()

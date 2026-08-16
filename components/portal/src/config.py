@@ -8,6 +8,9 @@ class Config:
     port: int = int(os.getenv("PORTAL_PORT", "8000"))
     session_secret: str = os.getenv("PORTAL_SESSION_SECRET", "dev-secret-change-me")
 
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    log_dir: str = os.getenv("LOG_DIR", "")
+
     oidc_issuer: str = os.getenv("OIDC_ISSUER", "http://localhost:9090/realms/vkube-portal")
     oidc_client_id: str = os.getenv("OIDC_CLIENT_ID", "vkube-portal")
     oidc_client_secret: str = os.getenv("OIDC_CLIENT_SECRET", "")

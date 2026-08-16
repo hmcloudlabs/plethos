@@ -1,6 +1,10 @@
+import logging
+
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from config import config
+
+logger = logging.getLogger(__name__)
 
 
 _SALT = "cluster-invite"
@@ -18,5 +22,9 @@ def verify_invite_token(token: str) -> dict | None:
 
     try:
         return _serializer.loads(token, max_age=_MAX_AGE_SECONDS)
-    except (BadSignature, SignatureExpired):
+    except SignatureExpired:
+        logger.info("Invite token expired")
+        return None
+    except BadSignature:
+        logger.warning("Invite token failed signature verification")
         return None

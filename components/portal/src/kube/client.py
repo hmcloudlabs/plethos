@@ -1,13 +1,18 @@
+import logging
 from functools import lru_cache
 import kubernetes
 from kubernetes import client
+
+logger = logging.getLogger(__name__)
 
 
 def load_kube_config() -> None:
     try:
         kubernetes.config.load_incluster_config()
+        logger.info("Loaded in-cluster kube config")
     except kubernetes.config.ConfigException:
         kubernetes.config.load_kube_config()
+        logger.info("Loaded local kube config")
 
 
 @lru_cache(maxsize=1)

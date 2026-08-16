@@ -88,6 +88,12 @@ dashboard (`/admin`), never directly:
 | Max team size (shared members) | `maxTeamSize` | `maxTeamSizeOverrides` (email -> int) |
 | Admin emails | `adminEmails` | - |
 
+## Logging
+
+Console logging (level via `LOG_LEVEL`, default `INFO`) is always on. Set `LOG_DIR` to also write
+rotating log files there. Note: in-cluster, `LOG_DIR` needs a `PersistentVolumeClaim` mounted at
+that path to survive pod restarts.
+
 ## Configuration
 
 | Environment Variable | Default | Description |
@@ -95,6 +101,8 @@ dashboard (`/admin`), never directly:
 | `PORTAL_HOST` | `0.0.0.0` | uvicorn bind host |
 | `PORTAL_PORT` | `8000` | uvicorn bind port |
 | `PORTAL_SESSION_SECRET` | `dev-secret-change-me` | Signs the session cookie - set a real secret in production |
+| `LOG_LEVEL` | `INFO` | Root log level (see [Logging](#logging)) |
+| `LOG_DIR` | _(unset)_ | Directory to also write rotating log files to. Left unset, logging is console-only |
 | `OIDC_ISSUER` | `http://localhost:9090/realms/vkube-portal` | OIDC issuer base URL |
 | `OIDC_CLIENT_ID` | `vkube-portal` | OAuth2 client id |
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OAuth2 client secret |

@@ -1,8 +1,12 @@
+import logging
+
 from invites import generate_invite_token, verify_invite_token
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import AccessType, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from shared.vclusterclaim import Member, State, VClusterClaimSpec
+
+logger = logging.getLogger(__name__)
 
 
 class VClusterClaimUserService:
@@ -45,7 +49,10 @@ class VClusterClaimUserService:
             owner_email=email,
             v_cluster_version=vcluster_version,
         )
-        return self._repo.create(sub, name, spec)
+        claim = self._repo.create(sub, name, spec)
+        logger.info(f"{email} created cluster '{name}' ({claim.object_name})")
+
+        return claim
 
     def _get_for_owner(self, object_name: str, sub: str) -> VClusterClaim | None:
         """Load a claim if `sub` owns it, None if it doesn't exist or isn't theirs."""
@@ -72,6 +79,7 @@ class VClusterClaimUserService:
             return
 
         self._repo.patch_state(object_name, state)
+        logger.info(f"{email} set cluster '{object_name}' to {state.value}")
 
     def delete(self, object_name: str, sub: str) -> None:
         """Delete a cluster (owner only)."""
@@ -79,6 +87,7 @@ class VClusterClaimUserService:
         if self._get_for_owner(object_name, sub) is None:
             return
         self._repo.delete(object_name)
+        logger.info(f"Owner deleted cluster '{object_name}'")
 
     def invite_member(
         self, object_name: str, owner_sub: str, member_email: str
@@ -89,6 +98,7 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
+        logger.info(f"Invite created for {member_email} to cluster '{object_name}'")
         return claim, generate_invite_token(object_name, member_email)
 
     def accept_invite(self, token: str, settings_service: SettingsService) -> VClusterClaim | None:
@@ -112,10 +122,14 @@ class VClusterClaimUserService:
             return claim  # already a member, nothing to do
 
         if len(claim.spec.members) >= settings_service.max_team_size(claim.spec.owner_email):
+            logger.warning(f"{member_email} could not join '{object_name}': team-size quota reached")
             return None
 
         members = [*claim.spec.members, Member(email=member_email)]
-        return self._repo.add_member(object_name, members, member_email)
+        claim = self._repo.add_member(object_name, members, member_email)
+        logger.info(f"{member_email} accepted invite to cluster '{object_name}'")
+
+        return claim
 
     def remove_member(
         self, object_name: str, owner_sub: str, member_email: str
@@ -128,7 +142,10 @@ class VClusterClaimUserService:
 
         members = [member for member in claim.spec.members if member.email != member_email]
 
-        return self._repo.remove_member(object_name, members, member_email)
+        claim = self._repo.remove_member(object_name, members, member_email)
+        logger.info(f"Removed {member_email} from cluster '{object_name}'")
+
+        return claim
 
     def get_kubeconfig(self, object_name: str, sub: str, email: str) -> tuple[str, str] | None:
         """Returns the VClusterClaim name and its vCluster kubeconfig for the owner or shared member."""
@@ -180,10 +197,12 @@ class VClusterClaimAdminService:
     def set_state(self, object_name: str, state: State) -> None:
         """Sleep/wake any cluster, regardless of ownership."""
         self._repo.patch_state(object_name, state)
+        logger.info(f"Admin set cluster '{object_name}' to {state.value}")
 
     def delete(self, object_name: str) -> None:
         """Delete any cluster, regardless of ownership."""
         self._repo.delete(object_name)
+        logger.info(f"Admin deleted cluster '{object_name}'")
 
     def delete_all_for_owner(self, owner_email: str) -> int:
         """Delete every cluster owned by the given email. Returns the count deleted."""
@@ -197,6 +216,7 @@ class VClusterClaimAdminService:
         for claim in owned:
             self._repo.delete(claim.object_name)
 
+        logger.info(f"Admin deleted all {len(owned)} cluster(s) owned by {owner_email}")
         return len(owned)
 
     def get_kubeconfig(self, object_name: str) -> tuple[str, str] | None:
