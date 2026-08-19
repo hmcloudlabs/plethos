@@ -7,10 +7,13 @@ from config import config
 from shared.vclusterclaim import GROUP, VClusterClaimSpec, VClusterClaimStatus
 
 
-RENEWED_AT_ANNOTATION = f"{GROUP}/renewed-at"
-SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
-EXPIRED_ANNOTATION = f"{GROUP}/expired"
-DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
+class ExpiryAnnotation(StrEnum):
+    """Annotation keys the expiry job/portal read and write to a VClusterClaim."""
+
+    RENEWED_AT = f"{GROUP}/renewed-at"
+    SLEEP_WARNING = f"{GROUP}/sleep-warning-sent"
+    EXPIRED = f"{GROUP}/expired"
+    DELETION_WARNING = f"{GROUP}/deletion-warning-sent"
 
 
 class AccessType(StrEnum):
@@ -56,8 +59,16 @@ class VClusterClaim:
 
     @property
     def expires_at(self) -> datetime:
-        """When this claim expires if never renewed again: EXPIRY_PERIOD_DAYS after its last renewal, or after creation if never renewed."""
+        """When this VClusterClaim expires (EXPIRY_PERIOD_DAYS after its last renewal, or after creation if never renewed before)."""
 
-        renewed_at = self.annotations.get(RENEWED_AT_ANNOTATION) or cast(str, self.creation_timestamp)
-        renewed_at_dt = datetime.strptime(renewed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-        return renewed_at_dt + timedelta(days=config.expiry_period_days)
+        renewed_at = self.renewed_at or datetime.strptime(cast(str, self.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        return renewed_at + timedelta(days=config.expiry_period_days)
+
+    @property
+    def renewed_at(self) -> datetime | None:
+        """When this VClusterClaim was last renewed after an upcoming expiration."""
+        
+        renewed_at_annotation = self.annotations.get(ExpiryAnnotation.RENEWED_AT)
+        if not renewed_at_annotation:
+            return None
+        return datetime.strptime(renewed_at_annotation, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)

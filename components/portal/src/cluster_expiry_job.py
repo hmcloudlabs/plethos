@@ -1,13 +1,9 @@
 """
-Standalone entrypoint: checks every VClusterClaim for prolonged inactivity, sending owners a
+Standalone entrypoint: checks every VClusterClaim for their upcoming expiration, sending owners a
 warning email (with a keep-alive link) before sleeping and eventually deleting their cluster.
 
-Meant to be run on a schedule by something external to the portal - a k8s CronJob, in-cluster,
-reusing the portal's own image and ServiceAccount (see k8s/base/notifier/cronjob.yaml) - rather
-than as a background task inside the portal process. That keeps this a single, one-shot run per
-tick no matter how many portal replicas exist, instead of every replica running its own copy.
-
-    python src/cluster_expiry_job.py
+Meant to be run on a schedule by something external to the portal, optimally the K8s CRON job
+already configured in the /k8s folder.
 """
 
 import logging
@@ -16,7 +12,7 @@ from typing import cast
 
 from config import config
 from kube.client import load_kube_config
-from kube.vclusterclaim_model import VClusterClaim
+from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from logging_setup import setup_logging
 from mailer import send_email
@@ -35,17 +31,17 @@ def check_inactive_clusters(repo: VClusterClaimRepository) -> None:
 
 
 def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -> None:
-    renewed_at = cast(str, repo.get_renewed_at(claim.object_name) or claim.creation_timestamp)
-    time_since_renewal = datetime.now(UTC) - datetime.strptime(renewed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    renewed_at = claim.renewed_at or datetime.strptime(cast(str, claim.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    time_since_renewal = datetime.now(UTC) - renewed_at
 
     warning_lead = timedelta(days=config.warning_lead_days)
 
     sleep_at = timedelta(days=config.expiry_period_days)
     delete_at = sleep_at + timedelta(days=config.grace_period_days)
 
-    has_sleep_warning = repo.has_sleep_warning(claim.object_name)
-    has_deletion_warning = repo.has_deletion_warning(claim.object_name)
-    has_already_expired = repo.has_expired(claim.object_name)
+    has_sleep_warning = ExpiryAnnotation.SLEEP_WARNING in claim.annotations
+    has_deletion_warning = ExpiryAnnotation.DELETION_WARNING in claim.annotations
+    has_already_expired = ExpiryAnnotation.EXPIRED in claim.annotations
 
     # Final stage: delete the cluster
     if time_since_renewal >= delete_at and has_deletion_warning:
@@ -64,7 +60,7 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"{config.warning_lead_days:g} day(s) unless you confirm you're still using it."
             ),
         )
-        repo.add_auto_deletion_warning(claim.object_name)
+        repo.patch_annotations(claim.object_name, {ExpiryAnnotation.DELETION_WARNING: "True"})
 
         logger.info(f"Sent deletion warning for cluster '{claim.object_name}'")
         return
@@ -82,7 +78,7 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"It will be deleted in {config.grace_period_days:g} day(s) unless you confirm you're still using it."
             ),
         )
-        repo.mark_as_expired(claim.object_name)
+        repo.patch_annotations(claim.object_name, {ExpiryAnnotation.EXPIRED: "True"})
 
         logger.info(f"Cluster '{claim.object_name}' has expired and has been put to sleep")
         return
@@ -97,7 +93,7 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"day(s) and will then be put to sleep automatically unless you confirm you're still using it."
             ),
         )
-        repo.add_auto_sleep_warning(claim.object_name)
+        repo.patch_annotations(claim.object_name, {ExpiryAnnotation.SLEEP_WARNING: "True"})
 
         logger.info(f"Sent expiry warning for cluster '{claim.object_name}'")
 
