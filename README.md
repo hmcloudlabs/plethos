@@ -73,10 +73,11 @@ cd components/shared      && uv run pytest
 - [x] email invite for members
 - [x] documentation
 - [x] portal testing
+- [x] email notification for expiring clusters
+- [x] logging
+- [x] k8s setup files
+- [ ] expiration tests
 - [ ] backup strategy
 - [ ] fix potential isloation escape because of per vCluster ClusterRole
 - [ ] initial GitLab CI pipeline
-- [x] k8s setup files
-- [x] logging (console + optional local file, see [components/portal/README.md#logging](components/portal/README.md#logging); durable in-cluster log persistence still open)
-- [ ] observability
-- [ ] email notification for expiring clusters
+- [ ] style emails
