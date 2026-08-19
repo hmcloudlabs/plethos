@@ -11,3 +11,4 @@ resources:
   - portal/ingress.yaml
   - controller/rbac.yaml
   - controller/deployment.yaml
+  - notifier/cronjob.yaml

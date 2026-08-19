@@ -305,10 +305,16 @@ def on_install_job_event(labels, logger, **_: object) -> None:
 def track_activity(ctx: ReconciliationContext) -> None:
     """Tracks `status.lastActiveAt` and syncs the `Inactive` condition from it."""
 
-    # Tracks the time of last activity, ie. the last time the owner made a spec change.
     observed_generation = ctx.status.get("observedGeneration")
+    current_state = ctx.spec.get("state", State.RUNNING)
     last_active_at = ctx.status.get("lastActiveAt")
-    if last_active_at is None or observed_generation != ctx.generation:
+
+    # Activity is detected by a spec change (i.e. observeredGeneration was bumped).
+    # Excetption: A transition *into* Sleeping doesn't count as activity.
+    generation_changed = observed_generation != ctx.generation
+    went_to_sleep = ctx.status.get("phase") != Phase.SLEEPING and current_state == State.SLEEPING
+
+    if last_active_at is None or (generation_changed and not went_to_sleep):
         last_active_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         ctx.patch.status["lastActiveAt"] = last_active_at
 

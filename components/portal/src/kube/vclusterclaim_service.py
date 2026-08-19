@@ -1,10 +1,11 @@
+from datetime import UTC, datetime
 import logging
 
-from invites import generate_invite_token, verify_invite_token
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import AccessType, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
-from shared.vclusterclaim import Member, State, VClusterClaimSpec
+from shared.vclusterclaim import GROUP, Member, State, VClusterClaimSpec, VClusterClaimStatus
+from tokens import invite_tokens, keep_alive_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class VClusterClaimUserService:
             return None
 
         logger.info(f"Invite created for {member_email} to cluster '{object_name}'")
-        return claim, generate_invite_token(object_name, member_email)
+        return claim, invite_tokens.generate({"object_name": object_name, "email": member_email})
 
     def accept_invite(self, token: str, settings_service: SettingsService) -> VClusterClaim | None:
         """
@@ -109,7 +110,7 @@ class VClusterClaimUserService:
         team-size quota has since been reached.
         """
 
-        payload = verify_invite_token(token)
+        payload = invite_tokens.verify(token)
         if payload is None:
             return None
 
@@ -177,6 +178,29 @@ class VClusterClaimUserService:
             return None
 
         return claim.spec.name, data
+        
+    def confirm_keep_alive(self, token: str) -> VClusterClaim | None:
+        """
+        Marks a cluster as active from a signed keep-alive token (sent by the inactivity job's
+        warning emails) by resetting the inactivity clock and removing warning annotations.
+
+        Returns None if the token is invalid/expired or the cluster is gone.
+        """
+
+        payload = keep_alive_tokens.verify(token)
+        if payload is None:
+            return None
+
+        object_name = payload["object_name"]
+        claim = self._repo.get(object_name)
+        if claim is None:
+            return None
+
+        self._repo.reset_inactivity(object_name)
+
+        logger.info(f"Cluster '{object_name}' marked as active via keep-alive link")
+
+        return claim
 
 
 class VClusterClaimAdminService:
@@ -231,3 +255,4 @@ class VClusterClaimAdminService:
             return None
 
         return claim.spec.name, kubeconfig
+

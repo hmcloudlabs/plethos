@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from shared.vclusterclaim import VClusterClaimSpec, VClusterClaimStatus
@@ -17,6 +17,7 @@ class VClusterClaim:
     spec: VClusterClaimSpec
     status: VClusterClaimStatus
     creation_timestamp: str | None
+    annotations: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_obj(cls, obj: dict) -> "VClusterClaim":
@@ -26,11 +27,12 @@ class VClusterClaim:
             spec=VClusterClaimSpec.model_validate(obj.get("spec", {})),
             status=VClusterClaimStatus.model_validate(obj.get("status") or {}),
             creation_timestamp=meta.get("creationTimestamp"),
+            annotations=meta.get("annotations") or {},
         )
 
     def access_for(self, sub: str, email: str = "") -> AccessType | None:
-        """The caller's access to this claim: OWNER, MEMBER, or None (no access).
-
+        """
+        The caller's access to this claim: OWNER, MEMBER, or None (no access).
         The email is only needed to detect MEMBER access; OWNER-only checks can omit it.
         """
 

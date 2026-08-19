@@ -20,19 +20,24 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "vkube-system")
 
-    # How long the in-process TTL caches (VClusterClaim lists, settings) stay fresh.
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 
     support_email: str = os.getenv("SUPPORT_EMAIL", "")
+    portal_base_url: str = os.getenv("PORTAL_BASE_URL", "http://localhost:8000")
 
-    smtp_host: str = os.getenv("SMTP_HOST", "")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    inactivity_period_days: float = float(os.getenv("INACTIVITY_PERIOD_DAYS", "30"))
+    notice_period_days: float = float(os.getenv("NOTICE_PERIOD_DAYS", "7"))
+
+    # How long signed links (member invites, keep-alive) stay valid.
+    token_max_age_seconds: int = int(os.getenv("TOKEN_MAX_AGE_SECONDS", str(7 * 24 * 60 * 60)))
+
+    smtp_host: str = os.getenv("SMTP_HOST", "localhost")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "1025"))
     smtp_username: str = os.getenv("SMTP_USERNAME", "")
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     smtp_from_address: str = os.getenv("SMTP_FROM_ADDRESS", "vkube@example.com")
 
-    # vCluster versions the controller accepts (its SUPPORTED_VCLUSTER_VERSIONS).
-    # The portal always provisions the newest of these; it isn't user-selectable.
+    # vCluster versions the controller accepts (the portal always provisions the newest of these)
     supported_vcluster_versions: tuple[str, ...] = tuple(
         v.strip()
         for v in os.getenv("SUPPORTED_VCLUSTER_VERSIONS", "0.20.0,0.35.0").split(",")

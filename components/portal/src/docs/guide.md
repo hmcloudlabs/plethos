@@ -32,12 +32,6 @@ A sleeping cluster is scaled down to zero - it costs nothing to keep around, but
 is reachable until you wake it back up. Open a cluster and use **Sleep** / **Wake** to switch
 between the two. Waking a cluster takes a short while, same as the initial provisioning.
 
-### Automatic sleep and deletion
-
-Clusters nobody has touched in a while are put to sleep automatically, and eventually deleted, so
-forgotten clusters don't sit around indefinitely. Any action you take on a cluster (waking it,
-sharing it, ...) resets this - if you're actively using a cluster, it never expires on you.
-
 ### Exporting your data
 
 Open a cluster and click **Export data** to download a tarball of everything stored in its

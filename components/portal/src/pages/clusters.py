@@ -218,6 +218,23 @@ def delete_cluster(
     return _render_cluster_list(request, user, vcc_service)
 
 
+@router.get("/keep-alive/confirm", name="confirm_keep_alive")
+def confirm_keep_alive(
+    request: Request,
+    token: str,
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+) -> RedirectResponse:
+    """Resets the cluster's inactivity clock from a signed keep-alive link."""
+
+    claim = vcc_service.confirm_keep_alive(token)
+    if claim is None:
+        set_flash(request, "This link is invalid or has expired.", level="error")
+    else:
+        set_flash(request, f"Cluster '{claim.spec.name}' marked as active.", level="success")
+
+    return RedirectResponse("/clusters", status_code=303)
+
+
 @router.get("/clusters/{object_name}/kubeconfig")
 def download_kubeconfig(
     object_name: str,

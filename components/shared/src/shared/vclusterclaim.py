@@ -28,7 +28,6 @@ class Phase(StrEnum):
 class ConditionType(StrEnum):
     READY = "Ready"
     INACTIVE = "Inactive"
-    SUSPENDED = "Suspended"
 
 
 class _Model(BaseModel):
@@ -63,3 +62,6 @@ class VClusterClaimStatus(_Model):
     observed_generation: int | None = None
     last_active_at: str | None = None
     conditions: list[Condition] = Field(default_factory=list)
+
+    def has_condition(self, cond_type: ConditionType, status: str = "True") -> bool:
+        return any(c.type == cond_type and c.status == status for c in self.conditions)

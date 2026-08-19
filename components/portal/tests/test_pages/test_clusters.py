@@ -150,6 +150,22 @@ class TestClusterInvitation:
         assert "You now have access" in res.text
 
 
+class TestKeepClusterAlive:
+    def test_confirming_invalid_token_shows_error_message(self, client, vcc_service):
+        vcc_service.confirm_keep_alive.return_value = None
+
+        res = client.get("/keep-alive/confirm", params={"token": "invalid-token"})
+
+        assert "invalid or has expired" in res.text
+
+    def test_confirming_valid_token_shows_success_message(self, client, vcc_service, make_vcluster_claim):
+        vcc_service.confirm_keep_alive.return_value = make_vcluster_claim()
+
+        res = client.get("/keep-alive/confirm", params={"token": "good-token"})
+
+        assert "marked as active" in res.text
+
+
 class TestDownloadKubeconfig:
     def test_shows_error_message_when_not_available(self, client, vcc_service):
         vcc_service.get_kubeconfig.return_value = None

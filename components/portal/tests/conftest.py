@@ -17,9 +17,11 @@ def make_vcluster_claim():
         owner_subject: str = "owner-sub",
         owner_email: str = "owner@example.com",
         members: list[Member] | None = None,
+        status: VClusterClaimStatus | None = None,
+        annotations: dict[str, str] | None = None,
     ) -> VClusterClaim:
         return VClusterClaim(
-            # In reality object_name is derived from the given name but still 
+            # In reality object_name is derived from the given name but still
             # allow passing fabricated object_name for tests that need one.
             object_name=object_name or f"u123-{name}",
             spec=VClusterClaimSpec(
@@ -28,8 +30,9 @@ def make_vcluster_claim():
                 owner_email=owner_email,
                 members=members or [],
             ),
-            status=VClusterClaimStatus(),
+            status=status or VClusterClaimStatus(),
             creation_timestamp=None,
+            annotations=annotations or {},
         )
 
     return _make

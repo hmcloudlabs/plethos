@@ -2,11 +2,11 @@ from unittest.mock import MagicMock, call, create_autospec
 
 import pytest
 
-from invites import generate_invite_token
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from kube.vclusterclaim_service import VClusterClaimAdminService, VClusterClaimUserService
 from shared.vclusterclaim import Member, State
+from tokens import invite_tokens, keep_alive_tokens
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ class TestAcceptInvite:
         repo.get.return_value = make_vcluster_claim(object_name="u123-test-cluster")
         settings_service.max_team_size.return_value = 5
 
-        token = generate_invite_token("u123-test-cluster", "new@example.com")
+        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
 
         service.accept_invite(token, settings_service)
         repo.add_member.assert_called_once_with(
@@ -117,14 +117,15 @@ class TestAcceptInvite:
     def test_returns_none_if_the_claim_no_longer_exists(self, service, repo, settings_service):
         repo.get.return_value = None
 
-        token = generate_invite_token("u123-test-cluster", "new@example.com")
+        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+
         assert service.accept_invite(token, settings_service) is None
 
     def test_skips_if_already_a_member(self, service, repo, settings_service, make_vcluster_claim):
         claim = make_vcluster_claim(members=[Member(email="new@example.com")])
         repo.get.return_value = claim
 
-        token = generate_invite_token("u123-test-cluster", "new@example.com")
+        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
 
         result = service.accept_invite(token, settings_service)
         assert result == claim
@@ -132,7 +133,8 @@ class TestAcceptInvite:
 
     def test_rejects_when_the_team_quota_is_reached(self, service, repo, settings_service, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(members=[Member(email="existing@example.com")])
-        token = generate_invite_token("u123-test-cluster", "new@example.com")
+        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+
         settings_service.max_team_size.return_value = 1
 
         result = service.accept_invite(token, settings_service)
@@ -227,3 +229,26 @@ class TestAdminDeleteAllForOwner:
 
         assert count == 1
         repo.delete.assert_called_once_with("u1-first-cluster")
+
+
+
+class TestConfirmKeepClusterAlive:
+    def test_resets_activity_for_valid_token(self, service, repo, make_vcluster_claim):
+        repo.get.return_value = make_vcluster_claim(object_name="u123-test-cluster")
+
+        token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
+        service.confirm_keep_alive(token)
+
+        repo.reset_activity.assert_called_once_with("u123-test-cluster")
+
+    def test_returns_none_for_invalid_token(self, service, repo):
+        assert service.confirm_keep_alive("invalid-token") is None
+        repo.reset_activity.assert_not_called()
+
+    def test_returns_none_if_claim_no_longer_exists(self, service, repo):
+        repo.get.return_value = None
+
+        token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
+        assert service.confirm_keep_alive(token) is None
+        repo.reset_activity.assert_not_called()
+

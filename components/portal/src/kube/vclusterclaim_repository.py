@@ -5,6 +5,7 @@ import re
 import shlex
 import tarfile
 import tempfile
+from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, cast
 from kubernetes import client
@@ -28,6 +29,9 @@ from ttl_cache import TTLCache
 
 _OWNER_LABEL = f"{GROUP}/owner-subject-hash"
 _MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
+
+_SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
+_DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
 
 _vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_seconds)
 
@@ -170,6 +174,25 @@ class VClusterClaimRepository:
                 plural=PLURAL,
                 name=object_name,
                 body={"spec": {"state": state.value}},
+            )
+        except ApiException as e:
+            if e.status != 404:
+                raise
+            return
+
+        _vclusterclaim_cache.invalidate_all()
+
+    def patch_annotations(self, object_name: str, annotations: dict[str, str | None]) -> None:
+        """Sets annotations on a claim, or clears via a `None`."""
+
+        try:
+            self._api.patch_namespaced_custom_object(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+                name=object_name,
+                body={"metadata": {"annotations": annotations}},
             )
         except ApiException as e:
             if e.status != 404:
@@ -398,3 +421,51 @@ class VClusterClaimRepository:
             res.close()
 
         return data.getvalue()
+
+    def reset_inactivity(self, object_name) -> None:
+        """Resets inactivity markers of a VClusterCaim, therefore marking it as active again."""
+
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        try:
+            self._api.patch_namespaced_custom_object_status(
+                group=GROUP,
+                version=VERSION,
+                namespace=self._namespace,
+                plural=PLURAL,
+                name=object_name,
+                body={"status": {"lastActiveAt": now}},
+            )
+        except ApiException as e:
+            if e.status != 404:
+                raise
+            return
+
+        _vclusterclaim_cache.invalidate_all()
+
+        self.clear_inactivity_warning_annotations(object_name)
+
+    def clear_inactivity_warning_annotations(self, object_name) -> None:
+        self.patch_annotations(
+            object_name, {_SLEEP_WARNING_ANNOTATION: None, _DELETION_WARNING_ANNOTATION: None}
+        )
+
+    def mark_sleep_warning_annotation(self, object_name) -> None:
+        self.patch_annotations(object_name, {_SLEEP_WARNING_ANNOTATION: "True"})
+
+    def mark_deletion_warning_annotation(self, object_name) -> None:
+        self.patch_annotations(object_name, {_DELETION_WARNING_ANNOTATION: "True"})
+
+    def has_sleep_warning_annotation(self, object_name) -> bool:
+        claim = self.get(object_name)
+        if claim is None:
+            return False
+
+        return _SLEEP_WARNING_ANNOTATION in claim.annotations
+
+    def has_deletion_warning_annotation(self, object_name) -> bool:
+        claim = self.get(object_name)
+        if claim is None:
+            return False
+
+        return _DELETION_WARNING_ANNOTATION in claim.annotations
