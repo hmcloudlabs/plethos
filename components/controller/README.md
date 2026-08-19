@@ -79,13 +79,6 @@ vCluster StatefulSet to zero replicas (recording the original replica count in t
 `loft.sh/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` /
 `Waking` / `Ready` accordingly.
 
-## Inactivity tracking
-
-VClusterClaims track when was the last time their owner has changed anything via `status.lastActiveAt`, which
-resets to *now* whenever the owner makes a spec change (toggling sleep/wake, editing members,
-etc). Once `INACTIVITY_THRESHOLD_DAYS` days pass without one, the `Inactive` condition becomes
-`True`. This is purely observational, the controller never acts upon this information.
-
 ## Version selection
 
 Each claim pins its vCluster version via the immutable `spec.vClusterVersion` field. The controller only installs versions listed in
@@ -100,7 +93,6 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.20.0` |
 | `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Domain each vCluster gets exposed under, as `<vcluster-name>.<base_domain>`. Requires an ingress controller with SSL passthrough (vCluster's API server does mTLS). Unset by default so local/dev setups keep the chart's default `localhost:8443` kubeconfig. |
 | `VCLUSTERS_INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
-| `INACTIVITY_THRESHOLD_DAYS` | `30` | Days without a spec change before a claim is marked `Inactive` (see [Inactivity tracking](#inactivity-tracking)) |
 
 ## Phases
 
@@ -123,7 +115,6 @@ The `status.phase` field described the operator-controlled status of a `VCluster
 | Type | `True` means |
 |---|---|
 | `Ready` | The vCluster is actually up (`False` otherwise, with the current phase as `reason`) |
-| `Inactive` | The claim has been inactive past `INACTIVITY_THRESHOLD_DAYS` (see [Inactivity tracking](#inactivity-tracking)) |
 
 `Ready` supports:
 

@@ -4,7 +4,7 @@ import logging
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import AccessType, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
-from shared.vclusterclaim import GROUP, Member, State, VClusterClaimSpec, VClusterClaimStatus
+from shared.vclusterclaim import Member, State, VClusterClaimSpec
 from tokens import invite_tokens, keep_alive_tokens
 
 logger = logging.getLogger(__name__)
@@ -181,8 +181,8 @@ class VClusterClaimUserService:
         
     def confirm_keep_alive(self, token: str) -> VClusterClaim | None:
         """
-        Marks a cluster as active from a signed keep-alive token (sent by the inactivity job's
-        warning emails) by resetting the inactivity clock and removing warning annotations.
+        Renews a cluster from a signed keep-alive token (sent by the inactivity job's warning
+        emails), clearing any pending warnings.
 
         Returns None if the token is invalid/expired or the cluster is gone.
         """
@@ -196,9 +196,9 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
-        self._repo.reset_inactivity(object_name)
+        self._repo.mark_renewed(object_name)
 
-        logger.info(f"Cluster '{object_name}' marked as active via keep-alive link")
+        logger.info(f"Cluster '{object_name}' renewed via keep-alive link")
 
         return claim
 

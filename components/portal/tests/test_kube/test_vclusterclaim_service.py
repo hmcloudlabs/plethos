@@ -239,16 +239,16 @@ class TestConfirmKeepClusterAlive:
         token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
         service.confirm_keep_alive(token)
 
-        repo.reset_activity.assert_called_once_with("u123-test-cluster")
+        repo.mark_renewed.assert_called_once_with("u123-test-cluster")
 
     def test_returns_none_for_invalid_token(self, service, repo):
         assert service.confirm_keep_alive("invalid-token") is None
-        repo.reset_activity.assert_not_called()
+        repo.mark_renewed.assert_not_called()
 
     def test_returns_none_if_claim_no_longer_exists(self, service, repo):
         repo.get.return_value = None
 
         token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
         assert service.confirm_keep_alive(token) is None
-        repo.reset_activity.assert_not_called()
+        repo.mark_renewed.assert_not_called()
 

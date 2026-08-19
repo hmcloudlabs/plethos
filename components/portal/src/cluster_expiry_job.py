@@ -12,6 +12,7 @@ tick no matter how many portal replicas exist, instead of every replica running 
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from config import config
 from kube.client import load_kube_config
@@ -19,7 +20,7 @@ from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from logging_setup import setup_logging
 from mailer import send_email
-from shared.vclusterclaim import ConditionType, State
+from shared.vclusterclaim import State
 from tokens import keep_alive_tokens
 
 logger = logging.getLogger(__name__)
@@ -34,45 +35,32 @@ def check_inactive_clusters(repo: VClusterClaimRepository) -> None:
 
 
 def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -> None:
-    if not claim.status.has_condition(ConditionType.INACTIVE):
+    renewed_at = cast(str, repo.get_renewed_at(claim.object_name) or claim.creation_timestamp)
+    time_since_renewal = datetime.now(UTC) - datetime.strptime(renewed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
 
-        # Activity can reset through paths other than the keep-alive link (e.g. through manually waking, editing members),
-        # which don't otherwise clear these annotations. Check for and remove these dangling annoations.
-        if repo.has_sleep_warning_annotation(claim.object_name) or repo.has_deletion_warning_annotation(claim.object_name):
-            repo.clear_inactivity_warning_annotations(claim.object_name)
-        return
-
-    if claim.status.last_active_at is None:
-        return
-
-    inactive_for = datetime.now(UTC) - datetime.strptime(claim.status.last_active_at, "%Y-%m-%dT%H:%M:%SZ").replace(
-        tzinfo=UTC
-    )
-
-    inactivity_threshold = timedelta(days=config.inactivity_period_days)
-    sleep_threshold = inactivity_threshold + timedelta(days=config.notice_period_days)
+    renewal_threshold = timedelta(days=config.renewal_period_days)
+    sleep_threshold = renewal_threshold + timedelta(days=config.notice_period_days)
     delete_threshold = sleep_threshold + timedelta(days=config.notice_period_days)
 
     has_sleep_warning = repo.has_sleep_warning_annotation(claim.object_name)
     has_deletion_warning = repo.has_deletion_warning_annotation(claim.object_name)
 
-    # Final stage of inactiveness: Delete the cluster
-    if inactive_for >= delete_threshold and has_deletion_warning:
+    # Final stage: delete the cluster
+    if time_since_renewal >= delete_threshold and has_deletion_warning:
         repo.delete(claim.object_name)
 
-        logger.info(f"Deleted cluster '{claim.object_name}' because of inactivity")
+        logger.info(f"Deleted cluster '{claim.object_name}' because it was not renewed in time")
         return
 
-    # Second stage: Put cluster to sleep and warn about possible deletion
-    if inactive_for >= sleep_threshold and not has_deletion_warning:
+    # Second stage: put the cluster to sleep and warn about upcoming deletion
+    if time_since_renewal >= sleep_threshold and not has_deletion_warning:
         repo.patch_state(claim.object_name, State.SLEEPING)
         _send_warning_email(
             claim,
             subject=f"Cluster '{claim.spec.name}' put to sleep, will be deleted soon",
             body_intro=(
-                f"Cluster '{claim.spec.name}' has been inactive and was put to sleep. "
-                f"It will be deleted in {config.notice_period_days:g} day(s) unless you confirm "
-                f"you're still using it."
+                f"Cluster '{claim.spec.name}' reached its expiry date and was put to sleep. "
+                f"It will be deleted automatically in {config.notice_period_days:g} day(s) unless you confirm you're still using it."
             ),
         )
         repo.mark_deletion_warning_annotation(claim.object_name)
@@ -80,14 +68,15 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
         logger.info(f"Sent deletion warning for cluster '{claim.object_name}'")
         return
 
-    # First stage: Warn about inactivness and automatic sleeping
-    if inactive_for >= inactivity_threshold and not has_sleep_warning:
+    # First stage: warn that the cluster needs renewing soon
+    if time_since_renewal >= renewal_threshold and not has_sleep_warning:
         _send_warning_email(
             claim,
             subject=f"Cluster '{claim.spec.name}' will be put to sleep soon",
             body_intro=(
-                f"Cluster '{claim.spec.name}' has been inactive. It will be put to sleep in "
-                f"{config.notice_period_days:g} day(s) unless you confirm you're still using it."
+                f"You have {config.notice_period_days:g} day(s) to keep cluster '{claim.spec.name}' running - "
+                f"it has reached its expiry date and will be put to sleep automatically unless you confirm "
+                f"you're still using it."
             ),
         )
         repo.mark_sleep_warning_annotation(claim.object_name)

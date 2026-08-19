@@ -89,19 +89,22 @@ dashboard (`/admin`), never directly:
 | Max team size (shared members) | `maxTeamSize` | `maxTeamSizeOverrides` (email -> int) |
 | Admin emails | `adminEmails` | - |
 
-## Inactivity checks
+## Cluster expiry
 
 `src/cluster_expiry_job.py` is a standalone script, run on a schedule by
-[`k8s/base/notifier/cronjob.yaml`](../../k8s/base/notifier/cronjob.yaml). It reuses the portal's own image and `ServiceAccount`, so there's nothing extra to deploy or build.
+[`k8s/base/notifier/cronjob.yaml`](../../k8s/base/notifier/cronjob.yaml). It reuses the portal's own image and `ServiceAccount`, so there's nothing extra to deploy.
 
-For every VClusterClaim the controller has marked `Inactive`, measured from `status.lastActiveAt`:
+Every VClusterClaim carries a `renewed-at` annotation, set the moment it's created and updated
+every time its owner clicks a keep-alive link. Measured from there:
 
-1. After `INACTIVITY_PERIOD_DAYS`, it emails the owner a warning that the cluster will be put to sleep, along with a keep-alive link.
+1. After `RENEWAL_PERIOD_DAYS`, the job emails the owner a warning that the cluster will be put to sleep, along with a keep-alive link.
 2. After a further `NOTICE_PERIOD_DAYS` with no response, it puts the cluster to sleep and sends
    a second warning, that the cluster will be deleted.
 3. After one more `NOTICE_PERIOD_DAYS`, it deletes the VClusterClaim and therefore the cluster.
 
-Clicking the keep-alive link in either email or making any kind of action on the portal regarding the cluster (e.g. wake, edit members) resets the clock. A VClusterClaim is never deleted without both warnings having been sent first.
+Clicking the keep-alive link in either email is the *only* thing that renews a claim - other
+portal actions (waking, editing members, etc.) don't. A VClusterClaim is never deleted without
+both warnings having been sent first.
 
 ## Logging
 
@@ -132,8 +135,8 @@ that path to survive pod restarts.
 | `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
 | `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `SMTP_FROM_ADDRESS` | `vkube@example.com` | `From` address on invite/keep-alive emails |
-| `PORTAL_BASE_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the inactivity job's keep-alive links) |
-| `INACTIVITY_PERIOD_DAYS` | `30` | Days a claim stays `Inactive` before the first warning email (see [Inactivity checks](#inactivity-checks)); should match the controller's `INACTIVITY_THRESHOLD_DAYS` |
+| `PORTAL_BASE_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
+| `RENEWAL_PERIOD_DAYS` | `30` | Days since a claim was last renewed before the first warning email (see [Cluster expiry](#cluster-expiry)) |
 | `NOTICE_PERIOD_DAYS` | `7` | Days between each stage: warn -> sleep + warn -> delete |
 
 ## Testing

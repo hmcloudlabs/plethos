@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, UTC
 import kopf
 from kubernetes import client
 from kubernetes.client import V1StatefulSet
@@ -51,8 +51,6 @@ def on_reconcile(
 
 def reconcile(ctx: ReconciliationContext) -> None:
     ctx.logger.info(f"Reconciliation started for {ctx.name}.")
-
-    track_activity(ctx)
 
     ensure_namespace(ctx)
     ensure_service_account(ctx)
@@ -300,37 +298,6 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
 @kopf.on.field("batch/v1", "jobs", field="status", labels={f"{GROUP}/job-type": "install"})
 def on_install_job_event(labels, logger, **_: object) -> None:
     reconcile_claim_by_name(labels[f"{GROUP}/vcluster-claim"], logger)
-
-
-def track_activity(ctx: ReconciliationContext) -> None:
-    """Tracks `status.lastActiveAt` and syncs the `Inactive` condition from it."""
-
-    observed_generation = ctx.status.get("observedGeneration")
-    current_state = ctx.spec.get("state", State.RUNNING)
-    last_active_at = ctx.status.get("lastActiveAt")
-
-    # Activity is detected by a spec change (i.e. observeredGeneration was bumped).
-    # Excetption: A transition *into* Sleeping doesn't count as activity.
-    generation_changed = observed_generation != ctx.generation
-    went_to_sleep = ctx.status.get("phase") != Phase.SLEEPING and current_state == State.SLEEPING
-
-    if last_active_at is None or (generation_changed and not went_to_sleep):
-        last_active_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        ctx.patch.status["lastActiveAt"] = last_active_at
-
-    inactive_for = datetime.now(UTC) - datetime.strptime(last_active_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-    is_inactive = inactive_for >= timedelta(days=config.inactivity_threshold_days)
-
-    set_condition(
-        ctx,
-        cond_type=ConditionType.INACTIVE,
-        cond_status="True" if is_inactive else "False",
-        reason="InactivityThresholdReached" if is_inactive else "Active",
-        message=(
-            f"vCluster has been inactive since {last_active_at}."
-            if is_inactive else "vCluster is within its inactivity window."
-        ),
-    )
 
 
 def sync_ready_condition(ctx: ReconciliationContext) -> None:

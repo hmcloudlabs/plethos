@@ -60,7 +60,6 @@ class VClusterClaimStatus(_Model):
     phase: Phase | None = None
     message: str | None = None
     observed_generation: int | None = None
-    last_active_at: str | None = None
     conditions: list[Condition] = Field(default_factory=list)
 
     def has_condition(self, cond_type: ConditionType, status: str = "True") -> bool:

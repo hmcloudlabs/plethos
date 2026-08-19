@@ -30,6 +30,7 @@ from ttl_cache import TTLCache
 _OWNER_LABEL = f"{GROUP}/owner-subject-hash"
 _MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
 
+_RENEWED_AT_ANNOTATION = f"{GROUP}/renewed-at"
 _SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
 _DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
 
@@ -422,33 +423,22 @@ class VClusterClaimRepository:
 
         return data.getvalue()
 
-    def reset_inactivity(self, object_name) -> None:
-        """Resets inactivity markers of a VClusterCaim, therefore marking it as active again."""
+    def mark_renewed(self, object_name: str) -> None:
+        """Renews a VClusterClaim after the owner was notified about expiration, clearing any pending warnings."""
 
         now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        try:
-            self._api.patch_namespaced_custom_object_status(
-                group=GROUP,
-                version=VERSION,
-                namespace=self._namespace,
-                plural=PLURAL,
-                name=object_name,
-                body={"status": {"lastActiveAt": now}},
-            )
-        except ApiException as e:
-            if e.status != 404:
-                raise
-            return
-
-        _vclusterclaim_cache.invalidate_all()
-
-        self.clear_inactivity_warning_annotations(object_name)
-
-    def clear_inactivity_warning_annotations(self, object_name) -> None:
         self.patch_annotations(
-            object_name, {_SLEEP_WARNING_ANNOTATION: None, _DELETION_WARNING_ANNOTATION: None}
+            object_name,
+            {
+                _RENEWED_AT_ANNOTATION: now,
+                _SLEEP_WARNING_ANNOTATION: None,
+                _DELETION_WARNING_ANNOTATION: None,
+            },
         )
+
+    def get_renewed_at(self, object_name: str) -> str | None:
+        claim = self.get(object_name)
+        return claim.annotations.get(_RENEWED_AT_ANNOTATION) if claim else None
 
     def mark_sleep_warning_annotation(self, object_name) -> None:
         self.patch_annotations(object_name, {_SLEEP_WARNING_ANNOTATION: "True"})

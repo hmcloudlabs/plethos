@@ -25,7 +25,7 @@ class Config:
     support_email: str = os.getenv("SUPPORT_EMAIL", "")
     portal_base_url: str = os.getenv("PORTAL_BASE_URL", "http://localhost:8000")
 
-    inactivity_period_days: float = float(os.getenv("INACTIVITY_PERIOD_DAYS", "30"))
+    renewal_period_days: float = float(os.getenv("RENEWAL_PERIOD_DAYS", "30"))
     notice_period_days: float = float(os.getenv("NOTICE_PERIOD_DAYS", "7"))
 
     # How long signed links (member invites, keep-alive) stay valid.
