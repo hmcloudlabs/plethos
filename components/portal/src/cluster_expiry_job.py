@@ -38,11 +38,14 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
     renewed_at = cast(str, repo.get_renewed_at(claim.object_name) or claim.creation_timestamp)
     time_since_renewal = datetime.now(UTC) - datetime.strptime(renewed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
 
+    warning_lead = timedelta(days=config.warning_lead_days)
+
     sleep_at = timedelta(days=config.expiry_period_days)
     delete_at = sleep_at + timedelta(days=config.grace_period_days)
 
-    has_sleep_warning = repo.has_sleep_warning_annotation(claim.object_name)
-    has_deletion_warning = repo.has_deletion_warning_annotation(claim.object_name)
+    has_sleep_warning = repo.has_sleep_warning(claim.object_name)
+    has_deletion_warning = repo.has_deletion_warning(claim.object_name)
+    has_already_expired = repo.has_expired(claim.object_name)
 
     # Final stage: delete the cluster
     if time_since_renewal >= delete_at and has_deletion_warning:
@@ -52,7 +55,7 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
         return
 
     # Warn that the cluster (already asleep) will be deleted soon
-    if time_since_renewal >= delete_at - timedelta(days=config.warning_lead_days) and not has_deletion_warning:
+    if time_since_renewal >= delete_at - warning_lead and not has_deletion_warning:
         _send_warning_email(
             claim,
             subject=f"Cluster '{claim.spec.name}' will be deleted soon",
@@ -61,14 +64,16 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"{config.warning_lead_days:g} day(s) unless you confirm you're still using it."
             ),
         )
-        repo.mark_deletion_warning_annotation(claim.object_name)
+        repo.add_auto_deletion_warning(claim.object_name)
 
         logger.info(f"Sent deletion warning for cluster '{claim.object_name}'")
         return
 
-    # Put the cluster to sleep once it's past its expiry date (do nothing if already sleeping)
-    if time_since_renewal >= sleep_at and claim.spec.state != State.SLEEPING:
-        repo.patch_state(claim.object_name, State.SLEEPING)
+    # Put the cluster to sleep once it's past its expiry date and notify the owner.
+    if time_since_renewal >= sleep_at and not has_already_expired:
+        if claim.spec.state != State.SLEEPING:
+            repo.patch_state(claim.object_name, State.SLEEPING)
+
         _send_warning_email(
             claim,
             subject=f"Cluster '{claim.spec.name}' has been put to sleep",
@@ -77,12 +82,13 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"It will be deleted in {config.grace_period_days:g} day(s) unless you confirm you're still using it."
             ),
         )
+        repo.mark_as_expired(claim.object_name)
 
-        logger.info(f"Put cluster '{claim.object_name}' to sleep - not renewed by its expiry date")
+        logger.info(f"Cluster '{claim.object_name}' has expired and has been put to sleep")
         return
 
     # Warn that the cluster will reach its expiry date soon
-    if time_since_renewal >= sleep_at - timedelta(days=config.warning_lead_days) and not has_sleep_warning:
+    if time_since_renewal >= sleep_at - warning_lead and not has_sleep_warning:
         _send_warning_email(
             claim,
             subject=f"Cluster '{claim.spec.name}' will be put to sleep soon",
@@ -91,7 +97,7 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
                 f"day(s) and will then be put to sleep automatically unless you confirm you're still using it."
             ),
         )
-        repo.mark_sleep_warning_annotation(claim.object_name)
+        repo.add_auto_sleep_warning(claim.object_name)
 
         logger.info(f"Sent expiry warning for cluster '{claim.object_name}'")
 

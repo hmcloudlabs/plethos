@@ -32,6 +32,7 @@ _MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
 
 _RENEWED_AT_ANNOTATION = f"{GROUP}/renewed-at"
 _SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
+_EXPIRED_ANNOTATION = f"{GROUP}/expired"
 _DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
 
 _vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_seconds)
@@ -432,6 +433,7 @@ class VClusterClaimRepository:
             {
                 _RENEWED_AT_ANNOTATION: now,
                 _SLEEP_WARNING_ANNOTATION: None,
+                _EXPIRED_ANNOTATION: None,
                 _DELETION_WARNING_ANNOTATION: None,
             },
         )
@@ -440,20 +442,30 @@ class VClusterClaimRepository:
         claim = self.get(object_name)
         return claim.annotations.get(_RENEWED_AT_ANNOTATION) if claim else None
 
-    def mark_sleep_warning_annotation(self, object_name) -> None:
+    def add_auto_sleep_warning(self, object_name) -> None:
         self.patch_annotations(object_name, {_SLEEP_WARNING_ANNOTATION: "True"})
 
-    def mark_deletion_warning_annotation(self, object_name) -> None:
+    def mark_as_expired(self, object_name) -> None:
+        self.patch_annotations(object_name, {_EXPIRED_ANNOTATION: "True"})
+
+    def add_auto_deletion_warning(self, object_name) -> None:
         self.patch_annotations(object_name, {_DELETION_WARNING_ANNOTATION: "True"})
 
-    def has_sleep_warning_annotation(self, object_name) -> bool:
+    def has_sleep_warning(self, object_name) -> bool:
         claim = self.get(object_name)
         if claim is None:
             return False
 
         return _SLEEP_WARNING_ANNOTATION in claim.annotations
 
-    def has_deletion_warning_annotation(self, object_name) -> bool:
+    def has_expired(self, object_name) -> bool:
+        claim = self.get(object_name)
+        if claim is None:
+            return False
+
+        return _EXPIRED_ANNOTATION in claim.annotations
+
+    def has_deletion_warning(self, object_name) -> bool:
         claim = self.get(object_name)
         if claim is None:
             return False
