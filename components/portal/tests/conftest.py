@@ -19,6 +19,7 @@ def make_vcluster_claim():
         members: list[Member] | None = None,
         status: VClusterClaimStatus | None = None,
         annotations: dict[str, str] | None = None,
+        creation_timestamp: str | None = "2024-01-01T00:00:00Z",
     ) -> VClusterClaim:
         return VClusterClaim(
             # In reality object_name is derived from the given name but still
@@ -31,7 +32,7 @@ def make_vcluster_claim():
                 members=members or [],
             ),
             status=status or VClusterClaimStatus(),
-            creation_timestamp=None,
+            creation_timestamp=creation_timestamp,
             annotations=annotations or {},
         )
 

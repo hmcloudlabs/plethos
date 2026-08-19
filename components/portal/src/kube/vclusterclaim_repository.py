@@ -14,7 +14,13 @@ from kubernetes.stream import stream
 
 from config import config
 from kube.client import core_v1_api, custom_objects_api
-from kube.vclusterclaim_model import VClusterClaim
+from kube.vclusterclaim_model import (
+    DELETION_WARNING_ANNOTATION,
+    EXPIRED_ANNOTATION,
+    RENEWED_AT_ANNOTATION,
+    SLEEP_WARNING_ANNOTATION,
+    VClusterClaim,
+)
 from shared.vclusterclaim import (
     GROUP,
     KIND,
@@ -29,11 +35,6 @@ from ttl_cache import TTLCache
 
 _OWNER_LABEL = f"{GROUP}/owner-subject-hash"
 _MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
-
-_RENEWED_AT_ANNOTATION = f"{GROUP}/renewed-at"
-_SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
-_EXPIRED_ANNOTATION = f"{GROUP}/expired"
-_DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
 
 _vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_seconds)
 
@@ -431,43 +432,43 @@ class VClusterClaimRepository:
         self.patch_annotations(
             object_name,
             {
-                _RENEWED_AT_ANNOTATION: now,
-                _SLEEP_WARNING_ANNOTATION: None,
-                _EXPIRED_ANNOTATION: None,
-                _DELETION_WARNING_ANNOTATION: None,
+                RENEWED_AT_ANNOTATION: now,
+                SLEEP_WARNING_ANNOTATION: None,
+                EXPIRED_ANNOTATION: None,
+                DELETION_WARNING_ANNOTATION: None,
             },
         )
 
     def get_renewed_at(self, object_name: str) -> str | None:
         claim = self.get(object_name)
-        return claim.annotations.get(_RENEWED_AT_ANNOTATION) if claim else None
+        return claim.annotations.get(RENEWED_AT_ANNOTATION) if claim else None
 
     def add_auto_sleep_warning(self, object_name) -> None:
-        self.patch_annotations(object_name, {_SLEEP_WARNING_ANNOTATION: "True"})
+        self.patch_annotations(object_name, {SLEEP_WARNING_ANNOTATION: "True"})
 
     def mark_as_expired(self, object_name) -> None:
-        self.patch_annotations(object_name, {_EXPIRED_ANNOTATION: "True"})
+        self.patch_annotations(object_name, {EXPIRED_ANNOTATION: "True"})
 
     def add_auto_deletion_warning(self, object_name) -> None:
-        self.patch_annotations(object_name, {_DELETION_WARNING_ANNOTATION: "True"})
+        self.patch_annotations(object_name, {DELETION_WARNING_ANNOTATION: "True"})
 
     def has_sleep_warning(self, object_name) -> bool:
         claim = self.get(object_name)
         if claim is None:
             return False
 
-        return _SLEEP_WARNING_ANNOTATION in claim.annotations
+        return SLEEP_WARNING_ANNOTATION in claim.annotations
 
     def has_expired(self, object_name) -> bool:
         claim = self.get(object_name)
         if claim is None:
             return False
 
-        return _EXPIRED_ANNOTATION in claim.annotations
+        return EXPIRED_ANNOTATION in claim.annotations
 
     def has_deletion_warning(self, object_name) -> bool:
         claim = self.get(object_name)
         if claim is None:
             return False
 
-        return _DELETION_WARNING_ANNOTATION in claim.annotations
+        return DELETION_WARNING_ANNOTATION in claim.annotations

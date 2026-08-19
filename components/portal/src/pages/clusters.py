@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
@@ -76,6 +77,23 @@ def _check_team_quota(
     return None
 
 
+def _pending_renewal(claims: list[VClusterClaim]) -> dict[str, dict]:
+    """VClusterClaims within their expiry warning window, mapped to their deletion date and whether they've already expired."""
+
+    now = datetime.now(UTC)
+    warning_lead = timedelta(days=config.warning_lead_days)
+
+    result = {}
+    for c in claims:
+        if now < c.expires_at - warning_lead:
+            continue
+        result[c.object_name] = {
+            "date": (c.expires_at + timedelta(days=config.grace_period_days)).strftime("%Y-%m-%d"),
+            "expired": now >= c.expires_at,
+        }
+    return result
+
+
 def _render_clusters(
     request: Request,
     user: User,
@@ -85,14 +103,17 @@ def _render_clusters(
     form_name: str = "",
     status_code: int = 200,
 ) -> HTMLResponse:
+    owned = vcc_service.list_for_owner(user.sub)
+    shared = vcc_service.list_shared_with(user.email)
     return templates.TemplateResponse(
         request,
         "clusters.html",
         {
             "title": "Clusters",
             "user": user,
-            "vcluster_claims": vcc_service.list_for_owner(user.sub),
-            "shared_vcluster_claims": vcc_service.list_shared_with(user.email),
+            "vcluster_claims": owned,
+            "shared_vcluster_claims": shared,
+            "pending_renewal": _pending_renewal(owned) | _pending_renewal(shared),
             "flash_message": flash[0] if flash else None,
             "flash_level": flash[1] if flash else None,
             "form_name": form_name,
@@ -106,10 +127,11 @@ def _render_cluster_list(
 ) -> HTMLResponse:
     """Self-refreshing table of the user's own clusters."""
 
+    owned = vcc_service.list_for_owner(user.sub)
     return templates.TemplateResponse(
         request,
         "components/cluster_list.html",
-        {"vcluster_claims": vcc_service.list_for_owner(user.sub)},
+        {"vcluster_claims": owned, "pending_renewal": _pending_renewal(owned)},
     )
 
 
@@ -118,10 +140,11 @@ def _render_shared_cluster_list(
 ) -> HTMLResponse:
     """Self-refreshing table of clusters shared with the user."""
 
+    shared = vcc_service.list_shared_with(user.email)
     return templates.TemplateResponse(
         request,
         "components/shared_cluster_list.html",
-        {"shared_vcluster_claims": vcc_service.list_shared_with(user.email)},
+        {"shared_vcluster_claims": shared, "pending_renewal": _pending_renewal(shared)},
     )
 
 
@@ -204,6 +227,17 @@ def wake_cluster(
     vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
 ) -> HTMLResponse:
     vcc_service.set_state(object_name, user.sub, user.email, State.RUNNING)
+    return _render_after_action(request, user, vcc_service)
+
+
+@router.post("/clusters/{object_name}/renew", response_class=HTMLResponse)
+def renew_cluster(
+    object_name: str,
+    request: Request,
+    user: User = Depends(require_user),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+) -> HTMLResponse:
+    vcc_service.renew(object_name, user.sub, user.email)
     return _render_after_action(request, user, vcc_service)
 
 

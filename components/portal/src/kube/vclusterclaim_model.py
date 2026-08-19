@@ -1,7 +1,16 @@
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from typing import cast
 
-from shared.vclusterclaim import VClusterClaimSpec, VClusterClaimStatus
+from config import config
+from shared.vclusterclaim import GROUP, VClusterClaimSpec, VClusterClaimStatus
+
+
+RENEWED_AT_ANNOTATION = f"{GROUP}/renewed-at"
+SLEEP_WARNING_ANNOTATION = f"{GROUP}/sleep-warning-sent"
+EXPIRED_ANNOTATION = f"{GROUP}/expired"
+DELETION_WARNING_ANNOTATION = f"{GROUP}/deletion-warning-sent"
 
 
 class AccessType(StrEnum):
@@ -44,3 +53,11 @@ class VClusterClaim:
             return AccessType.MEMBER
 
         return None
+
+    @property
+    def expires_at(self) -> datetime:
+        """When this claim expires if never renewed again: EXPIRY_PERIOD_DAYS after its last renewal, or after creation if never renewed."""
+
+        renewed_at = self.annotations.get(RENEWED_AT_ANNOTATION) or cast(str, self.creation_timestamp)
+        renewed_at_dt = datetime.strptime(renewed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        return renewed_at_dt + timedelta(days=config.expiry_period_days)

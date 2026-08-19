@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 import logging
 
 from kube.settings_service import SettingsService
@@ -81,6 +80,16 @@ class VClusterClaimUserService:
 
         self._repo.patch_state(object_name, state)
         logger.info(f"{email} set cluster '{object_name}' to {state.value}")
+
+    def renew(self, object_name: str, sub: str, email: str) -> None:
+        """Keep-alive click from the portal UI. Allowed for the owner or any shared member."""
+
+        if self._get_for_member(object_name, sub, email) is None:
+            return
+
+        self._repo.mark_renewed(object_name)
+        logger.info(f"{email} renewed cluster '{object_name}'")
+
 
     def delete(self, object_name: str, sub: str) -> None:
         """Delete a cluster (owner only)."""
