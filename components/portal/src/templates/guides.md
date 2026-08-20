@@ -61,3 +61,4 @@ before that deletion, a second warning email with another renewal link is sent.
 ### How to renew
 You can renew a cluster using either the warning email or the **/clusters** page. On the latter, the clusters table marks expired or soon-to-expire clusters and includes a **Keep Alive** button.
 
+*Note: An expiration lifecycle is optional might not be configured at all by your organization and the people who operate the vKube instance.*

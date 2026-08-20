@@ -64,6 +64,7 @@ This decision covers: what counts as "activity", where the periodic check for in
 * Good, because both warnings give advance notice
 * Good, because owners see the expiry date from day one, so nothing is ever a surprise, unlike a
   hidden inactivity clock.
+* Good, because the application works normally even if people decide not to run the expiration CRON job
 * Bad, because the expiration is now enforced for everyone, regardless if they actively use their cluster or not
 * Bad, because operation wise another K8s has to be deployed: the CRON job (but is provisioned automatically when applying the k8s files)
 

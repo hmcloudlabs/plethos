@@ -1,12 +1,12 @@
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from auth import User, require_user
 from config import config
 from kube.settings_service import SettingsService
-from kube.vclusterclaim_model import VClusterClaim
+from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import (
     AccessType,
@@ -78,18 +78,22 @@ def _check_team_quota(
 
 
 def _pending_renewal(claims: list[VClusterClaim]) -> dict[str, dict]:
-    """VClusterClaims within their expiry warning window, mapped to their deletion date and whether they've already expired."""
-
-    now = datetime.now(UTC)
-    warning_lead = timedelta(days=config.warning_lead_days)
+    """
+    VClusterClaims the expiry job has flagged as needing renewal, mapped to their deletion date and whether they've already expired.
+    """
 
     result = {}
     for c in claims:
-        if now < c.expires_at - warning_lead:
+        has_expired = ExpiryAnnotation.EXPIRED in c.annotations
+        if not (
+            has_expired
+            or ExpiryAnnotation.SLEEP_WARNING in c.annotations
+            or ExpiryAnnotation.DELETION_WARNING in c.annotations
+        ):
             continue
         result[c.object_name] = {
             "date": (c.expires_at + timedelta(days=config.grace_period_days)).strftime("%Y-%m-%d"),
-            "expired": now >= c.expires_at,
+            "expired": has_expired,
         }
     return result
 
