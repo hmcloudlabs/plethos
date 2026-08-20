@@ -27,14 +27,6 @@
           {% set path = request.url.path %}
           <ul class="navbar-nav me-auto ms-lg-5">
             <li class="nav-item">
-              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/docs') else '' }}"
-                {{ 'aria-current=page' if path.startswith('/docs') else '' }}
-                href="/docs">
-                {{ icon("book") }}
-                <span>docs</span>
-              </a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
                 {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
                 href="/clusters">
@@ -52,6 +44,14 @@
               </a>
             </li>
             {% endif %}
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/guides') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/guides') else '' }}
+                href="/guides">
+                {{ icon("book") }}
+                <span>guides</span>
+              </a>
+            </li>
           </ul>
           <ul class="navbar-nav align-items-lg-center">
             {% if user %}

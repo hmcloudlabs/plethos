@@ -97,7 +97,7 @@
             </a>
 
             <a
-              class="btn btn-sm btn-success {{ '' if steady_running else 'disabled' }}"
+              class="btn btn-sm btn-warning {{ '' if steady_running else 'disabled' }}"
               title="{{ 'Download mounted volume data' if steady_running else 'Available while the cluster is running' }}"
               {% if steady_running %}href="/clusters/{{ obj }}/data"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
             >

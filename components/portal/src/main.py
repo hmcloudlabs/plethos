@@ -20,7 +20,7 @@ from auth import (
 from config import config
 from kube.client import load_kube_config
 from logging_setup import setup_logging
-from pages import admin, clusters, docs, home
+from pages import admin, clusters, guides, home
 from templating import STATIC_DIR
 
 setup_logging()
@@ -44,7 +44,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.include_router(home.router)
 app.include_router(clusters.router)
 app.include_router(admin.router)
-app.include_router(docs.router)
+app.include_router(guides.router)
 
 
 @app.middleware("http")
