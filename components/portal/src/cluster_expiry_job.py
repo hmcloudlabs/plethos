@@ -17,6 +17,7 @@ from kube.vclusterclaim_repository import VClusterClaimRepository
 from logging_setup import setup_logging
 from mailer import send_email
 from shared.vclusterclaim import State
+from templating import templates
 from tokens import keep_alive_tokens
 
 logger = logging.getLogger(__name__)
@@ -101,11 +102,23 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
 def _send_warning_email(claim: VClusterClaim, *, subject: str, body_intro: str) -> None:
     token = keep_alive_tokens.generate({"object_name": claim.object_name})
     confirm_url = f"{config.portal_base_url}/keep-alive/confirm?token={token}"
+    button_text = "Confirm you're still using it"
+
+    html = templates.env.get_template("emails/keep_alive.html").render(
+        subject=subject,
+        preheader=body_intro,
+        heading=subject,
+        intro=body_intro,
+        button_text=button_text,
+        button_url=confirm_url,
+        support_email=config.support_email,
+    )
 
     send_email(
         to=claim.spec.owner_email,
         subject=subject,
-        body=f"{body_intro}\n\nConfirm you're still using it: {confirm_url}",
+        body=f"{body_intro}\n\n{button_text}: {confirm_url}",
+        html=html,
     )
 
 

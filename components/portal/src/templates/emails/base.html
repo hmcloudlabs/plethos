@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>{% block title %}{{ subject }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      body, table, td, a { font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      body { margin: 0; padding: 0; background-color: #f4f5f7; -webkit-font-smoothing: antialiased; }
+      table { border-collapse: collapse; }
+      img { border: 0; display: block; }
+      a { color: #d3383d; }
+      .btn-primary { background-color: #e5484d; }
+      .btn-primary:hover { background-color: #d3383d; }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f4f5f7;">
+    {% if preheader %}
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; mso-hide: all;">
+      {{ preheader }}
+    </div>
+    {% endif %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f5f7;">
+      <tr>
+        <td align="center" style="padding: 40px 16px;">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0"
+                 style="width: 560px; max-width: 100%; background-color: #ffffff; border: 1px solid #e0e3e8; border-radius: 8px;">
+            <tr>
+              <td style="padding: 28px 36px 20px; border-bottom: 1px solid #e0e3e8;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="width: 22px; height: 22px; border-radius: 4px; background-color: #e5484d; font-size: 0; line-height: 0;">&nbsp;</td>
+                    <td style="padding-left: 10px; font-size: 16px; font-weight: 700; color: #14161a; letter-spacing: -0.02em;">vKube</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px 36px 32px;">
+                <h1 style="margin: 0 0 16px; font-size: 20px; line-height: 1.35; font-weight: 700; color: #14161a; letter-spacing: -0.01em;">{% block heading %}{% endblock %}</h1>
+                <div style="font-size: 15px; line-height: 1.6; color: #363b43;">
+                  {% block body %}{% endblock %}
+                </div>
+                {% if button_text and button_url %}
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0 4px;">
+                  <tr>
+                    <td class="btn-primary" style="border-radius: 4px; background-color: #e5484d;">
+                      <a href="{{ button_url }}" style="display: inline-block; padding: 10px 22px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 4px;">{{ button_text }}</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 14px 0 0; font-size: 12.5px; line-height: 1.6; color: #9aa1ac; word-break: break-all;">
+                  Or paste this link into your browser:<br />
+                  <a href="{{ button_url }}" style="color: #6b727d;">{{ button_url }}</a>
+                </p>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width: 560px; max-width: 100%;">
+            <tr>
+              <td style="padding: 20px 12px 0; font-size: 12px; line-height: 1.6; color: #9aa1ac; text-align: center;">
+                vKube - a self-service platform for creating and managing Kubernetes clusters.
+                {% if support_email %}<br />Need help? Contact <a href="mailto:{{ support_email }}" style="color: #6b727d;">{{ support_email }}</a>{% endif %}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

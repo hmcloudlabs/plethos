@@ -347,6 +347,15 @@ def invite_cluster_member(
         if result is not None:
             claim, token = result
             accept_url = str(request.url_for("accept_invite")) + f"?token={token}"
+            html = templates.env.get_template("emails/invite.html").render(
+                subject=f"You've been invited to cluster '{claim.spec.name}'",
+                preheader=f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.",
+                inviter_email=user.email,
+                cluster_name=claim.spec.name,
+                button_text="Accept invite",
+                button_url=accept_url,
+                support_email=config.support_email,
+            )
             send_email(
                 to=email,
                 subject=f"You've been invited to cluster '{claim.spec.name}'",
@@ -354,6 +363,7 @@ def invite_cluster_member(
                     f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.\n\n"
                     f"Accept the invite: {accept_url}"
                 ),
+                html=html,
             )
             message = f"Invite sent to {email}."
 

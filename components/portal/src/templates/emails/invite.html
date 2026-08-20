@@ -1,0 +1,5 @@
+{% extends "emails/base.html" %}
+{% block heading %}You've been invited to a cluster{% endblock %}
+{% block body %}
+<p style="margin: 0;"><strong>{{ inviter_email }}</strong> has invited you to the Kubernetes cluster <strong>'{{ cluster_name }}'</strong>.</p>
+{% endblock %}

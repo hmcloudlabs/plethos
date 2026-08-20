@@ -7,7 +7,7 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
-def send_email(*, to: str, subject: str, body: str) -> None:
+def send_email(*, to: str, subject: str, body: str, html: str) -> None:
     if not config.smtp_host:
         logger.info(f"SMTP not configured, skipping email to {to}")
         return
@@ -17,6 +17,7 @@ def send_email(*, to: str, subject: str, body: str) -> None:
     message["From"] = config.smtp_from_address
     message["To"] = to
     message.set_content(body)
+    message.add_alternative(html, subtype="html")
 
     try:
         with smtplib.SMTP(config.smtp_host, config.smtp_port) as smtp:
