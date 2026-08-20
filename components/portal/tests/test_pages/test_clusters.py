@@ -1,14 +1,17 @@
+from datetime import UTC, datetime, timedelta
 from unittest.mock import create_autospec
 
 import pytest
 from fastapi.testclient import TestClient
 
 from auth import User, require_user
+from config import config
 from kube.settings_service import SettingsService
+from kube.vclusterclaim_model import ExpiryAnnotation
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import VClusterClaimUserService
 from main import app
-from pages.clusters import _validate_new_cluster, get_settings_service, get_vcc_service
+from pages.clusters import _pending_renewal, _validate_new_cluster, get_settings_service, get_vcc_service
 from shared.vclusterclaim import Member
 
 
@@ -224,3 +227,45 @@ class TestValidateNewCluster:
     def test_accepts_max_63_characters(self):
         assert _validate_new_cluster("a" * 63) is None
         assert _validate_new_cluster("a" * 64) is not None
+
+
+class TestRenewCluster:
+    def test_renews_via_vcc_service(self, client, vcc_service, user):
+        client.post("/clusters/u123-test-cluster/renew")
+
+        vcc_service.renew.assert_called_once_with("u123-test-cluster", user.sub, user.email)
+
+
+class TestCheckPendingRenewals:
+    def test_excludes_claims_with_no_expiry_annotations(self, make_vcluster_claim):
+        claim = make_vcluster_claim(annotations={})
+
+        assert _pending_renewal([claim]) == {}
+
+    def test_includes_claims_with_sleep_warning_as_not_yet_expired(self, make_vcluster_claim):
+        claim = make_vcluster_claim(annotations={ExpiryAnnotation.SLEEP_WARNING: "True"})
+        result = _pending_renewal([claim])
+
+        assert result[claim.object_name]["expired"] is False
+
+    def test_includes_claims_with_expired_annotation_as_expired(self, make_vcluster_claim):
+        claim = make_vcluster_claim(
+            annotations={ExpiryAnnotation.SLEEP_WARNING: "True", ExpiryAnnotation.EXPIRED: "True"}
+        )
+        result = _pending_renewal([claim])
+
+        assert result[claim.object_name]["expired"] is True
+
+    def test_deletion_date_equals_expiry_period_plus_grace_period_from_renewal(self, make_vcluster_claim):
+        claim = make_vcluster_claim(
+            annotations={
+                ExpiryAnnotation.RENEWED_AT: "2024-01-01T00:00:00Z",
+                ExpiryAnnotation.SLEEP_WARNING: "True",
+            }
+        )
+
+        expected_date = (
+            datetime(2024, 1, 1, tzinfo=UTC)
+            + timedelta(days=config.expiry_period_days + config.grace_period_days)
+        ).strftime("%Y-%m-%d")
+        assert _pending_renewal([claim])[claim.object_name]["date"] == expected_date

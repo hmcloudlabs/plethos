@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-
+from starlette.requests import Request
 import pytest
 
 from auth import (
@@ -12,9 +12,11 @@ from auth import (
     require_user,
     set_session_user,
 )
-from conftest import make_request
 from kube.settings_service import SettingsService
 
+
+def make_request() -> Request:
+    return Request({"type": "http", "session": {}})
 
 def make_user(sub: str = "user-1", email: str = "bob@example.com", name: str = "bob") -> User:
     return User(sub=sub, email=email, name=name)

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 
 from kube.settings_service import SettingsService
+from kube.vclusterclaim_model import ExpiryAnnotation
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from kube.vclusterclaim_service import VClusterClaimAdminService, VClusterClaimUserService
 from shared.vclusterclaim import Member, State
@@ -27,6 +28,17 @@ def admin_service(repo):
 @pytest.fixture
 def settings_service():
     return MagicMock(spec=SettingsService)
+
+
+def _assert_marked_as_renewed(repo, object_name: str) -> None:
+    repo.patch_annotations.assert_called_once()
+    called_object_name, annotations = repo.patch_annotations.call_args.args
+
+    assert called_object_name == object_name
+    assert ExpiryAnnotation.RENEWED_AT in annotations
+    assert annotations[ExpiryAnnotation.SLEEP_WARNING] is None
+    assert annotations[ExpiryAnnotation.EXPIRED] is None
+    assert annotations[ExpiryAnnotation.DELETION_WARNING] is None
 
 
 class TestList:
@@ -231,7 +243,6 @@ class TestAdminDeleteAllForOwner:
         repo.delete.assert_called_once_with("u1-first-cluster")
 
 
-
 class TestConfirmKeepClusterAlive:
     def test_resets_activity_for_valid_token(self, service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(object_name="u123-test-cluster")
@@ -239,16 +250,35 @@ class TestConfirmKeepClusterAlive:
         token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
         service.confirm_keep_alive(token)
 
-        repo.mark_renewed.assert_called_once_with("u123-test-cluster")
+        _assert_marked_as_renewed(repo, "u123-test-cluster")
 
     def test_returns_none_for_invalid_token(self, service, repo):
         assert service.confirm_keep_alive("invalid-token") is None
-        repo.mark_renewed.assert_not_called()
+        repo.patch_annotations.assert_not_called()
 
     def test_returns_none_if_claim_no_longer_exists(self, service, repo):
         repo.get.return_value = None
 
         token = keep_alive_tokens.generate({"object_name": "u123-test-cluster"})
         assert service.confirm_keep_alive(token) is None
-        repo.mark_renewed.assert_not_called()
+        repo.patch_annotations.assert_not_called()
 
+
+class TestRenew:
+    def test_owner_can_renew(self, service, repo, make_vcluster_claim):
+        repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub")
+
+        service.renew("u123-test-cluster", "owner-sub", "")
+        _assert_marked_as_renewed(repo, "u123-test-cluster")
+
+    def test_shared_member_can_renew(self, service, repo, make_vcluster_claim):
+        repo.get.return_value = make_vcluster_claim(members=[Member(email="bob@example.com")])
+
+        service.renew("u123-test-cluster", "bobs-sub", "bob@example.com")
+        _assert_marked_as_renewed(repo, "u123-test-cluster")
+
+    def test_stranger_cannot_renew(self, service, repo, make_vcluster_claim):
+        repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub", members=[Member(email="bob@example.com")])
+
+        service.renew("u123-test-cluster", "strangers-sub", "strangers@mail.com")
+        repo.patch_annotations.assert_not_called()

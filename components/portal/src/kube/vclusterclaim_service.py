@@ -1,7 +1,8 @@
 import logging
+from datetime import UTC, datetime
 
 from kube.settings_service import SettingsService
-from kube.vclusterclaim_model import AccessType, VClusterClaim
+from kube.vclusterclaim_model import AccessType, ExpiryAnnotation, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from shared.vclusterclaim import Member, State, VClusterClaimSpec
 from tokens import invite_tokens, keep_alive_tokens
@@ -80,16 +81,6 @@ class VClusterClaimUserService:
 
         self._repo.patch_state(object_name, state)
         logger.info(f"{email} set cluster '{object_name}' to {state.value}")
-
-    def renew(self, object_name: str, sub: str, email: str) -> None:
-        """Keep-alive click from the portal UI. Allowed for the owner or any shared member."""
-
-        if self._get_for_member(object_name, sub, email) is None:
-            return
-
-        self._repo.mark_renewed(object_name)
-        logger.info(f"{email} renewed cluster '{object_name}'")
-
 
     def delete(self, object_name: str, sub: str) -> None:
         """Delete a cluster (owner only)."""
@@ -187,6 +178,29 @@ class VClusterClaimUserService:
             return None
 
         return claim.spec.name, data
+
+    def _mark_renewed(self, object_name: str) -> None:
+        """Renews a VClusterClaim after the owner was notified about expiration, clearing any pending warnings."""
+
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self._repo.patch_annotations(
+            object_name,
+            {
+                ExpiryAnnotation.RENEWED_AT: now,
+                ExpiryAnnotation.SLEEP_WARNING: None,
+                ExpiryAnnotation.EXPIRED: None,
+                ExpiryAnnotation.DELETION_WARNING: None,
+            },
+        )
+    
+    def renew(self, object_name: str, sub: str, email: str) -> None:
+        """Keep-alive click from the portal UI. Allowed for the owner or any shared member."""
+
+        if self._get_for_member(object_name, sub, email) is None:
+            return
+
+        self._mark_renewed(object_name)
+        logger.info(f"{email} renewed cluster '{object_name}'")
         
     def confirm_keep_alive(self, token: str) -> VClusterClaim | None:
         """
@@ -205,7 +219,7 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
-        self._repo.mark_renewed(object_name)
+        self._mark_renewed(object_name)
 
         logger.info(f"Cluster '{object_name}' renewed via keep-alive link")
 

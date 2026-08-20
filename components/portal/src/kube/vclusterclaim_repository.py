@@ -5,7 +5,6 @@ import re
 import shlex
 import tarfile
 import tempfile
-from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, cast
 from kubernetes import client
@@ -14,7 +13,7 @@ from kubernetes.stream import stream
 
 from config import config
 from kube.client import core_v1_api, custom_objects_api
-from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
+from kube.vclusterclaim_model import VClusterClaim
 from shared.vclusterclaim import (
     GROUP,
     KIND,
@@ -418,17 +417,3 @@ class VClusterClaimRepository:
             res.close()
 
         return data.getvalue()
-
-    def mark_renewed(self, object_name: str) -> None:
-        """Renews a VClusterClaim after the owner was notified about expiration, clearing any pending warnings."""
-
-        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        self.patch_annotations(
-            object_name,
-            {
-                ExpiryAnnotation.RENEWED_AT: now,
-                ExpiryAnnotation.SLEEP_WARNING: None,
-                ExpiryAnnotation.EXPIRED: None,
-                ExpiryAnnotation.DELETION_WARNING: None,
-            },
-        )
