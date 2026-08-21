@@ -77,7 +77,7 @@ cd components/shared      && uv run pytest
 - [x] logging
 - [x] k8s setup files
 - [ ] expiration tests
-- [ ] backup strategy
+- [x] backup strategy
 - [ ] fix potential isloation escape because of per vCluster ClusterRole
 - [ ] initial GitLab CI pipeline
 - [ ] style emails
