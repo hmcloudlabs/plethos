@@ -1,6 +1,5 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import create_autospec
-
 import pytest
 from fastapi.testclient import TestClient
 

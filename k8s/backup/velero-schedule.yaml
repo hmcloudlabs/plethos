@@ -1,0 +1,29 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: vkube-backup
+  namespace: velero
+spec:
+  schedule: "30 3 * * *"
+  template:
+    includedNamespaces:
+      - "*"
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - velero
+      - ingress-nginx
+
+    # Two backup mechanisms active: snapshot and fs-backup
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: true
+
+    # Volume policy that gives CSI priority, if a PVC doesn't lie on a CSI storage (and 
+    # therefore can't be snapshotted), fs-backup is used as fallback.
+    resourcePolicy:
+      kind: ConfigMap
+      name: vkube-backup-volume-policy
+
+    ttl: 336h0m0s # 2 weeks
+  useOwnerReferencesInBackup: false
