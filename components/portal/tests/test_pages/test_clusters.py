@@ -223,9 +223,9 @@ class TestValidateNewCluster:
     def test_rejects_underscores(self):
         assert _validate_new_cluster("test_cluster") is not None
 
-    def test_accepts_max_63_characters(self):
-        assert _validate_new_cluster("a" * 63) is None
-        assert _validate_new_cluster("a" * 64) is not None
+    def test_accepts_max_32_characters(self):
+        assert _validate_new_cluster("a" * 32) is None
+        assert _validate_new_cluster("a" * 33) is not None
 
 
 class TestRenewCluster:

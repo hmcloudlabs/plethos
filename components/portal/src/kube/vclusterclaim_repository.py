@@ -33,11 +33,11 @@ _vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_
 
 
 def get_owner_hash(sub: str) -> str:
-    return sha256(sub.encode()).hexdigest()[:32]
+    return sha256(sub.encode()).hexdigest()[:16]
 
 
 def get_member_hash(email: str) -> str:
-    return sha256(email.lower().encode()).hexdigest()[:32]
+    return sha256(email.lower().encode()).hexdigest()[:16]
 
 
 def vcluster_namespace(object_name: str) -> str:
@@ -131,6 +131,7 @@ class VClusterClaimRepository:
         """Creates a new VClusterClaim."""
 
         # Object name must start with a letter (RFC 1035) hence the "u" prefix.
+        # This must be at max 53 chars long, otherwise helm will fail.
         object_name = f"u{get_owner_hash(sub)}-{given_name}"
 
         try:
