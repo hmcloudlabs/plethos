@@ -19,6 +19,12 @@ _VCLUSTER_ISOLATION_VALUES = {
     }
 }
 
+# Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features 
+# not licensed in Apache 2.0, therefore pin the pure open-source build instead.
+_VCLUSTER_IMAGE_VALUES = {
+    "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
+}
+
 
 def make_namespace(namespace: str) -> dict:
     return {
@@ -175,6 +181,7 @@ def make_helm_install_job(
                                 "--version",
                                 vcluster_version,
                                 *_helm_set_args(_VCLUSTER_ISOLATION_VALUES),
+                                *_helm_set_args(_VCLUSTER_IMAGE_VALUES),
                                 *_ingress_helm_args(vcluster_name, base_domain, ingress_namespace),
                             ],
                         }
