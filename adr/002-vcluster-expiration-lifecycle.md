@@ -5,7 +5,7 @@ decision-makers: Theodor Peifer
 consulted: Prof. Dr. Johannes Ebke
 informed: 
 ---
-002-vcluster-expiration-lifecycle
+
 # Detecting inactive vClusters and notifying, sleeping and deleting them
 
 ## Context and Problem Statement

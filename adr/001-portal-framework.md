@@ -1,72 +1,51 @@
 ---
-status: "accepted"
-date: 2026-06-23
+status: "proposed"
+date: 2026-06-25
 decision-makers: Theodor Peifer
 consulted: Prof. Dr. Johannes Ebke
 informed: 
 ---
 
-# Re-desiging the current architecture of the _kube07_ vCluster management platform to make it more minimal, easier to maintain and more K8s native.
+# Choosing the web framework for the combined portal service
 
 ## Context and Problem Statement
 
-{Describe the context and problem statement, e.g., in free form using two to three sentences or in the form of an illustrative story. You may want to articulate the problem in form of a question. Consider adding links to collaboration boards or issue management systems. Make the scope of the decision explicit, for instance, by calling out or pointing at structural architecture elements (components, connectors, ...).}
+[ADR 000](./000-vcluster-portal-architecture.md) decided to merge `vcluster-api` (using FastAPI) and `portal` (using Django) into one service. This ADR decides which framework to use for this consolidated service.
 
-<!-- This is an optional element. Feel free to remove. -->
 ## Decision Drivers
 
-* {decision driver 1, for instance, a desired software quality, faced concern, constraint or force}
-* {decision driver 2}
-* … <!-- numbers of drivers can vary -->
+* lightweight framework (easy to maintain), but still performant
+* framework should be good as a fullstack-framework
+* no relational database, so no integrated ORM is needed
+* the service only needs to talk to the K8s API and serve templated HTML
+* should have async capabilities (K8s Python client is starting to support async operations)
+* setup should stay simple
 
 ## Considered Options
 
-* {title of option 1}
-* {title of option 2}
-* {title of option 3}
-* … <!-- numbers of options can vary -->
+* **Django**: keep using Django, like the current `portal` service.
+* **FastAPI**: use FastAPI, like the current `vcluster-api` service.
 
 ## Decision Outcome
 
-Chosen option: "{title of option 1}", because {justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force {force} | … | comes out best (see below)}.
+**Chosen option**: *"FastAPI"*, because there is no database left to justify an ORM , FastAPI already works well for talking to the K8s API and its lightweight.
 
-<!-- This is an optional element. Feel free to remove. -->
 ### Consequences
 
-* Good, because {positive consequence, e.g., improvement of one or more desired qualities, …}
-* Bad, because {negative consequence, e.g., compromising one or more desired qualities, …}
-* … <!-- numbers of consequences can vary -->
+* Good, because FastAPI is lightweight, easy to maintain.
+* Good, because the service stays small: no integrated ORM or no auth backend.
+* Good, because it's natively async and therfore use the K8s async module (will make use of that in the future, when all K8s handlers are async)
+* Bad, because Django is more powerful (forms, CSRF protection and session handling are lost and need to be replaced by hand).
+* Bad, because Djangos template engine is more integrated than FastAPIs Jinja2 setup.
 
-<!-- This is an optional element. Feel free to remove. -->
-### Confirmation
-
-{Describe how the implementation / compliance of the ADR can/will be confirmed. Is there any automated or manual fitness function? If so, list it and explain how it is applied. Is the chosen design and its implementation in line with the decision? E.g., a design/code review or a test with a library such as ArchUnit can help validate this. Note that although we classify this element as optional, it is included in many ADRs.}
-
-<!-- This is an optional element. Feel free to remove. -->
 ## Pros and Cons of the Options
 
-### {title of option 1}
+### Django
 
-<!-- This is an optional element. Feel free to remove. -->
-{example | description | pointer to more information | …}
+* Good, because it is what `portal` already uses.
+* Good, because it is batteries included: ORM, admin panel, auth, forms.
+* Bad, because the ORM, admin panel, etc are dead weight without a database.
+* Bad, because async was added later on top of a mostly sync core (ORM, middleware).
 
-* Good, because {argument a}
-* Good, because {argument b}
-<!-- use "neutral" if the given argument weights neither for good nor bad -->
-* Neutral, because {argument c}
-* Bad, because {argument d}
-* … <!-- numbers of pros and cons can vary -->
 
-### {title of other option}
 
-{example | description | pointer to more information | …}
-
-* Good, because {argument a}
-* Neutral, because {argument b}
-* Bad, because {argument c}
-* …
-
-<!-- This is an optional element. Feel free to remove. -->
-## More Information
-
-{You might want to provide additional evidence/confidence for the decision outcome here and/or document the team agreement on the decision and/or define when/how this decision the decision should be realized and if/when it should be re-visited. Links to other decisions and resources might appear here as well.}
