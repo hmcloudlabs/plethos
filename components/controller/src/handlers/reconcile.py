@@ -5,7 +5,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
-from context import ReconciliationContext
+from context import ReconciliationContext, VClusterAnnotations
 from resources import (
     make_namespace,
     make_service_account,
@@ -182,7 +182,9 @@ def get_vcluster(ctx: ReconciliationContext) -> V1StatefulSet | None:
 def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> None:
     vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
 
-    currently_sleeping = (vc_set_metadata.annotations or {}).get("loft.sh/paused") == "true"
+    currently_sleeping = (
+        vc_set_metadata.annotations or {}
+    ).get(VClusterAnnotations.PAUSED) == "true"
     should_be_sleeping = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
 
     if should_be_sleeping and not currently_sleeping:
@@ -221,9 +223,9 @@ def sleep_vcluster(apps, vc_set, logger) -> None:
     current_annotations = vc_set.metadata.annotations or {}
     vc_set.metadata.annotations = {
         **current_annotations,
-        "loft.sh/paused": "true",
-        "loft.sh/paused-date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "loft.sh/paused-replicas": str(vc_set.spec.replicas),
+        VClusterAnnotations.PAUSED: "true",
+        VClusterAnnotations.PAUSED_DATE: datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        VClusterAnnotations.PAUSED_REPLICAS: str(vc_set.spec.replicas),
     }
     vc_set.spec.replicas = 0
 
@@ -235,12 +237,12 @@ def sleep_vcluster(apps, vc_set, logger) -> None:
 
 def wake_vcluster(apps, vc_set, logger) -> None:
     current_annotations = vc_set.metadata.annotations or {}
-    original_replicas = int(current_annotations.get("loft.sh/paused-replicas", 1))
+    original_replicas = int(current_annotations.get(VClusterAnnotations.PAUSED_REPLICAS, 1))
 
     vc_set.metadata.annotations = {
-        "loft.sh/paused": None,
-        "loft.sh/paused-date": None,
-        "loft.sh/paused-replicas": None,
+        VClusterAnnotations.PAUSED: None,
+        VClusterAnnotations.PAUSED_DATE: None,
+        VClusterAnnotations.PAUSED_REPLICAS: None,
     }
     vc_set.spec.replicas = original_replicas
 

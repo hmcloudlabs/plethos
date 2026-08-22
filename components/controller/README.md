@@ -75,9 +75,8 @@ The `vcc` short name prints the cluster name, owner, desired state, current phas
 ## Sleep and wake
 
 Setting `spec.state` toggles the vCluster between running and asleep. `Sleeping` scales the
-vCluster StatefulSet to zero replicas (recording the original replica count in the
-`loft.sh/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` /
-`Waking` / `Ready` accordingly.
+vCluster StatefulSet to zero replicas (recording the original replica count in
+`vkube.cs.hm.edu/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` / `Waking` / `Ready` accordingly.
 
 ## Version selection
 

@@ -239,8 +239,8 @@ class TestUpdate:
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
 
         assert vc_set_spec.replicas == 0
-        assert vc_set_metadata.annotations.get("loft.sh/paused") == "true"
-        assert "loft.sh/paused-replicas" in vc_set_metadata.annotations
+        assert vc_set_metadata.annotations.get(f"{GROUP}/paused") == "true"
+        assert f"{GROUP}/paused-replicas" in vc_set_metadata.annotations
 
     def test_wake_vcluster(self, operator, clients, create_vcluster_claim, resource_name):
         """Changing state back to Running should scale up the vCluster StatefulSet."""
@@ -280,7 +280,7 @@ class TestUpdate:
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
 
         assert vc_set_spec.replicas > 0
-        assert vc_set_metadata.annotations.get("loft.sh/paused") is None
+        assert vc_set_metadata.annotations.get(f"{GROUP}/paused") is None
 
     def test_sleep_already_sleeping(self, operator, clients, create_vcluster_claim, resource_name):
         """Setting state to Sleeping when already sleeping should not error."""
