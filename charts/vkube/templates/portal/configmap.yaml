@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vkube.portal.fullname" . }}-settings
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vkube.labels" . | nindent 4 }}
+data:
+  adminEmails: {{ .Values.portal.settings.adminEmails | quote }}
+  maxVclustersPerUser: {{ .Values.portal.settings.maxVclustersPerUser | quote }}
+  maxTeamSize: {{ .Values.portal.settings.maxTeamSize | quote }}

@@ -1,0 +1,76 @@
+# Default values for the vkube chart.
+# Install into its own namespace, e.g.:
+#   helm install vkube ./charts/vkube -n vkube-system --create-namespace -f my-values.yaml
+
+
+# Versions of vCluster the controller can provision. Must be a comma-separated list.
+# the portal always provisions new vCluster with the latest version in that list.
+# Shared between portal and controller.
+supportedVclusterVersions: "0.20.0,0.35.0"
+
+portal:
+  image:
+    repository: some.registry.com/vkube-portal
+    # Defaults to Chart.yaml's appVersion when unset (only override to pin a
+    # different tag than the chart ships by default).
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  # Name of an existing Secret (in the release namespace) with keys:
+  # PORTAL_SESSION_SECRET, OIDC_CLIENT_SECRET, SMTP_USERNAME, SMTP_PASSWORD.
+  # This chart never creates it - see NOTES.txt after install for the kubectl
+  # command to create it. Leave blank to use the default "<release>-portal-secrets".
+  secretName: ""
+
+  ingress:
+    enabled: true
+    className: ""
+    host: vkube.example.com
+
+  # Public URL the portal is reachable at (used to build links in emails and must be a real, 
+  # reachable URL in production, not the default localhost one, or those links will be broken.
+  baseUrl: "http://localhost:8000"
+
+  # Portal admin settings ConfigMap
+  settings:
+    adminEmails: "admin@example.com"
+    maxVclustersPerUser: 5
+    maxTeamSize: 5
+
+  # OICD configuration, override with yours
+  oidc:
+    issuer: ""
+    clientId: vkube-portal
+
+  supportEmail: "support@example.com"
+
+  # SMTP configuration, override with yours
+  smtp:
+    host: ""
+    port: 1025
+    fromAddress: "vkube@example.com"
+
+controller:
+  image:
+    repository: some.registry.com/vkube-controller
+    # Defaults to Chart.yaml's appVersion when unset (only override to pin a
+    # different tag than the chart ships by default).
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  # Domain each vCluster is exposed under, as <claim-name>.<vclustersBaseDomain>.
+  # Leave blank for a domain-less/local setup.
+  vclustersBaseDomain: ""
+  vclustersIngressNamespace: ingress-nginx
+
+notifier:
+  # Daily inactivity check that flags/expires unused vClusters.
+  schedule: "0 3 * * *"
+
+# Override the release-name-derived resource prefix (see templates/_helpers.tpl).
+nameOverride: ""
+fullnameOverride: ""

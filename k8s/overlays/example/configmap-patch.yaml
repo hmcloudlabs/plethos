@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: vkube-portal-settings
-  namespace: vkube-system
-data:
-  adminEmails: "admin@yourcompany.com"
-  maxVclustersPerUser: "5"
-  maxTeamSize: "5"

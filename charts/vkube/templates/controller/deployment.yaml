@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vkube.controller.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vkube.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "vkube.controller.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "vkube.controller.fullname" . }}
+    spec:
+      serviceAccountName: {{ include "vkube.controller.fullname" . }}
+      containers:
+        - name: controller
+          image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+          env:
+            - name: VCLUSTERCLAIMS_NAMESPACE
+              value: {{ .Release.Namespace }}
+            {{- if .Values.controller.vclustersBaseDomain }}
+            - name: VCLUSTERS_BASE_DOMAIN
+              value: {{ .Values.controller.vclustersBaseDomain }}
+            {{- end }}
+            - name: VCLUSTERS_INGRESS_NAMESPACE
+              value: {{ .Values.controller.vclustersIngressNamespace }}
+            - name: SUPPORTED_VCLUSTER_VERSIONS
+              value: {{ .Values.supportedVclusterVersions | quote }}

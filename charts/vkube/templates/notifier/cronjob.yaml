@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "vkube.fullname" . }}-inactivity-check
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vkube.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.notifier.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          serviceAccountName: {{ include "vkube.portal.fullname" . }}
+          restartPolicy: Never
+          containers:
+            - name: inactivity-check
+              image: "{{ .Values.portal.image.repository }}:{{ .Values.portal.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.portal.image.pullPolicy }}
+              command: ["python", "src/cluster_expiry_job.py"]

@@ -1,0 +1,51 @@
+# Values for trying vkube locally against minikube, with locally-built images and
+# Keycloak/Mailpit run on the host via components/portal/dev-setup/docker-compose.yml.
+# No secrets in here - see the README for the `kubectl create secret` step.
+#
+#   helm install vkube ./charts/vkube -n vkube-system --create-namespace -f charts/vkube/local-values.yaml
+
+supportedVclusterVersions: "0.20.0,0.35.0"
+
+portal:
+  image:
+    repository: vkube-portal
+    # Must stay "local" - matches the tag used by `docker build -t vkube-portal:local .`
+    # and `minikube image load`. Deliberately overrides the chart's default of falling
+    # back to Chart.yaml's appVersion, since a local build isn't a real release.
+    tag: local
+    pullPolicy: Never # image is loaded directly into minikube, never pulled from a registry
+
+  ingress:
+    enabled: false # no domain locally - reach the portal via `kubectl port-forward`
+
+  baseUrl: http://localhost:8000
+
+  settings:
+    adminEmails: "testuser@example.com"
+    maxVclustersPerUser: 5
+    maxTeamSize: 5
+
+  oidc:
+    # host.minikube.internal reaches the Keycloak from dev-setup/docker-compose.yml
+    # (published on the host at :9090). Add `127.0.0.1 host.minikube.internal` to your
+    # own /etc/hosts too - your browser needs to resolve it during the login redirect,
+    # not just the portal pod.
+    issuer: http://host.minikube.internal:9090/realms/vkube-portal
+    clientId: vkube-portal
+    # dev-setup's realm.json registers vkube-portal as a public client - no client secret needed.
+
+  supportEmail: support@example.com
+
+  smtp:
+    host: host.minikube.internal # Mailpit from dev-setup/docker-compose.yml
+    port: 1025
+    fromAddress: vkube@example.com
+
+controller:
+  image:
+    repository: vkube-controller
+    tag: local # see the note on portal.image.tag above
+    pullPolicy: Never
+
+  vclustersBaseDomain: "" # blank -> vCluster falls back to its own localhost:8443 kubeconfig
+  vclustersIngressNamespace: ingress-nginx

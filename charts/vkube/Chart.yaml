@@ -1,0 +1,6 @@
+apiVersion: v2
+name: vkube
+description: Self-service platform for provisioning, managing and expiring virtual Kubernetes clusters (vCluster)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

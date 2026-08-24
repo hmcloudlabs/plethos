@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vkube.portal.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vkube.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.portal.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "vkube.portal.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "vkube.portal.fullname" . }}
+    spec:
+      serviceAccountName: {{ include "vkube.portal.fullname" . }}
+      containers:
+        - name: portal
+          image: "{{ .Values.portal.image.repository }}:{{ .Values.portal.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.portal.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+          env:
+            - name: VCLUSTERCLAIMS_NAMESPACE
+              value: {{ .Release.Namespace }}
+            {{- if .Values.portal.oidc.issuer }}
+            - name: OIDC_ISSUER
+              value: {{ .Values.portal.oidc.issuer }}
+            {{- end }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.portal.oidc.clientId }}
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vkube.portal.secretName" . }}
+                  key: OIDC_CLIENT_SECRET
+            - name: PORTAL_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vkube.portal.secretName" . }}
+                  key: PORTAL_SESSION_SECRET
+            - name: SUPPORT_EMAIL
+              value: {{ .Values.portal.supportEmail }}
+            - name: PORTAL_BASE_URL
+              value: {{ .Values.portal.baseUrl }}
+            - name: SUPPORTED_VCLUSTER_VERSIONS
+              value: {{ .Values.supportedVclusterVersions | quote }}
+            {{- if .Values.portal.smtp.host }}
+            - name: SMTP_HOST
+              value: {{ .Values.portal.smtp.host }}
+            {{- end }}
+            - name: SMTP_PORT
+              value: {{ .Values.portal.smtp.port | quote }}
+            - name: SMTP_FROM_ADDRESS
+              value: {{ .Values.portal.smtp.fromAddress }}
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vkube.portal.secretName" . }}
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vkube.portal.secretName" . }}
+                  key: SMTP_PASSWORD

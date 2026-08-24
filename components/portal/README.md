@@ -20,16 +20,17 @@ Create the namespace (skip if the controller already created it):
 kubectl create namespace vkube-system
 ```
 
-Seed the settings `ConfigMap` the portal requires to start (admin emails, quotas):
+Seed the settings `ConfigMap` the portal requires to start (admin emails, quotas) - replace
+`testuser@example.com` with your own for local admin access (see [Admin settings](#admin-settings)):
 
 ```bash
-kubectl apply -f k8s/base/portal/configmap.yaml
+kubectl create configmap vkube-portal-settings -n vkube-system \
+  --from-literal=adminEmails="testuser@example.com" \
+  --from-literal=maxVclustersPerUser="5" \
+  --from-literal=maxTeamSize="5"
 ```
 
-**Note:** the shipped ConfigMap only lists `testuser@example.com` as an admin. Add your own
-email (see [Admin settings](#admin-settings)) or edit the ConfigMap directly for local admin access.
-
-(For a full cluster deployment rather than local development, see [k8s/README.md](../../k8s/README.md).)
+(For a full cluster deployment rather than local development, see [charts/vkube/README.md](../../charts/vkube/README.md).)
 
 ## Running the portal
 
@@ -91,8 +92,9 @@ dashboard (`/admin`), never directly:
 
 ## Cluster expiry
 
-`src/cluster_expiry_job.py` is a standalone script, run on a schedule by
-[`k8s/base/notifier/cronjob.yaml`](../../k8s/base/notifier/cronjob.yaml). It reuses the portal's own image and `ServiceAccount`, so there's nothing extra to deploy.
+`src/cluster_expiry_job.py` is a standalone script, run on a schedule by the CronJob in
+[`charts/vkube/templates/notifier/cronjob.yaml`](../../charts/vkube/templates/notifier/cronjob.yaml).
+It reuses the portal's own image and `ServiceAccount`, so there's nothing extra to deploy.
 
 Every VClusterClaim carries a `renewed-at` annotation, updated each time its owner clicks a
 keep-alive link. If it's never been set, the claim's creation time is used instead. Measured

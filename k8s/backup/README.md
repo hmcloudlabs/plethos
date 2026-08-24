@@ -44,7 +44,7 @@ Not required, but without it, everything just uses file-copy backup instead.
 
 ### 3. Apply the backup Schedule
 
-In `/k8s/backup/` are example Velero resources which contain the recommended Velero backup configuration.
+In `k8s/backup/` are example Velero resources which contain the recommended Velero backup configuration.
 
 The backup should first try to use volume snapshots on all PVCs which are on CSI storage and then fall back on using plain FSB (file system backup). This rule is defined in the `velero-volume-policy.yaml`. There you must edit in your default storage class name and then apply:
 ```bash

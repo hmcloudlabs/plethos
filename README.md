@@ -8,7 +8,8 @@ vkube-manager/
 │   ├── portal/        # FastAPI + HTMX app
 │   ├── controller/    # KOPF k8s controller
 │   └── shared/        # shared package
-└── k8s/               # cluster manifests (Kustomize base + overlays, see k8s/README.md)
+├── charts/vkube/      # Helm chart to deploy vkube, see charts/vkube/README.md
+└── k8s/               # standalone k8s reference material (e.g. Velero backup setup), see k8s/README.md
 ```
 
 ## Install
@@ -38,6 +39,11 @@ Please refer to the [components/controller/README.md](components/controller/READ
 ```bash
 uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose # namespace name might be different
 ```
+
+## Deploy
+
+To deploy vkube to a Kubernetes cluster, see [charts/vkube/README.md](charts/vkube/README.md).
+For optional Velero backups, see [k8s/backup/README.md](k8s/backup/README.md).
 
 ## Lint
 
@@ -75,9 +81,9 @@ cd components/shared      && uv run pytest
 - [x] portal testing
 - [x] email notification for expiring clusters
 - [x] logging
-- [x] k8s setup files
-- [ ] expiration tests
+- [x] k8s setup files or helm chart setup
+- [x] expiration tests
 - [x] backup strategy
+- [x] style emails
 - [ ] fix potential isloation escape because of per vCluster ClusterRole
 - [ ] initial GitLab CI pipeline
-- [ ] style emails

@@ -1,0 +1,59 @@
+# vkube Helm chart
+
+Official way to install vkube (portal + controller + notifier CronJob + the
+VClusterClaim CRD).
+
+## Prerequisites
+
+- A Kubernetes cluster with an ingress controller that supports SSL passthrough
+  (e.g. nginx-ingress with `--enable-ssl-passthrough`).
+- An OIDC provider for the portal to authenticate against (see
+  [components/portal/README.md](../../components/portal/README.md#logging-in)).
+
+## Installing
+
+1. Write your own values file (start from `values.yaml`) and set every value in it for
+   your environment (several are placeholders, like `example.com` addresses, `admin@example.com`, `localhost` SMTP/base URL) that fail silently rather than error if left unset.
+   
+2. Install:
+   ```bash
+   helm install vkube ./charts/vkube \
+     --namespace vkube-system --create-namespace \
+     -f my-values.yaml
+   ```
+
+3. Create the secret the portal reads OIDC/session/SMTP credentials from:
+   ```bash
+   kubectl create secret generic vkube-portal-secrets -n vkube-system \
+     --from-literal=PORTAL_SESSION_SECRET="$(openssl rand -hex 32)" \
+     --from-literal=OIDC_CLIENT_SECRET="<your OIDC client secret>" \
+     --from-literal=SMTP_USERNAME="<your SMTP username>" \
+     --from-literal=SMTP_PASSWORD="<your SMTP password>"
+   ```
+
+  If the portal pod started before the secret existed, it'll be stuck in a
+  `CreateContainerConfigError`. In that case, restart:
+
+   ```bash
+   kubectl rollout restart deployment/vkube-portal -n vkube-system
+   ```
+
+## Upgrading
+
+```bash
+helm upgrade vkube ./charts/vkube -n vkube-system -f my-values.yaml
+```
+
+Note: the CRD in `crds/vclusterclaim.yaml` is installed on first `helm install`
+but **not** updated by `helm upgrade` (that's a Helm limitation for the `crds/` directory). If it changes, re-apply it manually:
+
+```bash
+kubectl apply -f charts/vkube/crds/vclusterclaim.yaml
+```
+
+## Values
+
+See [`values.yaml`](values.yaml) for the full list with defaults and comments.
+Full env var reference (including sensible defaults for anything not exposed
+as a value): [controller](../../components/controller/README.md#configuration),
+[portal](../../components/portal/README.md#configuration).
