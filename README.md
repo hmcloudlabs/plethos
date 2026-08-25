@@ -1,79 +1,86 @@
-# vkube (bachelor thesis 2026)
+# vkube
 
-uv workspace with two apps (`portal`, `controller`) and a shared library.
+Self-service Kubernetes clusters for your organization's members and teams, provisioned as
+isolated [vCluster](https://www.vcluster.com/) instances.
 
+## ❔ What is vkube?
+
+vkube lets members and teams of your organization provision their own Kubernetes cluster with a single click. These clusters run as virtual clusters behind the scenes. This means whoever hosts vkube only needs a single real Kubernetes cluster, and therefore avoids the operational overhead of running a separate cluster per team. Bring your own IdP - vkube uses standard OIDC, so it works with whatever your organization already runs (Keycloak, Auth0, Entra ID, Dex, ...).
+
+## ✨ Features
+
+**Users can...**
+- create, sleep, wake and delete their clusters
+- download the kubeconfig to connect to their clusters
+- export PVC/workload data
+- share clusters with other users by email
+- automatic expiration: idle clusters are put to sleep and eventually deleted, always with an
+  emailed warning and a keep-alive link first
+
+**Admins can...**
+- set max-amount of clusters quota (overridable per user)
+- set team-size quota (overridable per user)
+- inspect cluster logs
+- delete any user's clusters
+- let clusters expire and send autom. expiration warn-emails
+
+## ❗How it works
+
+vkube runs as two independent services - the **portal**, a web app members use to manage their
+clusters and the **controller**, a Kubernetes controller that actually provisions the vClusters. They don't talk to each other directly, instead they are connected via a Kubernetes custom resource called `VClusterClaim`.
+
+When a member requests a cluster, the portal creates a `VClusterClaim` object describing the desired state (owner, shared members, whether it should be running or asleep). The controller watches for changes and reconciles the real vCluster to match the `VClusterClaim`, i.e. installing it via
+Helm, scaling it down to sleep, waking it back up or tearing it down for deletion. It also writes the status back onto the object (its phase, readiness), which the portal reads to show the cluster's status to the user. So ownership, sharing and lifecycle all live as Kubernetes resources rather than a separate database. The Kubernetes API stays the single source of truth for both services.
+
+See [ADR 000](adr/000-vcluster-portal-architecture.md) for the reasoning behind that design.
+
+## 📁 Project Structure
+
+vkube is a `uv` workspace of two services and a shared library:
+
+- **portal**: a FastAPI + HTMX web app. Users authenticate via OIDC and manage their vClusters by creating, editing and deleting `VClusterClaim` custom resources.
+- **controller**: a [Kopf](https://kopf.readthedocs.io/)-based Kubernetes operator that watches `VClusterClaim` resources and reconciles the actual vCluster (provisioning, sleep/wake, deletion).
+
+Project tree:
 ```
-vkube-manager/
+├── charts/vkube/       # Helm chart to deploy vkube
 ├── components/
-│   ├── portal/        # FastAPI + HTMX app
-│   ├── controller/    # KOPF k8s controller
-│   └── shared/        # shared package
-├── charts/vkube/      # Helm chart to deploy vkube, see charts/vkube/README.md
-└── k8s/               # standalone k8s reference material (e.g. Velero backup setup), see k8s/README.md
+│   ├── controller/     # KOPF k8s controller
+│   ├── portal/         # FastAPI + HTMX app
+│   └── shared/         # shared package
+└── k8s/                # standalone k8s reference material
 ```
 
-## Install
+For the full design rationale, see the [ADRs](adr/).
 
-```bash
-uv sync --all-packages
-```
+## 🚀 Getting started
 
-### To install more deps in the future
-```bash
-uv add --package portal <pkg>
-uv add --package controller <pkg>
-uv add --package shared <pkg>
-```
+**Deploying vkube to a cluster:** see [charts/vkube/README.md](charts/vkube/README.md) for the
+Helm chart, the official way to install it.
 
-## Run
+**Running it locally for development:** see [CONTRIBUTING.md](CONTRIBUTING.md#set-up) for the
+full local setup (a local cluster, the CRD, a dev Keycloak instance, and running both services).
 
-### Portal:
-Please refer to the [components/portal/README.md](components/portal/README.md) for setup (auth, admin settings, etc.).
-```bash
-# portal  -> http://localhost:8000
-uv run uvicorn main:app --reload --app-dir components/portal/src
-```
+## 📄 Documentation
 
-### Controller:
-Please refer to the [components/controller/README.md](components/controller/README.md) on how to prepare your K8s cluster.
-```bash
-uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose # namespace name might be different
-```
+- [components/portal/README.md](components/portal/README.md): portal setup, configuration and the cluster expiration lifecycle
+- [components/controller/README.md](components/controller/README.md): controller setup, the `VClusterClaim` spec and reconciliation phases
+- [charts/vkube/README.md](charts/vkube/README.md): deploying vkube with Helm
+- [k8s/README.md](k8s/README.md): standalone reference material (e.g. Velero backups)
+- [adr/](adr/): architecture decision records
 
-## Deploy
+## ❤️ Contributing
 
-To deploy vkube to a Kubernetes cluster, see [charts/vkube/README.md](charts/vkube/README.md).
-For optional Velero backups, see [k8s/backup/README.md](k8s/backup/README.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow,
+and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
-## Lint
+## 🗺️ Roadmap
 
-```bash
-uv run ruff check .          # lint
-uv run ruff check --fix .    # lint + autofix
-uv run ruff format .         # format
-```
-
-## Test
-
-Tests live per component in `<component>/tests/`. Run them from inside a component
-(each sets its own `pythonpath`):
-
-```bash
-cd components/portal      && uv run pytest
-cd components/controller  && uv run pytest
-cd components/shared      && uv run pytest
-```
-
-
-## TODO
-
-### Portal:
 - [x] ConfigMap for storing admin emails, per user vCluster quota
 - [x] per specific user vCluster quota override
 - [x] per vCluster ingress
 - [x] PVC export
 - [x] max team/member size admin config
-- [x] per specific user
 - [x] caching
 - [x] vCluster expiration
 - [x] email invite for members
@@ -85,5 +92,9 @@ cd components/shared      && uv run pytest
 - [x] expiration tests
 - [x] backup strategy
 - [x] style emails
-- [ ] fix potential isloation escape because of per vCluster ClusterRole
+- [ ] fix potential isolation escape because of per vCluster ClusterRole
 - [ ] initial GitLab CI pipeline
+
+## ⚖️ License
+
+Apache License 2.0, see [LICENSE](LICENSE).
