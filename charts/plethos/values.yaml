@@ -1,6 +1,6 @@
-# Default values for the vkube chart.
+# Default values for the plethos chart.
 # Install into its own namespace, e.g.:
-#   helm install vkube ./charts/vkube -n vkube-system --create-namespace -f my-values.yaml
+#   helm install plethos ./charts/plethos -n plethos-system --create-namespace -f my-values.yaml
 
 
 # Versions of vCluster the controller can provision. Must be a comma-separated list.
@@ -10,7 +10,7 @@ supportedVclusterVersions: "0.20.0,0.35.0"
 
 portal:
   image:
-    repository: some.registry.com/vkube-portal
+    repository: some.registry.com/plethos-portal
     # Defaults to Chart.yaml's appVersion when unset (only override to pin a
     # different tag than the chart ships by default).
     tag: ""
@@ -27,7 +27,7 @@ portal:
   ingress:
     enabled: true
     className: ""
-    host: vkube.example.com
+    host: plethos.example.com
 
   # Public URL the portal is reachable at (used to build links in emails and must be a real, 
   # reachable URL in production, not the default localhost one, or those links will be broken.
@@ -42,7 +42,7 @@ portal:
   # OICD configuration, override with yours
   oidc:
     issuer: ""
-    clientId: vkube-portal
+    clientId: plethos-portal
 
   supportEmail: "support@example.com"
 
@@ -50,11 +50,11 @@ portal:
   smtp:
     host: ""
     port: 1025
-    fromAddress: "vkube@example.com"
+    fromAddress: "plethos@example.com"
 
 controller:
   image:
-    repository: some.registry.com/vkube-controller
+    repository: some.registry.com/plethos-controller
     # Defaults to Chart.yaml's appVersion when unset (only override to pin a
     # different tag than the chart ships by default).
     tag: ""

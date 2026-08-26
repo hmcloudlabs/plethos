@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "vkube.portal.fullname" . }}
+  name: {{ include "plethos.portal.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 spec:
   selector:
-    app: {{ include "vkube.portal.fullname" . }}
+    app: {{ include "plethos.portal.fullname" . }}
   ports:
     - name: http
       port: 80

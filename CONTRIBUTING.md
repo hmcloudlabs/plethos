@@ -1,4 +1,4 @@
-# Contributing to vkube
+# Contributing to plethos
 
 Thanks for your interest in contributing. Contributions of any
 size are welcome (bug reports, docs fixes, small patches or larger features).
@@ -15,7 +15,7 @@ This is a `uv` workspace with two apps and a shared library:
 ```
 .
 ├── adr/                # architecture decision records
-├── charts/vkube/       # Helm chart to deploy vkube
+├── charts/plethos/       # Helm chart to deploy plethos
 ├── components/
 │   ├── controller/     # KOPF k8s controller
 │   ├── portal/         # FastAPI + HTMX app
@@ -39,15 +39,15 @@ To run the portal and controller together locally:
 1. Create a local cluster and the namespace both components use:
    ```bash
    kind create cluster
-   kubectl create namespace vkube-system  # you can choose a different name
+   kubectl create namespace plethos-system  # you can choose a different name
    ```
 2. Apply the `VClusterClaim` CRD:
    ```bash
-   kubectl apply -f charts/vkube/crds/vclusterclaim.yaml
+   kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
    ```
 3. Seed the portal's settings `ConfigMap` (admin emails, quotas):
    ```bash
-   kubectl create configmap vkube-portal-settings -n vkube-system \
+   kubectl create configmap plethos-portal-settings -n plethos-system \
      --from-literal=adminEmails="testuser@example.com" \
      --from-literal=maxVclustersPerUser="5" \
      --from-literal=maxTeamSize="5"
@@ -66,7 +66,7 @@ To run the portal and controller together locally:
 
 5. In separate terminals, run the controller and the portal (both from the project root):
    ```bash
-   uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose
+   uv run kopf run components/controller/src/main.py --namespace plethos-system --verbose
    uv run uvicorn main:app --reload --app-dir components/portal/src
    ```
 6. Open `http://localhost:8000` and log in with one of the seeded users above.

@@ -1,4 +1,4 @@
-# vkube Portal
+# plethos Portal
 
 A FastAPI + HTMX web app that lets users provision, sleep/wake, share and delete their own
 [_vCluster_](https://www.vcluster.com/) instances by creating `VClusterClaim` custom
@@ -17,20 +17,20 @@ resources. The actual provisioning is done by the [controller](../controller/REA
 Create the namespace (skip if the controller already created it):
 
 ```bash
-kubectl create namespace vkube-system
+kubectl create namespace plethos-system
 ```
 
 Seed the settings `ConfigMap` the portal requires to start (admin emails, quotas) - replace
 `testuser@example.com` with your own for local admin access (see [Admin settings](#admin-settings)):
 
 ```bash
-kubectl create configmap vkube-portal-settings -n vkube-system \
+kubectl create configmap plethos-portal-settings -n plethos-system \
   --from-literal=adminEmails="testuser@example.com" \
   --from-literal=maxVclustersPerUser="5" \
   --from-literal=maxTeamSize="5"
 ```
 
-(For a full cluster deployment rather than local development, see [charts/vkube/README.md](../../charts/vkube/README.md).)
+(For a full cluster deployment rather than local development, see [charts/plethos/README.md](../../charts/plethos/README.md).)
 
 ## Running the portal
 
@@ -66,7 +66,7 @@ A user's OIDC `sub` claim becomes `spec.ownerSubject` on every `VClusterClaim` t
 the stable identifier a claim is scoped to, not the email (which can change).
 
 "Admin" isn't an OIDC role - it's just membership in the `adminEmails` list in the
-`vkube-portal-settings` ConfigMap (see [Admin settings](#admin-settings)).
+`plethos-portal-settings` ConfigMap (see [Admin settings](#admin-settings)).
 
 ## Features
 
@@ -81,7 +81,7 @@ the stable identifier a claim is scoped to, not the email (which can change).
 
 ## Admin settings
 
-All portal-wide settings live in the `vkube-portal-settings` ConfigMap, edited through the admin
+All portal-wide settings live in the `plethos-portal-settings` ConfigMap, edited through the admin
 dashboard (`/admin`), never directly:
 
 | Setting | Global key | Per-user override key |
@@ -93,7 +93,7 @@ dashboard (`/admin`), never directly:
 ## Cluster expiry
 
 `src/cluster_expiry_job.py` is a standalone script, run on a schedule by the CronJob in
-[`charts/vkube/templates/notifier/cronjob.yaml`](../../charts/vkube/templates/notifier/cronjob.yaml).
+[`charts/plethos/templates/notifier/cronjob.yaml`](../../charts/plethos/templates/notifier/cronjob.yaml).
 It reuses the portal's own image and `ServiceAccount`, so there's nothing extra to deploy.
 
 Every VClusterClaim carries a `renewed-at` annotation, updated each time its owner clicks a
@@ -125,11 +125,11 @@ that path to survive pod restarts.
 | `TOKEN_MAX_AGE_SECONDS` | `604800` (7 days) | How long signed links (member invites, keep-alive) stay valid |
 | `LOG_LEVEL` | `INFO` | Root log level (see [Logging](#logging)) |
 | `LOG_DIR` | _(unset)_ | Directory to also write rotating log files to. Left unset, logging is console-only |
-| `OIDC_ISSUER` | `http://localhost:9090/realms/vkube-portal` | OIDC issuer base URL |
-| `OIDC_CLIENT_ID` | `vkube-portal` | OAuth2 client id |
+| `OIDC_ISSUER` | `http://localhost:9090/realms/plethos-portal` | OIDC issuer base URL |
+| `OIDC_CLIENT_ID` | `plethos-portal` | OAuth2 client id |
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OAuth2 client secret |
 | `OIDC_SCOPES` | `openid email profile` | Requested OIDC scopes |
-| `VCLUSTERCLAIMS_NAMESPACE` | `vkube-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
+| `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
 | `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Must match the controller's value, the portal always provisions the highest version |
@@ -137,7 +137,7 @@ that path to survive pod restarts.
 | `SMTP_PORT` | `1025` | SMTP server port (mailpit default) |
 | `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
 | `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
-| `SMTP_FROM_ADDRESS` | `vkube@example.com` | `From` address on invite/keep-alive emails |
+| `SMTP_FROM_ADDRESS` | `plethos@example.com` | `From` address on invite/keep-alive emails |
 | `PORTAL_BASE_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
 | `EXPIRY_PERIOD_DAYS` | `30` | Days a claim stays valid since it was last renewed before it expires and is put to sleep (see [Cluster expiry](#cluster-expiry)) |
 | `GRACE_PERIOD_DAYS` | `30` | Days a claim may stay asleep, unrenewed, before it's deleted |

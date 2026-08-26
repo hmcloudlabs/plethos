@@ -1,5 +1,5 @@
 {
-  "realm": "vkube-portal",
+  "realm": "plethos-portal",
   "enabled": true,
 
   "registrationAllowed": false,
@@ -62,7 +62,7 @@
 
   "clients": [
     {
-      "clientId": "vkube-portal",
+      "clientId": "plethos-portal",
       "enabled": true,
 
       "publicClient": true,

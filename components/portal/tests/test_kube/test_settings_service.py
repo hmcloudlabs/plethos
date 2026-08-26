@@ -6,7 +6,7 @@ from kubernetes import client
 
 from kube.settings_service import _SETTINGS_CONFIGMAP_NAME, SettingsService, _settings_cache, _SettingsKey
 
-_NAMESPACE = "vkube-system"
+_NAMESPACE = "plethos-system"
 
 
 @pytest.fixture(autouse=True)

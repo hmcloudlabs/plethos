@@ -7,7 +7,7 @@ There's no backport or LTS policy (only the latest commit on `main` receives sec
 ## Reporting a Vulnerability
 
 Please do not open a public issue for a security vulnerability. Instead, report it privately by
-emailing <theodorpeifer+vkube@gmail.com>.
+emailing <theodorpeifer+plethos@gmail.com>.
 
 Please include:
 

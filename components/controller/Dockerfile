@@ -28,4 +28,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/src"
 USER app
 
-CMD ["sh", "-c", "kopf run src/main.py --namespace ${VCLUSTERCLAIMS_NAMESPACE:-vkube-system}"]
+CMD ["sh", "-c", "kopf run src/main.py --namespace ${VCLUSTERCLAIMS_NAMESPACE:-plethos-system}"]

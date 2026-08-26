@@ -2,10 +2,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "vkube.portal.fullname" . }}
+  name: {{ include "plethos.portal.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 spec:
   {{- if .Values.portal.ingress.className }}
   ingressClassName: {{ .Values.portal.ingress.className }}
@@ -18,7 +18,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "vkube.portal.fullname" . }}
+                name: {{ include "plethos.portal.fullname" . }}
                 port:
                   number: 80
 {{- end }}

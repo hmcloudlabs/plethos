@@ -1,6 +1,6 @@
 # k8s
 
-This directory holds standalone Kubernetes reference material and no deployment manifests. To install and deploy vkube, use the [Helm chart](../charts/vkube).
+This directory holds standalone Kubernetes reference material and no deployment manifests. To install and deploy plethos, use the [Helm chart](../charts/plethos).
 
 ```bash
 k8s/

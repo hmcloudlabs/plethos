@@ -20,41 +20,39 @@
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <a class="navbar-brand" href="/">
-          <span class="brand-mark" aria-hidden="true"></span>
-          vKube
+          <img class="brand-mark" src="{{ url_for('static', path='image/logo.svg') }}" alt="plethos" />
         </a>
-        <div class="navbar-content w-100">
-          {% set path = request.url.path %}
-          <ul class="navbar-nav me-auto ms-lg-5">
-            <li class="nav-item">
-              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
-                {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
-                href="/clusters">
-                {{ icon("clusters") }}
-                <span>clusters</span>
-              </a>
-            </li>
-            {% if user and user.is_admin() %}
-            <li class="nav-item">
-              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
-                {{ 'aria-current=page' if path.startswith('/admin') else '' }}
-                href="/admin">
-                {{ icon("admin") }}
-                <span>admin</span>
-              </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/guides') else '' }}"
-                {{ 'aria-current=page' if path.startswith('/guides') else '' }}
-                href="/guides">
-                {{ icon("book") }}
-                <span>guides</span>
-              </a>
-            </li>
-          </ul>
-          <ul class="navbar-nav align-items-lg-center">
-            {% if user %}
+        {% set path = request.url.path %}
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
+              {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
+              href="/clusters">
+              {{ icon("clusters") }}
+              <span>clusters</span>
+            </a>
+          </li>
+          {% if user and user.is_admin() %}
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
+              {{ 'aria-current=page' if path.startswith('/admin') else '' }}
+              href="/admin">
+              {{ icon("admin") }}
+              <span>admin</span>
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/guides') else '' }}"
+              {{ 'aria-current=page' if path.startswith('/guides') else '' }}
+              href="/guides">
+              {{ icon("book") }}
+              <span>guides</span>
+            </a>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          {% if user %}
             <li class="nav-item dropdown">
               <a
                 class="avatar-link"
@@ -84,7 +82,6 @@
             </li>
             {% endif %}
           </ul>
-        </div>
       </div>
     </nav>
 
@@ -99,7 +96,7 @@
     {# Deployers can add org-specific links (imprint, privacy, ...) here. #}
     <footer class="app-footer">
       <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <span>vKube - a self-service platform for creating and managing Kubernetes clusters.</span>
+        <span>Plethos - a self-service platform for creating and managing Kubernetes clusters.</span>
         {% if config.support_email %}
         <span>Need help? Contact your platform admin at <a href="mailto:{{ config.support_email }}">{{ config.support_email }}</a></span>
         {% endif %}

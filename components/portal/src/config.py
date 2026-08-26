@@ -11,14 +11,14 @@ class Config:
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_dir: str = os.getenv("LOG_DIR", "")
 
-    oidc_issuer: str = os.getenv("OIDC_ISSUER", "http://localhost:9090/realms/vkube-portal")
-    oidc_client_id: str = os.getenv("OIDC_CLIENT_ID", "vkube-portal")
+    oidc_issuer: str = os.getenv("OIDC_ISSUER", "http://localhost:9090/realms/plethos-portal")
+    oidc_client_id: str = os.getenv("OIDC_CLIENT_ID", "plethos-portal")
     oidc_client_secret: str = os.getenv("OIDC_CLIENT_SECRET", "")
     oidc_scopes: str = os.getenv("OIDC_SCOPES", "openid email profile")
 
     # Namespace the VClusterClaim CRDs live in. Must match the controller's
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
-    claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "vkube-system")
+    claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
 
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 
@@ -36,7 +36,7 @@ class Config:
     smtp_port: int = int(os.getenv("SMTP_PORT", "1025"))
     smtp_username: str = os.getenv("SMTP_USERNAME", "")
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
-    smtp_from_address: str = os.getenv("SMTP_FROM_ADDRESS", "vkube@example.com")
+    smtp_from_address: str = os.getenv("SMTP_FROM_ADDRESS", "plethos@example.com")
 
     # vCluster versions the controller accepts (the portal always provisions the newest of these)
     supported_vcluster_versions: tuple[str, ...] = tuple(

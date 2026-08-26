@@ -26,5 +26,5 @@ def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"title": "vKube", "user": user, "cluster_summary": cluster_summary},
+        {"title": "Plethos", "user": user, "cluster_summary": cluster_summary},
     )

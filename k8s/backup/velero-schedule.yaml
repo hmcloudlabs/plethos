@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
-  name: vkube-backup
+  name: plethos-backup
   namespace: velero
 spec:
   schedule: "30 3 * * *"
@@ -23,7 +23,7 @@ spec:
     # therefore can't be snapshotted), fs-backup is used as fallback.
     resourcePolicy:
       kind: ConfigMap
-      name: vkube-backup-volume-policy
+      name: plethos-backup-volume-policy
 
     ttl: 336h0m0s # 2 weeks
   useOwnerReferencesInBackup: false

@@ -29,15 +29,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    logger.info("Starting vkube portal")
+    logger.info("Starting plethos portal")
     load_kube_config()
 
     yield
 
-    logger.info("Shutting down vkube portal")
+    logger.info("Shutting down plethos portal")
 
 
-app = FastAPI(title="vkube Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title="plethos Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

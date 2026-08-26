@@ -1,9 +1,9 @@
-vkube has been installed into namespace "{{ .Release.Namespace }}".
+plethos has been installed into namespace "{{ .Release.Namespace }}".
 
 If you haven't already, create the secret the portal reads OIDC/session/SMTP
 credentials from:
 
-  kubectl create secret generic {{ include "vkube.portal.secretName" . }} -n {{ .Release.Namespace }} \
+  kubectl create secret generic {{ include "plethos.portal.secretName" . }} -n {{ .Release.Namespace }} \
     --from-literal=PORTAL_SESSION_SECRET="$(openssl rand -hex 32)" \
     --from-literal=OIDC_CLIENT_SECRET="<your OIDC client secret>" \
     --from-literal=SMTP_USERNAME="<your SMTP username>" \
@@ -12,7 +12,7 @@ credentials from:
 If the portal pod started before the secret existed, it'll be stuck in a
 CreateContainerConfigError. In that case, restart:
 
-  kubectl rollout restart deployment/{{ include "vkube.portal.fullname" . }} -n {{ .Release.Namespace }}
+  kubectl rollout restart deployment/{{ include "plethos.portal.fullname" . }} -n {{ .Release.Namespace }}
 
 {{- if .Values.portal.ingress.enabled }}
 

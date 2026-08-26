@@ -1,9 +1,9 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: vclusterclaims.vkube.cs.hm.edu
+  name: vclusterclaims.plethos.cs.hm.edu
 spec:
-  group: vkube.cs.hm.edu
+  group: plethos.cs.hm.edu
   names:
     kind: VClusterClaim
     plural: vclusterclaims

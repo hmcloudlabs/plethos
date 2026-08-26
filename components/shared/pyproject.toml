@@ -1,7 +1,7 @@
 [project]
 name = "shared"
 version = "0.1.0"
-description = "Shared models and utilities for the vkube portal and controller"
+description = "Shared models and utilities for the plethos portal and controller"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2",

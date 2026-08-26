@@ -14,7 +14,7 @@ class Config:
         ).split(",")
         if v.strip()
     )
-    namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "vkube-system")
+    namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
     reconciliation_interval: int = int(os.getenv("RECONCILIATION_INTERVAL", "30"))
     base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
     ingress_namespace: str = os.getenv("VCLUSTERS_INGRESS_NAMESPACE", "ingress-nginx")

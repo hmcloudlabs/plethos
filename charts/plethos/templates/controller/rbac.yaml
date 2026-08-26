@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "vkube.controller.fullname" . }}
+  name: {{ include "plethos.controller.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "vkube.controller.fullname" . }}
+  name: {{ include "plethos.controller.fullname" . }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 rules:
-  - apiGroups: ["vkube.cs.hm.edu"]
+  - apiGroups: ["plethos.cs.hm.edu"]
     resources: ["vclusterclaims", "vclusterclaims/status"]
     verbs: ["get", "list", "watch", "patch", "update", "delete"]
   - apiGroups: [""]
@@ -45,14 +45,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "vkube.controller.fullname" . }}
+  name: {{ include "plethos.controller.fullname" . }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "vkube.controller.fullname" . }}
+  name: {{ include "plethos.controller.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "vkube.controller.fullname" . }}
+    name: {{ include "plethos.controller.fullname" . }}
     namespace: {{ .Release.Namespace }}

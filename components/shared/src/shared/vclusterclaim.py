@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-GROUP = "vkube.cs.hm.edu"
+GROUP = "plethos.cs.hm.edu"
 VERSION = "v1alpha1"
 KIND = "VClusterClaim"
 PLURAL = "vclusterclaims"

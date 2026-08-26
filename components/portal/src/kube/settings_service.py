@@ -11,7 +11,7 @@ from ttl_cache import TTLCache
 logger = logging.getLogger(__name__)
 
 
-_SETTINGS_CONFIGMAP_NAME = "vkube-portal-settings"
+_SETTINGS_CONFIGMAP_NAME = "plethos-portal-settings"
 
 _SETTINGS_CACHE_KEY = "settings"
 _settings_cache: TTLCache[dict[str, str]] = TTLCache(config.cache_ttl_seconds)

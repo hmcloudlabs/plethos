@@ -1,6 +1,6 @@
-# vkube Helm chart
+# plethos Helm chart
 
-Official way to install vkube (portal + controller + notifier CronJob + the
+Official way to install plethos (portal + controller + notifier CronJob + the
 VClusterClaim CRD).
 
 ## Prerequisites
@@ -17,14 +17,14 @@ VClusterClaim CRD).
    
 2. Install:
    ```bash
-   helm install vkube ./charts/vkube \
-     --namespace vkube-system --create-namespace \
+   helm install plethos ./charts/plethos \
+     --namespace plethos-system --create-namespace \
      -f my-values.yaml
    ```
 
 3. Create the secret the portal reads OIDC/session/SMTP credentials from:
    ```bash
-   kubectl create secret generic vkube-portal-secrets -n vkube-system \
+   kubectl create secret generic plethos-portal-secrets -n plethos-system \
      --from-literal=PORTAL_SESSION_SECRET="$(openssl rand -hex 32)" \
      --from-literal=OIDC_CLIENT_SECRET="<your OIDC client secret>" \
      --from-literal=SMTP_USERNAME="<your SMTP username>" \
@@ -35,20 +35,20 @@ VClusterClaim CRD).
   `CreateContainerConfigError`. In that case, restart:
 
    ```bash
-   kubectl rollout restart deployment/vkube-portal -n vkube-system
+   kubectl rollout restart deployment/plethos-portal -n plethos-system
    ```
 
 ## Upgrading
 
 ```bash
-helm upgrade vkube ./charts/vkube -n vkube-system -f my-values.yaml
+helm upgrade plethos ./charts/plethos -n plethos-system -f my-values.yaml
 ```
 
 Note: the CRD in `crds/vclusterclaim.yaml` is installed on first `helm install`
 but **not** updated by `helm upgrade` (that's a Helm limitation for the `crds/` directory). If it changes, re-apply it manually:
 
 ```bash
-kubectl apply -f charts/vkube/crds/vclusterclaim.yaml
+kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
 ```
 
 ## Values

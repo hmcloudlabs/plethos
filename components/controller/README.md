@@ -16,35 +16,35 @@ and tears them down.
 Create the namespace the `VClusterClaim` resources will live in:
 
 ```bash
-kubectl create namespace vkube-system
+kubectl create namespace plethos-system
 ```
 
 Apply the `VClusterClaim` CRD:
 
 ```bash
-kubectl apply -f charts/vkube/crds/vclusterclaim.yaml
+kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
 ```
 
-(For a full cluster deployment rather than local development, see [charts/vkube/README.md](../../charts/vkube/README.md).)
+(For a full cluster deployment rather than local development, see [charts/plethos/README.md](../../charts/plethos/README.md).)
 
 ## Running the controller
 
 **Note:** Run everything from the root directory of this project.
 
 ```bash
-uv run kopf run components/controller/src/main.py --namespace vkube-system --verbose
+uv run kopf run components/controller/src/main.py --namespace plethos-system --verbose
 ```
 
 ## Creating a claim
 
-Apply a `VClusterClaim` (the controller watches the `vkube-system` namespace by default):
+Apply a `VClusterClaim` (the controller watches the `plethos-system` namespace by default):
 
 ```yaml
-apiVersion: vkube.cs.hm.edu/v1alpha1
+apiVersion: plethos.cs.hm.edu/v1alpha1
 kind: VClusterClaim
 metadata:
   name: my-cluster
-  namespace: vkube-system
+  namespace: plethos-system
 spec:
   name: my-cluster
   ownerSubject: user-oidc-sub
@@ -55,7 +55,7 @@ spec:
 Watch the reconciliation progress:
 
 ```bash
-kubectl get vcc -n vkube-system -w
+kubectl get vcc -n plethos-system -w
 ```
 
 The `vcc` short name prints the cluster name, owner, desired state, current phase and the
@@ -76,7 +76,7 @@ The `vcc` short name prints the cluster name, owner, desired state, current phas
 
 Setting `spec.state` toggles the vCluster between running and asleep. `Sleeping` scales the
 vCluster StatefulSet to zero replicas (recording the original replica count in
-`vkube.cs.hm.edu/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` / `Waking` / `Ready` accordingly.
+`plethos.cs.hm.edu/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` / `Waking` / `Ready` accordingly.
 
 ## Version selection
 
@@ -87,7 +87,7 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 
 | Environment Variable | Default | Description |
 |---|---|---|
-| `VCLUSTERCLAIMS_NAMESPACE` | `vkube-system` | Namespace the controller watches for claims |
+| `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace the controller watches for claims |
 | `RECONCILIATION_INTERVAL` | `30` | Seconds between timer-driven reconciliations |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.20.0` |
 | `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Domain each vCluster gets exposed under, as `<vcluster-name>.<base_domain>`. Requires an ingress controller with SSL passthrough (vCluster's API server does mTLS). Unset by default so local/dev setups keep the chart's default `localhost:8443` kubeconfig. |
@@ -118,7 +118,7 @@ The `status.phase` field described the operator-controlled status of a `VCluster
 `Ready` supports:
 
 ```bash
-kubectl wait --for=condition=Ready vcc/my-cluster -n vkube-system
+kubectl wait --for=condition=Ready vcc/my-cluster -n plethos-system
 ```
 
 ## Testing

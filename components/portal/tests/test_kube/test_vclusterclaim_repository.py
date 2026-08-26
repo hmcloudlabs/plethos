@@ -17,7 +17,7 @@ from kube.vclusterclaim_repository import (
 )
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Member, State, VClusterClaimSpec
 
-_NAMESPACE = "vkube-system"
+_NAMESPACE = "plethos-system"
 
 
 def raw_vcluster_claim(object_name: str, owner_subject: str = "owner-sub", owner_email: str = "owner@example.com") -> dict:

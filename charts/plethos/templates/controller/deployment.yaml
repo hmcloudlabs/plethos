@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "vkube.controller.fullname" . }}
+  name: {{ include "plethos.controller.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "vkube.labels" . | nindent 4 }}
+    {{- include "plethos.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.controller.replicas }}
   selector:
     matchLabels:
-      app: {{ include "vkube.controller.fullname" . }}
+      app: {{ include "plethos.controller.fullname" . }}
   template:
     metadata:
       labels:
-        app: {{ include "vkube.controller.fullname" . }}
+        app: {{ include "plethos.controller.fullname" . }}
     spec:
-      serviceAccountName: {{ include "vkube.controller.fullname" . }}
+      serviceAccountName: {{ include "plethos.controller.fullname" . }}
       containers:
         - name: controller
           image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.AppVersion }}"

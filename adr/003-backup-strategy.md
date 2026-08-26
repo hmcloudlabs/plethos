@@ -6,13 +6,13 @@ consulted: Prof. Dr. Johannes Ebke
 informed:
 ---
 
-# Backing up and restoring vkubes state
+# Backing up and restoring plethoss state
 
 ## Context and Problem Statement
 
-All of vkube's state lives in one of two places:
+All of plethos's state lives in one of two places:
 
-* in the `vkube-system` namespace: contains every `VClusterClaim` (ownership, members, expiry annotations) and the `vkube-portal-settings` ConfigMap.
+* in the `plethos-system` namespace: contains every `VClusterClaim` (ownership, members, expiry annotations) and the `plethos-portal-settings` ConfigMap.
 * in one of the namespaces created per `VClusterClaim`: contains the vClusters `StatefulSet`, the K8s objects the owner created inside the vCluster, any workload PVCs (the data their applications created).
 
 None of this is currently backed up. Deleting a claims namespace by mistake, or losing the host clusters storage, destroys a users cluster permanently.
@@ -22,7 +22,7 @@ This decision covers how that state gets backed up automatically and can how it 
 ## Decision Drivers
 
 * Must produce a real restore path, not another manual export.
-* Must cover everything the main `vkube-system` namespace with its resources and the vCluster namespaces, along with all the vCluster created and user created PVCs inside them.
+* Must cover everything the main `plethos-system` namespace with its resources and the vCluster namespaces, along with all the vCluster created and user created PVCs inside them.
 * Must stay optional, like the expiration CronJob and not be wired into the codebase or `k8s/base`.
 * Must work when the portal or controller is gone
 * Must store the backups at an S3 compatible storage outside the server running the host cluster.
@@ -30,7 +30,7 @@ This decision covers how that state gets backed up automatically and can how it 
 ## Considered Options
 
 * **Velero**: install Velero and schedule backups to S3-compatible object storage.
-* **`vcluster snapshot` + `CronJob`**: use vCluster's built-in snapshot commands, backup the vkube resources seperately.
+* **`vcluster snapshot` + `CronJob`**: use vCluster's built-in snapshot commands, backup the plethos resources seperately.
 * **Custom backup script + `CronJob`** (similar shape as `cluster_expiry_job.py`): serialize claims to YAML, upload to object storage, extend and reuse the existing volume-export code to use for extracting backups.
 
 ## Decision Outcome
@@ -58,7 +58,7 @@ This decision covers how that state gets backed up automatically and can how it 
 
 Verified end-to-end against a live deployment (Velero v1.15.2 + MinIO as object storage, dev cluster):
 
-* A scheduled backup captured `vkube-system` and every per-`VClusterClaim namespace.
+* A scheduled backup captured `plethos-system` and every per-`VClusterClaim namespace.
 * With the volume policy, a vClusters datastore PVC on a CSI storage class was snapshotted correctly and produced a `VolumeSnapshotContent`, while `emptyDir` volumes were correctly backed up using simple fs-backup.
 * Deleting a `VClusterClaim` and restoring from that backup brought the `VClusterClaim`, its namespace, its PVC and a running vCluster (with all its internal resources) back.
 * The same backup silently skipped the datastore PVCs of older vClusters still on `hostPath` storage, confirming the warning metioned above. Switching the cluster's default storage class to CSI does not migrate volumes that already existed on `hostPath` storage unfortunately.

@@ -1,5 +1,5 @@
 apiVersion: v2
-name: vkube
+name: plethos
 description: Self-service platform for provisioning, managing and expiring virtual Kubernetes clusters (vCluster)
 type: application
 version: 0.1.0
