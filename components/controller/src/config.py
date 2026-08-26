@@ -18,6 +18,7 @@ class Config:
     reconciliation_interval: int = int(os.getenv("RECONCILIATION_INTERVAL", "30"))
     base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
     ingress_namespace: str = os.getenv("VCLUSTERS_INGRESS_NAMESPACE", "ingress-nginx")
+    cert_issuer: str = os.getenv("VCLUSTERS_CERT_ISSUER", "")
 
 
 config = Config()

@@ -29,5 +29,9 @@ spec:
             {{- end }}
             - name: VCLUSTERS_INGRESS_NAMESPACE
               value: {{ .Values.controller.vclustersIngressNamespace }}
+            {{- if .Values.controller.vclustersCertIssuer }}
+            - name: VCLUSTERS_CERT_ISSUER
+              value: {{ .Values.controller.vclustersCertIssuer }}
+            {{- end }}
             - name: SUPPORTED_VCLUSTER_VERSIONS
               value: {{ .Values.supportedVclusterVersions | quote }}

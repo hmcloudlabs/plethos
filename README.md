@@ -20,6 +20,7 @@ Plethos lets members and teams of your organization provision their own Kubernet
 - download the kubeconfig to connect to their clusters
 - export PVC/workload data
 - share clusters with other users by email
+- expose deployment publicly
 
 **Admins can...**
 - set max-amount of clusters quota (overridable per user)

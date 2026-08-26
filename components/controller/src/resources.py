@@ -19,11 +19,25 @@ _VCLUSTER_ISOLATION_VALUES = {
     }
 }
 
-# Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features 
+# Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features
 # not licensed in Apache 2.0, therefore pin the pure open-source build instead.
 _VCLUSTER_IMAGE_VALUES = {
     "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
 }
+
+# Fixed convention a VClusterClaims owner must follow to expose deployed apps publicly:
+# A Service named "gateway" in the "default" namespace of their vCluster, listening on
+# port 80. It can front a single app directly, or an own ingress controller if the owner
+# want to route to more than one Service.
+TENANT_GATEWAY_SERVICE_NAME = "gateway"
+TENANT_GATEWAY_SERVICE_NAMESPACE = "default"
+
+# vCluster sets these on every object it syncs from the virtual cluster to the host
+# cluster, recording which vCluster synced it and what its name/namespace are inside
+# the virtual cluster.
+VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
+VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
+VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
 
 
 def make_namespace(namespace: str) -> dict:
@@ -87,35 +101,8 @@ def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
     }
 
 
-def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: str) -> list[str]:
-    """Extra `helm` args exposing the vCluster via ingress, or `[]` if `base_domain` is unset.
-
-    Requires an ingress controller with SSL passthrough enabled, since the control plane
-    speaks mTLS directly (there's no TLS termination to do). The NetworkPolicy rule is
-    passed via `--set-json` (not `--set`, which can't represent a list of nested dicts):
-    vCluster's own `policies.networkPolicy` otherwise only allows traffic between the
-    vCluster's own control-plane/workload pods, so without it the ingress controller
-    can route to the Service but the packets get dropped.
-    """
-
-    if not base_domain:
-        return []
-
-    host = f"{vcluster_name}.{base_domain}"
-    
-    values = {
-        "controlPlane": {
-            "endpoint": f"https://{host}",
-            "ingress": {
-                "enabled": True,
-                "host": host,
-            },
-            "proxy": {
-                "extraSANs": [host],
-            },
-        },
-    }
-    network_policy_rule = [
+def _ingress_from_namespace_rule(ingress_namespace: str, port: int) -> list[dict]:
+    return [
         {
             "from": [
                 {
@@ -124,15 +111,120 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
                     }
                 }
             ],
-            "ports": [{"port": 443, "protocol": "TCP"}],
+            "ports": [{"port": port, "protocol": "TCP"}],
         }
     ]
+
+
+def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: str) -> list[str]:
+    """Extra `helm` args exposing the vCluster via ingress, or `[]` if `base_domain` is unset.
+
+    The control-plane path requires an ingress controller with SSL passthrough enabled,
+    since the control plane speaks mTLS directly (there's no TLS termination to do). The
+    gateway path, (i.e. the `TENANT_GATEWAY_SERVICE_NAME` Service) is plain HTTP, terminated by
+    the host clusters's ingress controller.
+    """
+
+    if not base_domain:
+        return []
+
+    host = f"{vcluster_name}.{base_domain}"
+
+    values = {
+        "controlPlane": {
+            "ingress": {
+                "enabled": True,
+                "host": host,
+            },
+            "proxy": {
+                "extraSANs": [host],
+            },
+        },
+        "exportKubeConfig": {
+            "server": f"https://{host}",
+        },
+    }
 
     return [
         *_helm_set_args(values),
         "--set-json",
-        f"policies.networkPolicy.controlPlane.ingress={json.dumps(network_policy_rule)}",
+        f"policies.networkPolicy.controlPlane.ingress={json.dumps(_ingress_from_namespace_rule(ingress_namespace, 443))}",
+        "--set-json",
+        f"policies.networkPolicy.workload.ingress={json.dumps(_ingress_from_namespace_rule(ingress_namespace, 80))}",
     ]
+
+
+def make_gateway_certificate(
+    vcluster_name: str, namespace: str, base_domain: str, cert_issuer: str
+) -> dict | None:
+    """A cert-manager `Certificate` for the vClusters wildcard gateway host, or `None` if unset."""
+
+    if not base_domain or not cert_issuer:
+        return None
+
+    return {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "Certificate",
+        "metadata": {
+            "name": "gateway-tls",
+            "namespace": namespace,
+        },
+        "spec": {
+            "secretName": "gateway-tls",
+            "dnsNames": [f"*.{vcluster_name}.{base_domain}"],
+            "issuerRef": {"name": cert_issuer, "kind": "ClusterIssuer"},
+        },
+    }
+
+
+def make_gateway_ingress(
+    vcluster_name: str, namespace: str, base_domain: str, target_service_name: str
+) -> dict | None:
+    """
+    The `Ingress` routing a vCluster's wildcard gateway host to its `TENANT_GATEWAY_SERVICE_NAME`
+    Service, or `None` if `base_domain` is unset.
+
+    TLS is terminated here by the host cluster's ingress controller, not passed through.
+    """
+
+    if not base_domain:
+        return None
+
+    return {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "Ingress",
+        "metadata": {
+            "name": "gateway",
+            "namespace": namespace,
+        },
+        "spec": {
+            "tls": [
+                {
+                    "hosts": [f"*.{vcluster_name}.{base_domain}"],
+                    "secretName": "gateway-tls",
+                }
+            ],
+            "rules": [
+                {
+                    "host": f"*.{vcluster_name}.{base_domain}",
+                    "http": {
+                        "paths": [
+                            {
+                                "path": "/",
+                                "pathType": "Prefix",
+                                "backend": {
+                                    "service": {
+                                        "name": target_service_name,
+                                        "port": {"number": 80},
+                                    }
+                                },
+                            }
+                        ]
+                    },
+                }
+            ],
+        },
+    }
 
 
 def make_helm_install_job(

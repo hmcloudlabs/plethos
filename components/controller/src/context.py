@@ -15,6 +15,7 @@ class KubernetesClients:
     apps: client.AppsV1Api = field(default_factory=client.AppsV1Api)
     rbac: client.RbacAuthorizationV1Api = field(default_factory=client.RbacAuthorizationV1Api)
     custom: client.CustomObjectsApi = field(default_factory=client.CustomObjectsApi)
+    networking: client.NetworkingV1Api = field(default_factory=client.NetworkingV1Api)
 
 
 @dataclass(frozen=True, slots=True)

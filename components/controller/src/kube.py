@@ -3,7 +3,18 @@ from typing import Any, cast
 import kubernetes
 from kubernetes import client
 from kubernetes.client import V1Job
+from kubernetes.client import V1Namespace
+from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
+
+from shared.vclusterclaim import GROUP
+from resources import (
+    VCLUSTER_MANAGED_BY_LABEL,
+    VCLUSTER_OBJECT_NAME_ANNOTATION,
+    VCLUSTER_OBJECT_NAMESPACE_ANNOTATION,
+    TENANT_GATEWAY_SERVICE_NAME,
+    TENANT_GATEWAY_SERVICE_NAMESPACE,
+)
 
 
 class JobStatus(StrEnum):
@@ -65,6 +76,47 @@ def get_job_status(job: V1Job) -> JobStatus:
             return JobStatus.FAILED
 
     return JobStatus.RUNNING
+
+
+def find_gateway_service_name(
+    core: client.CoreV1Api, host_namespace: str, vcluster_name: str
+) -> str | None:
+    """
+    Finds the host-cluster name for the gateway Service, which might be deployed inside a vCluster 
+    under the name `TENANT_GATEWAY_SERVICE_NAME`, by matching the labels/annotations vCluster sets 
+    on every object it syncs. Returns `None` if no `TENANT_GATEWAY_SERVICE_NAME` Service exists yet.
+    """
+
+    services = cast(
+        V1ServiceList,
+        core.list_namespaced_service(
+            namespace=host_namespace,
+            label_selector=f"{VCLUSTER_MANAGED_BY_LABEL}={vcluster_name}",
+        ),
+    )
+
+    for service in services.items or []:
+        if service.metadata is None:
+            continue
+        
+        annotations = service.metadata.annotations or {}
+        if (
+            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == TENANT_GATEWAY_SERVICE_NAME
+            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION) == TENANT_GATEWAY_SERVICE_NAMESPACE
+        ):
+            return service.metadata.name
+
+    return None
+
+
+def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:
+    """Whether this controller's own code created a given `namespace`."""
+
+    ns = cast(V1Namespace, core.read_namespace(name=namespace))
+    if ns.metadata is None:
+        raise ValueError("Invalid Namespace: missing metadata.")
+    
+    return (ns.metadata.labels or {}).get(f"{GROUP}/managed") == "true"
 
 
 def get_crd_object(

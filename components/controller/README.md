@@ -92,6 +92,15 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.20.0` |
 | `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Domain each vCluster gets exposed under, as `<vcluster-name>.<base_domain>`. Requires an ingress controller with SSL passthrough (vCluster's API server does mTLS). Unset by default so local/dev setups keep the chart's default `localhost:8443` kubeconfig. |
 | `VCLUSTERS_INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
+| `VCLUSTERS_CERT_ISSUER` | _(unset)_ | Name of a cert-manager `ClusterIssuer` (must support DNS-01, for wildcard certs) used to expose owner-deployed workloads (see [Public gateway](#public-gateway)). Unset by default, which disables this feature. |
+
+## Public gateway
+
+If a tenant deploys a `Service` with the name `gateway` in their vClusters `default` namespace, they can access that service publicly from the internet/network. To route to mutliple public apps with their own subdomains, an ingress controller can be deployed in the `Serivce`.
+
+To make this feature work, `VCLUSTERS_BASE_DOMAIN` and `VCLUSTERS_CERT_ISSUER` have to be set when deploying this controller, so each vCluster can get their wildcard host `*.<vcluster-name>.<base_domain>`.
+
+TLS is terminated by the host cluster's ingress controller, not passed through: the controller requests a wildcard `Certificate` from `VCLUSTERS_CERT_ISSUER` and stores it as a `gateway-tls` Secret, so owners never has to manage certificates themselves.
 
 ## Phases
 

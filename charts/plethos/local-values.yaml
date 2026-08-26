@@ -49,3 +49,4 @@ controller:
 
   vclustersBaseDomain: "" # blank -> vCluster falls back to its own localhost:8443 kubeconfig
   vclustersIngressNamespace: ingress-nginx
+  vclustersCertIssuer: "" # blank -> no apps Ingress/cert for local dev

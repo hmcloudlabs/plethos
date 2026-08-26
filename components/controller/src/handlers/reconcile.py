@@ -11,6 +11,8 @@ from resources import (
     make_service_account,
     make_cluster_role_binding,
     make_helm_install_job,
+    make_gateway_certificate,
+    make_gateway_ingress,
 )
 from config import config
 from kube import (
@@ -20,6 +22,8 @@ from kube import (
     get_statefulset,
     unwrap_statefulset,
     get_crd_object,
+    find_gateway_service_name,
+    is_namespace_managed,
 )
 
 
@@ -61,6 +65,8 @@ def reconcile(ctx: ReconciliationContext) -> None:
         provision_vcluster(ctx)
     else:
         reconcile_vcluster(ctx, vc_set)
+
+    ensure_gateway_exposure(ctx)
 
     sync_ready_condition(ctx)
 
@@ -339,3 +345,71 @@ def set_condition(
         "observedGeneration": ctx.generation,
     }
     ctx.patch.status["conditions"] = list(conditions.values())
+
+
+
+def ensure_gateway_exposure(ctx: ReconciliationContext) -> None:
+    """
+    Makes `*.<vcluster-name>.<base-domain>` reach whatever the owner has deployed behind
+    the Service with special nam `TENANT_GATEWAY_SERVICE_NAME`.
+    Skipped, if `base_domain`/`cert_issuer` aren't configured, no such Service deployed there
+    or the namespace wasn't created by this controller (see `is_namespace_managed`).
+    """
+
+    if not config.base_domain or not config.cert_issuer:
+        return
+
+    if not is_namespace_managed(ctx.clients.core, ctx.names.namespace):
+        return
+
+    ensure_gateway_certificate(ctx)
+
+    target_service = find_gateway_service_name(
+        ctx.clients.core, host_namespace=ctx.names.namespace, vcluster_name=ctx.names.vcluster
+    )
+    if not target_service:
+        return
+
+    ensure_gateway_ingress(ctx, target_service)
+
+
+def ensure_gateway_certificate(ctx: ReconciliationContext) -> None:
+    manifest = make_gateway_certificate(
+        ctx.names.vcluster, ctx.names.namespace, config.base_domain, config.cert_issuer
+    )
+    if not manifest:
+        return
+
+    try:
+        ctx.clients.custom.create_namespaced_custom_object(
+            group="cert-manager.io",
+            version="v1",
+            namespace=ctx.names.namespace,
+            plural="certificates",
+            body=manifest,
+        )
+        ctx.logger.info(f"Created Certificate in {ctx.names.namespace}.")
+    except ApiException as e:
+        if e.status != 409:
+            ctx.patch.status["phase"] = Phase.ERROR
+            ctx.patch.status["message"] = f"Failed to create Certificate: {e.reason}"
+            raise
+
+
+def ensure_gateway_ingress(ctx: ReconciliationContext, target_service: str) -> None:
+    manifest = make_gateway_ingress(
+        ctx.names.vcluster, ctx.names.namespace, config.base_domain, target_service
+    )
+    if not manifest:
+        return
+
+    try:
+        ctx.clients.networking.create_namespaced_ingress(
+            namespace=ctx.names.namespace, body=manifest
+        )
+        ctx.logger.info(f"Created Ingress gateway in {ctx.names.namespace}.")
+    except ApiException as e:
+        if e.status != 409:
+            ctx.patch.status["phase"] = Phase.ERROR
+            ctx.patch.status["message"] = f"Failed to create gateway Ingress: {e.reason}"
+            raise

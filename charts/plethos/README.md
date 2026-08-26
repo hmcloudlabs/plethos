@@ -9,6 +9,9 @@ VClusterClaim CRD).
   (e.g. nginx-ingress with `--enable-ssl-passthrough`).
 - An OIDC provider for the portal to authenticate against (see
   [components/portal/README.md](../../components/portal/README.md#logging-in)).
+- Optional: [cert-manager](https://cert-manager.io/), with a `ClusterIssuer` that supports
+  DNS-01 validation, if you want owner-deployed workloads to be publicly reachable too
+  (see [controller README - Public gateway](../../components/controller/README.md#public-gateway)).
 
 ## Installing
 
