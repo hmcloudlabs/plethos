@@ -67,12 +67,6 @@ controller:
   vclustersBaseDomain: ""
   vclustersIngressNamespace: ingress-nginx
 
-  # cert-manager ClusterIssuer used for each claim's wildcard apps certificate. Must
-  # support DNS-01 validation (wildcard certs can't use HTTP-01). Leave blank to skip
-  # provisioning a cert, and with it the apps Ingress - vclustersBaseDomain alone only
-  # sets up the control-plane endpoint.
-  vclustersCertIssuer: ""
-
 notifier:
   # Daily inactivity check that flags/expires unused vClusters.
   schedule: "0 3 * * *"

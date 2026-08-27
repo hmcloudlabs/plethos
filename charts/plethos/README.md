@@ -9,10 +9,8 @@ VClusterClaim CRD).
   (e.g. nginx-ingress with `--enable-ssl-passthrough`).
 - An OIDC provider for the portal to authenticate against (see
   [components/portal/README.md](../../components/portal/README.md#logging-in)).
-- Optional: [cert-manager](https://cert-manager.io/), with a `ClusterIssuer` that supports
-  DNS-01 validation, if you want owner-deployed workloads to be publicly reachable too
-  (see [controller README - Public gateway](../../components/controller/README.md#public-gateway)).
-
+- To make owner-deployed workloads publicly reachable: a wildcard certificate for
+  `*.plethos-apps.<vclustersBaseDomain>` configured as the ingress controller's default certificate plus a DNS record pointing `*.<vclustersBaseDomain>` at the ingress controller.
 ## Installing
 
 1. Write your own values file (start from `values.yaml`) and set every value in it for

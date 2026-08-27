@@ -16,7 +16,7 @@ NAMESPACE = os.environ["VCLUSTERCLAIMS_NAMESPACE"]
 TIMEOUT = int(os.getenv("TEST_TIMEOUT", "90"))
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-CRD_PATH = PROJECT_ROOT / "k8s" / "base" / "crds" / "vclusterclaim.yaml"
+CRD_PATH = PROJECT_ROOT / "charts" / "plethos" / "crds" / "vclusterclaim.yaml"
 OPERATOR_PATH = PROJECT_ROOT / "components" / "controller" / "src" / "main.py"
 
 

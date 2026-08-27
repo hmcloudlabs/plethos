@@ -25,20 +25,6 @@ _VCLUSTER_IMAGE_VALUES = {
     "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
 }
 
-# Fixed convention a VClusterClaims owner must follow to expose deployed apps publicly:
-# A Service named "gateway" in the "default" namespace of their vCluster, listening on
-# port 80. It can front a single app directly, or an own ingress controller if the owner
-# want to route to more than one Service.
-TENANT_GATEWAY_SERVICE_NAME = "gateway"
-TENANT_GATEWAY_SERVICE_NAMESPACE = "default"
-
-# vCluster sets these on every object it syncs from the virtual cluster to the host
-# cluster, recording which vCluster synced it and what its name/namespace are inside
-# the virtual cluster.
-VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
-VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
-VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
-
 
 def make_namespace(namespace: str) -> dict:
     return {
@@ -121,7 +107,7 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
 
     The control-plane path requires an ingress controller with SSL passthrough enabled,
     since the control plane speaks mTLS directly (there's no TLS termination to do). The
-    gateway path, (i.e. the `TENANT_GATEWAY_SERVICE_NAME` Service) is plain HTTP, terminated by
+    gateway path, (i.e. the gateway Service) is plain HTTP, terminated by
     the host clusters's ingress controller.
     """
 
@@ -154,41 +140,13 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
     ]
 
 
-def make_gateway_certificate(
-    vcluster_name: str, namespace: str, base_domain: str, cert_issuer: str
-) -> dict | None:
-    """A cert-manager `Certificate` for the vClusters wildcard gateway host, or `None` if unset."""
-
-    if not base_domain or not cert_issuer:
-        return None
-
-    return {
-        "apiVersion": "cert-manager.io/v1",
-        "kind": "Certificate",
-        "metadata": {
-            "name": "gateway-tls",
-            "namespace": namespace,
-        },
-        "spec": {
-            "secretName": "gateway-tls",
-            "dnsNames": [f"*.{vcluster_name}.{base_domain}"],
-            "issuerRef": {"name": cert_issuer, "kind": "ClusterIssuer"},
-        },
-    }
-
-
-def make_gateway_ingress(
-    vcluster_name: str, namespace: str, base_domain: str, target_service_name: str
-) -> dict | None:
+def make_gateway_ingress(host: str, namespace: str, target_service_name: str) -> dict:
     """
-    The `Ingress` routing a vCluster's wildcard gateway host to its `TENANT_GATEWAY_SERVICE_NAME`
-    Service, or `None` if `base_domain` is unset.
+    The `Ingress` routing a vCluster's gateway host (see `GatewayConvention.host`) to its
+    gateway Service.
 
     TLS is terminated here by the host cluster's ingress controller, not passed through.
     """
-
-    if not base_domain:
-        return None
 
     return {
         "apiVersion": "networking.k8s.io/v1",
@@ -198,15 +156,10 @@ def make_gateway_ingress(
             "namespace": namespace,
         },
         "spec": {
-            "tls": [
-                {
-                    "hosts": [f"*.{vcluster_name}.{base_domain}"],
-                    "secretName": "gateway-tls",
-                }
-            ],
+            "tls": [{"hosts": [host]}],
             "rules": [
                 {
-                    "host": f"*.{vcluster_name}.{base_domain}",
+                    "host": host,
                     "http": {
                         "paths": [
                             {

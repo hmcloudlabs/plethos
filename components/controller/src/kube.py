@@ -8,13 +8,16 @@ from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
 
 from shared.vclusterclaim import GROUP
-from resources import (
-    VCLUSTER_MANAGED_BY_LABEL,
-    VCLUSTER_OBJECT_NAME_ANNOTATION,
-    VCLUSTER_OBJECT_NAMESPACE_ANNOTATION,
-    TENANT_GATEWAY_SERVICE_NAME,
-    TENANT_GATEWAY_SERVICE_NAMESPACE,
-)
+from context import GatewayConvention, VClusterNames
+
+
+# Set by vCluster's syncer on every object it copies to the host cluster, recording which
+# vCluster synced it and its name/namespace inside the virtual cluster. Internal to vCluster
+# rather than a stable public API - verified identical in 0.20.0 and 0.35.0, re-check on
+# upgrade.
+VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
+VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
+VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
 
 
 class JobStatus(StrEnum):
@@ -78,31 +81,30 @@ def get_job_status(job: V1Job) -> JobStatus:
     return JobStatus.RUNNING
 
 
-def find_gateway_service_name(
-    core: client.CoreV1Api, host_namespace: str, vcluster_name: str
-) -> str | None:
+def find_gateway_service_name(core: client.CoreV1Api, names: VClusterNames) -> str | None:
     """
-    Finds the host-cluster name for the gateway Service, which might be deployed inside a vCluster 
-    under the name `TENANT_GATEWAY_SERVICE_NAME`, by matching the labels/annotations vCluster sets 
-    on every object it syncs. Returns `None` if no `TENANT_GATEWAY_SERVICE_NAME` Service exists yet.
+    Finds the host-cluster name of the owner's gateway Service, which they deploy inside their
+    vCluster as `names.gateway_service` in `names.gateway_namespace`, by matching the
+    labels/annotations vCluster sets on every object it syncs. Returns `None` if no such
+    Service exists yet.
     """
 
-    services = cast(
+    host_synced_services = cast(
         V1ServiceList,
         core.list_namespaced_service(
-            namespace=host_namespace,
-            label_selector=f"{VCLUSTER_MANAGED_BY_LABEL}={vcluster_name}",
+            namespace=names.namespace,
+            label_selector=f"{VCLUSTER_MANAGED_BY_LABEL}={names.vcluster}",
         ),
     )
 
-    for service in services.items or []:
+    for service in host_synced_services.items or []:
         if service.metadata is None:
             continue
-        
+
         annotations = service.metadata.annotations or {}
         if (
-            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == TENANT_GATEWAY_SERVICE_NAME
-            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION) == TENANT_GATEWAY_SERVICE_NAMESPACE
+            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == GatewayConvention.SERVICE_NAME
+            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION) == GatewayConvention.NAMESPACE
         ):
             return service.metadata.name
 
@@ -110,7 +112,7 @@ def find_gateway_service_name(
 
 
 def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:
-    """Whether this controller's own code created a given `namespace`."""
+    """Whether this controller created a given `namespace`."""
 
     ns = cast(V1Namespace, core.read_namespace(name=namespace))
     if ns.metadata is None:

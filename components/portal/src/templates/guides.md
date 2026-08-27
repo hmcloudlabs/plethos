@@ -47,7 +47,7 @@ cluster, sleep and wake it and download its kubeconfig - only the owner can dele
 
 Open a cluster and click the *trash* icon to delete it. This is permanent, so export any data you need first.
 
-### Exposing something publicly
+### Exposing a deployment publicly
 
 To make something you deploy reachable from outside your cluster, create a plain `Service`
 named `gateway` in the `default` namespace, listening on port 80:
@@ -56,37 +56,10 @@ named `gateway` in the `default` namespace, listening on port 80:
 kubectl expose deployment <your-app> --name=gateway --namespace=default --port=80
 ```
 
-It becomes reachable at `https://<anything>.<your-cluster-name>.<your-organizations-domain>`
+The portal shows the exact URL for your cluster (it looks like
+`https://<your-cluster-id>.plethos-apps.<your-organizations-domain>`).
 
-**Need to expose more than one app?** Instead of wiring a deployment to the `gateway` Serice, you can deploy your own ingress controller instead and give *it* the `gateway` name:
-
-```bash
-helm install gateway ingress-nginx/ingress-nginx \
-  --namespace default \
-  --set fullnameOverride=gateway \
-  --set controller.name="" \
-  --set controller.service.type=ClusterIP
-```
-
-Then create normal `Ingress` objects to route each subdomain to its own app, e.g.:
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: app
-  namespace: default
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: app.<your-cluster-name>.<your-organization's-domain>
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service: {name: <your-app>, port: {number: 80}}
-```
+**Need to expose more than one app?** Your cluster gets one public hostname, so point gateway at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster  your proxy receives plain HTTP on port 80
 
 ## Cluster expiration
 
