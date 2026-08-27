@@ -1,13 +1,11 @@
 <p align="center">
-  <img src="components/portal/src/static/image/logo.svg" alt="plethos logo" width="180" />
+  <img src="assets/plethos-logo.svg" alt="plethos logo" width="180" />
 </p>
 
 # plethos
-
 >*from Ancient Greek **πλῆθος** (plethos): a multitude, great number, crowd.*
 
-Self-service Kubernetes clusters for your organization's members and teams, provisioned as
-isolated [vCluster](https://www.vcluster.com/) instances.
+Self-service Kubernetes clusters for your organization's members and teams, provisioned as isolated [vCluster](https://www.vcluster.com/) instances.
 
 ## ⛵ What is plethos?
 
@@ -27,16 +25,17 @@ Plethos lets members and teams of your organization provision their own Kubernet
 - set team-size quota (overridable per user)
 - inspect cluster logs
 - delete any user's clusters
-- let clusters expire: clusters are put to sleep and eventually deleted, always with an
-emailed warning first
+- let clusters expire: clusters are put to sleep and eventually deleted, always with an emailed warning first
 
 ## ❗How it works
 
 Plethos runs as two independent services - the **portal**, a web app members use to manage their clusters and the **controller**, a Kubernetes controller that actually provisions the vClusters. They don't talk to each other directly, instead they are connected via a Kubernetes custom resource called `VClusterClaim`.
 
-When a member requests a cluster, the portal creates a `VClusterClaim` object describing the desired state (owner, shared members, whether it should be running or asleep). The controller watches for changes and reconciles the real vCluster to match the `VClusterClaim`, i.e. installing it via Helm, scaling it down to sleep, waking it back up or tearing it down for deletion. It also writes the status back onto the object (its phase, readiness), which the portal reads to show the cluster's status to the user. So ownership, sharing and lifecycle all live as Kubernetes resources rather than a separate database. The Kubernetes API stays the single source of truth for both services.
+<p align="center">
+  <img src="assets/plethos-arch.svg" alt="plethos architecture" width="450" />
+</p>
 
-See [ADR 000](adr/000-vcluster-portal-architecture.md) for the reasoning behind that design.
+When a user requests a cluster, the portal creates a `VClusterClaim` object describing the desired state (owner, shared members, whether it should be running or asleep). The controller watches for changes and reconciles the real vCluster to match the `VClusterClaim`, i.e. installing it via Helm, scaling it down to sleep, waking it back up or tearing it down for deletion. It also writes the status back onto the object (its phase, readiness), which the portal reads to show the cluster's status to the user. So ownership, sharing and lifecycle all live as Kubernetes resources rather than a separate database. The Kubernetes API stays the single source of truth for both services.
 
 ## 📁 Project Structure
 
