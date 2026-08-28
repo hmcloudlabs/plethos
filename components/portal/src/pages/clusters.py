@@ -20,7 +20,7 @@ from utils import FlashLevel, gateway_host, is_valid_email, pop_flash, set_flash
 router = APIRouter()
 
 
-def get_vcc_service() -> VClusterClaimUserService:
+def get_vcc_user_service() -> VClusterClaimUserService:
     return VClusterClaimUserService()
 
 
@@ -205,7 +205,7 @@ def _render_member_panel(
 def clusters(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     flash = pop_flash(request)
     form_name = request.session.pop("flash_form_name", "")
@@ -216,7 +216,7 @@ def clusters(
 def clusters_list(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     return _render_cluster_list(request, user, vcc_service)
 
@@ -225,7 +225,7 @@ def clusters_list(
 def shared_clusters_list(
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     return _render_shared_cluster_list(request, user, vcc_service)
 
@@ -235,7 +235,7 @@ def sleep_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     vcc_service.set_state(object_name, user.sub, user.email, State.SLEEPING)
     return _render_after_action(request, user, vcc_service)
@@ -246,7 +246,7 @@ def wake_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     vcc_service.set_state(object_name, user.sub, user.email, State.RUNNING)
     return _render_after_action(request, user, vcc_service)
@@ -257,7 +257,7 @@ def renew_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     vcc_service.renew(object_name, user.sub, user.email)
     return _render_after_action(request, user, vcc_service)
@@ -268,7 +268,7 @@ def delete_cluster(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     vcc_service.delete(object_name, user.sub)
     return _render_cluster_list(request, user, vcc_service)
@@ -278,7 +278,7 @@ def delete_cluster(
 def confirm_keep_alive(
     request: Request,
     token: str,
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> RedirectResponse:
     """Resets the cluster's inactivity clock from a signed keep-alive link."""
 
@@ -296,7 +296,7 @@ def download_kubeconfig(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> Response:
     result = vcc_service.get_kubeconfig(object_name, user.sub, user.email)
     if result is None:
@@ -316,7 +316,7 @@ def download_data(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> Response:
     result = vcc_service.get_mounted_volume_contents(object_name, user.sub, user.email)
     if result is None:
@@ -336,7 +336,7 @@ def cluster_members(
     object_name: str,
     request: Request,
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
     return _render_member_panel(request, claim)
@@ -348,7 +348,7 @@ def invite_cluster_member(
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
     claim = _owned_claim_or_404(vcc_service, object_name, user.sub)
@@ -396,7 +396,7 @@ def invite_cluster_member(
 def accept_invite(
     request: Request,
     token: str,
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> RedirectResponse:
     """Grants the invited email access. Doesn't require login - the signed token is the proof."""
@@ -416,7 +416,7 @@ def remove_cluster_member(
     request: Request,
     email: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> HTMLResponse:
     claim = vcc_service.remove_member(object_name, user.sub, email.strip().lower())
 
@@ -431,7 +431,7 @@ def create_cluster(
     request: Request,
     name: str = Form(...),
     user: User = Depends(require_user),
-    vcc_service: VClusterClaimUserService = Depends(get_vcc_service),
+    vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> Response:
     name = name.strip()

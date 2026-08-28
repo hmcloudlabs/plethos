@@ -10,7 +10,12 @@ from kube.vclusterclaim_model import ExpiryAnnotation
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import VClusterClaimUserService
 from main import app
-from pages.clusters import _pending_renewal, _validate_new_cluster, get_settings_service, get_vcc_service
+from pages.clusters import (
+    _pending_renewal,
+    _validate_new_cluster,
+    get_settings_service,
+    get_vcc_user_service,
+)
 from shared.vclusterclaim import Member
 
 
@@ -43,7 +48,7 @@ def settings_service():
 @pytest.fixture
 def client(user, vcc_service, settings_service):
     app.dependency_overrides[require_user] = lambda: user
-    app.dependency_overrides[get_vcc_service] = lambda: vcc_service
+    app.dependency_overrides[get_vcc_user_service] = lambda: vcc_service
     app.dependency_overrides[get_settings_service] = lambda: settings_service
     yield TestClient(app)
     app.dependency_overrides.clear()
