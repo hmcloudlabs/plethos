@@ -13,11 +13,13 @@ from context import VClusterNames
 
 
 # Set by vCluster's syncer on every object it copies to the host cluster, recording which
-# vCluster synced it and its name/namespace inside the virtual cluster. Internal to vCluster
-# rather than a stable public API - verified identical in 0.35.0, re-check on upgrade.
+# vCluster synced it and its name/namespace inside the virtual cluster.
 VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
 VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
 VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
+
+# Set by us (not vCluster) when sleeping a vCluster, to remember what to scale it back up to
+SCALED_DOWN_REPLICAS_ANNOTATION = f"{GROUP}/scaled-down-replicas"
 
 
 class JobStatus(StrEnum):

@@ -5,8 +5,6 @@ import logging
 import kopf
 from kubernetes import client
 
-from shared.vclusterclaim import GROUP
-
 
 @dataclass(slots=True)
 class KubernetesClients:
@@ -45,12 +43,6 @@ class VClusterNames:
     @property
     def uninstall_job(self) -> str:
         return f"helm-uninstall-{self.name}"
-
-
-class VClusterAnnotations:
-    PAUSED = f"{GROUP}/paused"
-    PAUSED_DATE = f"{GROUP}/paused-date"
-    PAUSED_REPLICAS = f"{GROUP}/paused-replicas"
 
 
 @dataclass(slots=True)

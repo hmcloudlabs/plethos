@@ -1,12 +1,13 @@
 from datetime import datetime, UTC
+from typing import cast
 import kopf
 from kubernetes import client
-from kubernetes.client import V1StatefulSet
+from kubernetes.client import V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
 from shared.gateway import GatewayConvention
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
-from context import ReconciliationContext, VClusterAnnotations
+from context import ReconciliationContext
 from resources import (
     make_namespace,
     make_service_account,
@@ -24,6 +25,8 @@ from kube import (
     get_crd_object,
     find_gateway_service_name,
     is_namespace_managed,
+    SCALED_DOWN_REPLICAS_ANNOTATION,
+    VCLUSTER_MANAGED_BY_LABEL,
 )
 
 
@@ -186,29 +189,27 @@ def get_vcluster(ctx: ReconciliationContext) -> V1StatefulSet | None:
 
 
 def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> None:
-    vc_set_spec, vc_set_metadata, vc_set_status = unwrap_statefulset(vc_set)
+    vc_set_spec, _, vc_set_status = unwrap_statefulset(vc_set)
 
-    currently_sleeping = (
-        vc_set_metadata.annotations or {}
-    ).get(VClusterAnnotations.PAUSED) == "true"
     should_be_sleeping = ctx.spec.get("state", State.RUNNING) == State.SLEEPING
+    vcluster_scaled_down = (vc_set_spec.replicas or 0) == 0
 
-    if should_be_sleeping and not currently_sleeping:
-        sleep_vcluster(ctx.clients.apps, vc_set, ctx.logger)
+    if should_be_sleeping:
+        if not vcluster_scaled_down:
+            sleep_vcluster(ctx.clients.apps, vc_set, ctx.logger)
+
+        # When it should be sleeping, delete all workload pods. Has to be checked every
+        # reconciliation cycle because the syncer recreates them until the control plane is gone.
+        delete_workload_pods(ctx)
+
         ctx.patch.status["phase"] = Phase.SLEEPING
         ctx.patch.status["message"] = "vCluster sleeping."
         return
 
-    if not should_be_sleeping and currently_sleeping:
+    if not should_be_sleeping and vcluster_scaled_down:
         wake_vcluster(ctx.clients.apps, vc_set, ctx.logger)
         ctx.patch.status["phase"] = Phase.WAKING
         ctx.patch.status["message"] = "Waking vCluster."
-        return
-
-    # Desired and actual sleep state already agree -> nothing to change
-    if should_be_sleeping and currently_sleeping:
-        ctx.patch.status["phase"] = Phase.SLEEPING
-        ctx.patch.status["message"] = "vCluster sleeping."
         return
 
     # Last case: should not be sleeping, is not sleeping -> either ready or getting ready after wakeup
@@ -222,16 +223,54 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
         ctx.patch.status["message"] = "Waiting for vCluster to be ready."
 
 
+def delete_workload_pods(ctx: ReconciliationContext) -> None:
+    """
+    Finds and deletes all running workload pods. They will be recreated if the vCluster control plane
+    has one or more replicas (pods not running in a StatefulSet or ReplicaSet will be deleted forever)
+    """
+
+    label_selector = f"{VCLUSTER_MANAGED_BY_LABEL}={ctx.names.vcluster}"
+
+    try:
+        synced_pods = cast(
+            V1PodList,
+            ctx.clients.core.list_namespaced_pod(
+                namespace=ctx.names.namespace,
+                label_selector=label_selector,
+                resource_version="0",
+            ),
+        ).items or []
+
+        running_pods = [
+            pod for pod in synced_pods
+            if pod.metadata is None or pod.metadata.deletion_timestamp is None
+        ]
+        if len(running_pods) > 0:
+            ctx.clients.core.delete_collection_namespaced_pod(
+                namespace=ctx.names.namespace,
+                label_selector=label_selector,
+            )
+            ctx.logger.info(
+                f"Deleted {len(running_pods)} workload pod(s) of sleeping vCluster {ctx.names.vcluster}."
+            )
+    except ApiException as e:
+        ctx.patch.status["phase"] = Phase.ERROR
+        ctx.patch.status["message"] = f"Failed to delete workload pods: {e.reason}"
+        raise
+
+
 def sleep_vcluster(apps, vc_set, logger) -> None:
+    """
+    Scales the vCluster control plane replicas to 0, so that deleted user workload pods aren't resynced.
+    """
+
     if not vc_set.spec.replicas or vc_set.spec.replicas <= 0:
         return
 
     current_annotations = vc_set.metadata.annotations or {}
     vc_set.metadata.annotations = {
         **current_annotations,
-        VClusterAnnotations.PAUSED: "true",
-        VClusterAnnotations.PAUSED_DATE: datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        VClusterAnnotations.PAUSED_REPLICAS: str(vc_set.spec.replicas),
+        SCALED_DOWN_REPLICAS_ANNOTATION: str(vc_set.spec.replicas),
     }
     vc_set.spec.replicas = 0
 
@@ -243,14 +282,10 @@ def sleep_vcluster(apps, vc_set, logger) -> None:
 
 def wake_vcluster(apps, vc_set, logger) -> None:
     current_annotations = vc_set.metadata.annotations or {}
-    original_replicas = int(current_annotations.get(VClusterAnnotations.PAUSED_REPLICAS, 1))
+    original_replica_amount = int(current_annotations.get(SCALED_DOWN_REPLICAS_ANNOTATION, 1))
 
-    vc_set.metadata.annotations = {
-        VClusterAnnotations.PAUSED: None,
-        VClusterAnnotations.PAUSED_DATE: None,
-        VClusterAnnotations.PAUSED_REPLICAS: None,
-    }
-    vc_set.spec.replicas = original_replicas
+    vc_set.metadata.annotations = {SCALED_DOWN_REPLICAS_ANNOTATION: None}
+    vc_set.spec.replicas = original_replica_amount
 
     apps.patch_namespaced_stateful_set(
         name=vc_set.metadata.name, namespace=vc_set.metadata.namespace, body=vc_set

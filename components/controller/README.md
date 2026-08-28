@@ -74,9 +74,15 @@ The `vcc` short name prints the cluster name, owner, desired state, current phas
 
 ## Sleep and wake
 
-Setting `spec.state` toggles the vCluster between running and asleep. `Sleeping` scales the
-vCluster StatefulSet to zero replicas (recording the original replica count in
-`plethos.cs.hm.edu/paused*` annotations); `Running` scales it back up. The claim reports `Sleeping` / `Waking` / `Ready` accordingly.
+Setting `spec.state` toggles the vCluster between running and asleep. `Sleeping` scales the vCluster StatefulSet to `0` replicas and deletes the workload pods the vCluster synced into the host namespace. `Running` scales it back up.
+
+### How it works:
+
+Deleting the synced workload pods is what actually frees the host resources: the synced pods are identified by the `vcluster.loft.sh/managed-by=<vcluster>` label. Before deleting them, the control plane has to be scaled to `0` replicas, otherwise it would just recreate the pods. The amount of replicas the control had running before scale down is noted as an annotation `plethos.cs.hm.edu/scaled-down-replicas` in the vCluster StatefulSet.
+
+ _Note: Pods, which aren't inside a StatefulSet or ReplicaSet will not be able to be recreated and are lost forever. Since single pods are a Kubernetes antipattern this is behavoir is accepted._
+
+_Note: The `vcluster` CLI's own `pause`/`resume` are *not* interchangeable with this. Running `vcluster resume` against a sleeping claim just gets the cluster put back to sleep on the next reconciliation._
 
 ## Version selection
 
@@ -111,7 +117,7 @@ The `status.phase` field described the operator-controlled status of a `VCluster
 | `Provisioning` | Creating the Helm install Job, or the Job is still running |
 | `Pending` | vCluster StatefulSet exists but isn't ready yet |
 | `Ready` | vCluster is up |
-| `Sleeping` | vCluster scaled to zero |
+| `Sleeping` | vCluster scaled to zero and its workload pods deleted |
 | `Waking` | vCluster scaling back up after sleep |
 | `Error` | Terminal problem (e.g. unsupported version, resource creation failed) |
 | `Deleting` | Claim is being torn down |

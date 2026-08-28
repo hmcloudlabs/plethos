@@ -3,7 +3,13 @@ import pytest
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
-from conftest import NAMESPACE, wait_for_job, wait_for_job_recreation, wait_for_phase
+from conftest import (
+    NAMESPACE,
+    wait_for_404,
+    wait_for_job,
+    wait_for_job_recreation,
+    wait_for_phase,
+)
 from context import VClusterNames
 from shared.vclusterclaim import Phase, GROUP, PLURAL, VERSION
 
@@ -239,8 +245,47 @@ class TestUpdate:
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
 
         assert vc_set_spec.replicas == 0
-        assert vc_set_metadata.annotations.get(f"{GROUP}/paused") == "true"
-        assert f"{GROUP}/paused-replicas" in vc_set_metadata.annotations
+        assert vc_set_metadata.annotations.get(f"{GROUP}/scaled-down-replicas") == "1"
+
+    def test_sleep_deletes_workload_pods(
+        self, operator, clients, create_vcluster_claim, resource_name
+    ):
+        """Sleeping should also delete the pods the vCluster synced into the host namespace."""
+
+        names = VClusterNames(resource_name)
+
+        create_vcluster_claim()
+        wait_for_phase(clients.custom, resource_name, Phase.READY)
+
+        clients.core.create_namespaced_pod(
+            namespace=names.namespace,
+            body=client.V1Pod(
+                metadata=client.V1ObjectMeta(
+                    name="synced-workload",
+                    labels={"vcluster.loft.sh/managed-by": names.vcluster},
+                ),
+                spec=client.V1PodSpec(
+                    containers=[client.V1Container(name="pause", image="registry.k8s.io/pause:3.9")]
+                ),
+            ),
+        )
+
+        clients.custom.patch_namespaced_custom_object(
+            group=GROUP,
+            version=VERSION,
+            plural=PLURAL,
+            namespace=NAMESPACE,
+            name=resource_name,
+            body={"spec": {"state": "Sleeping"}},
+        )
+        wait_for_phase(clients.custom, resource_name, Phase.SLEEPING)
+
+        wait_for_404(
+            lambda: clients.core.read_namespaced_pod(
+                name="synced-workload", namespace=names.namespace
+            ),
+            "workload pod",
+        )
 
     def test_wake_vcluster(self, operator, clients, create_vcluster_claim, resource_name):
         """Changing state back to Running should scale up the vCluster StatefulSet."""
@@ -280,7 +325,7 @@ class TestUpdate:
         vc_set_spec, vc_set_metadata, _ = unwrap_statefulset(vc_set)
 
         assert vc_set_spec.replicas > 0
-        assert vc_set_metadata.annotations.get(f"{GROUP}/paused") is None
+        assert vc_set_metadata.annotations.get(f"{GROUP}/scaled-down-replicas") is None
 
     def test_sleep_already_sleeping(self, operator, clients, create_vcluster_claim, resource_name):
         """Setting state to Sleeping when already sleeping should not error."""
