@@ -13,8 +13,7 @@ from context import GatewayConvention, VClusterNames
 
 # Set by vCluster's syncer on every object it copies to the host cluster, recording which
 # vCluster synced it and its name/namespace inside the virtual cluster. Internal to vCluster
-# rather than a stable public API - verified identical in 0.20.0 and 0.35.0, re-check on
-# upgrade.
+# rather than a stable public API - verified identical in 0.35.0, re-check on upgrade.
 VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
 VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
 VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"

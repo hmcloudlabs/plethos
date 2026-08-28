@@ -89,7 +89,7 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 |---|---|---|
 | `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace the controller watches for claims |
 | `RECONCILIATION_INTERVAL` | `30` | Seconds between timer-driven reconciliations |
-| `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.20.0` |
+| `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.35.0` |
 | `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Domain each vCluster gets exposed under, as `<vcluster-name>.<base_domain>`. Requires an ingress controller with SSL passthrough (vCluster's API server does mTLS). Unset by default so local/dev setups keep the chart's default `localhost:8443` kubeconfig. |
 | `VCLUSTERS_INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
 

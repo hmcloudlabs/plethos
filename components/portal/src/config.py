@@ -41,7 +41,7 @@ class Config:
     # vCluster versions the controller accepts (the portal always provisions the newest of these)
     supported_vcluster_versions: tuple[str, ...] = tuple(
         v.strip()
-        for v in os.getenv("SUPPORTED_VCLUSTER_VERSIONS", "0.20.0,0.35.0").split(",")
+        for v in os.getenv("SUPPORTED_VCLUSTER_VERSIONS", "0.35.0").split(",")
         if v.strip()
     )
 

@@ -6,7 +6,7 @@
 # Versions of vCluster the controller can provision. Must be a comma-separated list.
 # the portal always provisions new vCluster with the latest version in that list.
 # Shared between portal and controller.
-supportedVclusterVersions: "0.20.0,0.35.0"
+supportedVclusterVersions: "0.35.0"
 
 portal:
   image:

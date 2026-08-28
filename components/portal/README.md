@@ -132,7 +132,7 @@ that path to survive pod restarts.
 | `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
 | `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
-| `SUPPORTED_VCLUSTER_VERSIONS` | `0.20.0,0.35.0` | Must match the controller's value, the portal always provisions the highest version |
+| `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Must match the controller's value, the portal always provisions the highest version |
 | `SMTP_HOST` | `localhost` | SMTP server for sending member-invite and keep-alive emails (mailpit default) |
 | `SMTP_PORT` | `1025` | SMTP server port (mailpit default) |
 | `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
