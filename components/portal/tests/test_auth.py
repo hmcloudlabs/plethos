@@ -24,17 +24,17 @@ def make_user(sub: str = "user-1", email: str = "bob@example.com", name: str = "
 
 class TestFromClaims:
     def test_uses_all_standard_fields(self):
-        user = User.from_claims({"sub": "abc", "email": "bob@example.com", "name": "bob"})
+        user = User.from_oidc_claims({"sub": "abc", "email": "bob@example.com", "name": "bob"})
         assert user == User(sub="abc", email="bob@example.com", name="bob")
 
     def test_falls_back_to_preferred_username_when_name_missing(self):
-        user = User.from_claims(
+        user = User.from_oidc_claims(
             {"sub": "abc", "email": "bob@example.com", "preferred_username": "bob"}
         )
         assert user.name == "bob"
 
     def test_falls_back_to_email_when_name_and_preferred_username_missing(self):
-        user = User.from_claims({"sub": "abc", "email": "bob@example.com"})
+        user = User.from_oidc_claims({"sub": "abc", "email": "bob@example.com"})
         assert user.name == "bob@example.com"
 
 

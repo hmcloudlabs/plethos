@@ -47,7 +47,7 @@ class VClusterNames:
 
 @dataclass(slots=True)
 class ReconciliationContext:
-    name: str
+    claim_name: str
     spec: kopf.Spec
     meta: kopf.Meta
     patch: kopf.Patch
@@ -57,7 +57,7 @@ class ReconciliationContext:
     names: VClusterNames = field(init=False)
 
     def __post_init__(self):
-        self.names = VClusterNames(self.name)
+        self.names = VClusterNames(self.claim_name)
 
     @property
     def generation(self) -> int:
@@ -66,10 +66,10 @@ class ReconciliationContext:
 
 @dataclass(slots=True)
 class DeletionContext:
-    name: str
+    claim_name: str
     patch: kopf.Patch
     logger: logging.Logger
     names: VClusterNames = field(init=False)
 
     def __post_init__(self):
-        self.names = VClusterNames(self.name)
+        self.names = VClusterNames(self.claim_name)

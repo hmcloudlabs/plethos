@@ -46,7 +46,7 @@ def on_reconcile(
 
     reconcile(
         ReconciliationContext(
-            name=name,
+            claim_name=name,
             spec=spec,
             meta=meta,
             patch=patch,
@@ -57,7 +57,7 @@ def on_reconcile(
 
 
 def reconcile(ctx: ReconciliationContext) -> None:
-    ctx.logger.info(f"Reconciliation started for {ctx.name}.")
+    ctx.logger.info(f"Reconciliation started for {ctx.claim_name}.")
 
     ensure_namespace(ctx)
     ensure_service_account(ctx)
@@ -138,7 +138,7 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
             ctx.clients.batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
                 body=make_helm_install_job(
-                    ctx.name,
+                    ctx.claim_name,
                     ctx.names.namespace,
                     ctx.names.install_job,
                     ctx.names.vcluster,
@@ -312,7 +312,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
         raise
 
     ctx = ReconciliationContext(
-        name=claim["metadata"]["name"],
+        claim_name=claim["metadata"]["name"],
         spec=claim["spec"],
         meta=claim["metadata"],
         patch=kopf.Patch(),
@@ -330,7 +330,7 @@ def reconcile_claim_by_name(claim_name: str, logger) -> None:
             version=VERSION,
             plural=PLURAL,
             namespace=config.namespace,
-            name=ctx.name,
+            name=ctx.claim_name,
             body={"status": dict(ctx.patch.status)},
         )
     except ApiException as e:

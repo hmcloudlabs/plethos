@@ -4,9 +4,9 @@ OIDC/SSO wiring for the portal.
 The portal is IdP-agnostic: it speaks standard OpenID Connect and configures
 itself entirely from the issuer's discovery document, so any compliant provider
 (Keycloak, Auth0, Entra ID, Dex, Google, ...) works by pointing `OIDC_ISSUER`
-at it. We rely only on standard claims (`sub`, `email`, `name`); `sub` is the
-stable identifier used to scope a user's VClusterClaims. After login the claims
-are kept in the signed session cookie.
+at it. We rely only on standard OIDC claims (`sub`, `email`, `name`); `sub` is
+the stable identifier used to scope a user's VClusterClaims. After login those
+claims are kept in the signed session cookie.
 """
 
 from dataclasses import dataclass
@@ -48,11 +48,13 @@ class User:
     name: str
 
     @classmethod
-    def from_claims(cls, claims: dict) -> "User":
+    def from_oidc_claims(cls, oidc_claims: dict) -> "User":
         return cls(
-            sub=claims["sub"],
-            email=claims.get("email", ""),
-            name=claims.get("name") or claims.get("preferred_username") or claims.get("email", ""),
+            sub=oidc_claims["sub"],
+            email=oidc_claims.get("email", ""),
+            name=oidc_claims.get("name")
+            or oidc_claims.get("preferred_username")
+            or oidc_claims.get("email", ""),
         )
 
     def to_session(self) -> dict:

@@ -20,12 +20,12 @@ def get_settings_service() -> SettingsService:
     return SettingsService()
 
 
-def _derive_owners(vcc_claims: list[VClusterClaim]) -> list[dict]:
+def _derive_owners(claims: list[VClusterClaim]) -> list[dict]:
     """We have no user store, so an "owner" is anyone who owns at least one cluster."""
 
     counts: dict[str, int] = {}
-    for vcc_claim in vcc_claims:
-        counts[vcc_claim.spec.owner_email] = counts.get(vcc_claim.spec.owner_email, 0) + 1
+    for claim in claims:
+        counts[claim.spec.owner_email] = counts.get(claim.spec.owner_email, 0) + 1
 
     return [{"email": email, "clusters": n} for email, n in sorted(counts.items())]
 
@@ -117,12 +117,12 @@ def admin(
     vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ) -> HTMLResponse:
-    vcc_claims = vcc_service.list_all()
-    owners = _derive_owners(vcc_claims)
+    claims = vcc_service.list_all()
+    owners = _derive_owners(claims)
     stats = {
         "owners": len(owners),
-        "clusters": len(vcc_claims),
-        "running": sum(1 for vcc_claim in vcc_claims if vcc_claim.status.phase == "Running"),
+        "clusters": len(claims),
+        "running": sum(1 for claim in claims if claim.status.phase == "Running"),
     }
     return templates.TemplateResponse(
         request,
@@ -130,7 +130,7 @@ def admin(
         {
             "title": "Admin",
             "user": user,
-            "vcluster_claims": vcc_claims,
+            "vcluster_claims": claims,
             "owners": owners,
             "stats": stats,
             "admin_emails": settings_service.list_admins(),
@@ -156,7 +156,7 @@ def admin_cluster_logs(
     user: User = Depends(require_admin),
     vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_claim = vcc_service.get(object_name)
+    claim = vcc_service.get(object_name)
     logs = vcc_service.get_control_plane_logs(object_name)
 
     return templates.TemplateResponse(
@@ -164,7 +164,7 @@ def admin_cluster_logs(
         "components/admin_logs_panel.html",
         {
             "object_name": object_name,
-            "cluster_name": vcc_claim.spec.name if vcc_claim else object_name,
+            "cluster_name": claim.spec.name if claim else object_name,
             "logs": logs,
         },
     )

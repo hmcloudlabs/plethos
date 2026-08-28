@@ -51,7 +51,7 @@ def delete(ctx: DeletionContext) -> None:
             batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
                 body=make_helm_uninstall_job(
-                    ctx.name,
+                    ctx.claim_name,
                     ctx.names.namespace,
                     ctx.names.uninstall_job,
                     ctx.names.vcluster,

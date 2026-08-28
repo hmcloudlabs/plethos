@@ -90,9 +90,9 @@ async def login(request: Request):
 async def auth_callback(request: Request) -> RedirectResponse:
     client = sso_client()
     token = await client.authorize_access_token(request)
-    claims = token.get("userinfo") or await client.userinfo(token=token)
+    oidc_claims = token.get("userinfo") or await client.userinfo(token=token)
 
-    user = User.from_claims(dict(claims))
+    user = User.from_oidc_claims(dict(oidc_claims))
     set_session_user(request, user)
     logger.info(f"User logged in: {user.email}")
 
