@@ -87,21 +87,6 @@ def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
     }
 
 
-def _ingress_from_namespace_rule(ingress_namespace: str, port: int) -> list[dict]:
-    return [
-        {
-            "from": [
-                {
-                    "namespaceSelector": {
-                        "matchLabels": {"kubernetes.io/metadata.name": ingress_namespace}
-                    }
-                }
-            ],
-            "ports": [{"port": port, "protocol": "TCP"}],
-        }
-    ]
-
-
 def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: str) -> list[str]:
     """Extra `helm` args exposing the vCluster via ingress, or `[]` if `base_domain` is unset.
 
@@ -131,12 +116,23 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
         },
     }
 
+    # Allow external ingress to workload pods.
+    workload_ingress_rule = [
+        {
+            "from": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": ingress_namespace}
+                    }
+                }
+            ],
+        }
+    ]
+
     return [
         *_helm_set_args(values),
         "--set-json",
-        f"policies.networkPolicy.controlPlane.ingress={json.dumps(_ingress_from_namespace_rule(ingress_namespace, 443))}",
-        "--set-json",
-        f"policies.networkPolicy.workload.ingress={json.dumps(_ingress_from_namespace_rule(ingress_namespace, 80))}",
+        f"policies.networkPolicy.workload.ingress={json.dumps(workload_ingress_rule)}",
     ]
 
 
