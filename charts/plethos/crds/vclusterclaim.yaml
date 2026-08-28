@@ -107,9 +107,6 @@ spec:
     - name: Ready
       type: string
       jsonPath: .status.conditions[?(@.type=="Ready")].status
-    - name: Inactive
-      type: string
-      jsonPath: .status.conditions[?(@.type=="Inactive")].status
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp

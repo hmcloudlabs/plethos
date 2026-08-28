@@ -27,7 +27,6 @@ class Phase(StrEnum):
 
 class ConditionType(StrEnum):
     READY = "Ready"
-    INACTIVE = "Inactive"
 
 
 class _Model(BaseModel):
