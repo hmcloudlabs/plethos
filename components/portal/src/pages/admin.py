@@ -122,7 +122,7 @@ def admin(
     stats = {
         "owners": len(owners),
         "clusters": len(vcc_claims),
-        "running": sum(1 for vcc_claim in vcc_claims if vcc_claim.status.phase == "Ready"),
+        "running": sum(1 for vcc_claim in vcc_claims if vcc_claim.status.phase == "Running"),
     }
     return templates.TemplateResponse(
         request,

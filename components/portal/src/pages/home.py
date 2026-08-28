@@ -19,7 +19,7 @@ def index(request: Request) -> HTMLResponse:
         claims = service.list_for_owner(user.sub)
         cluster_summary = {
             "total": len(claims),
-            "running": sum(1 for c in claims if c.status.phase == "Ready"),
+            "running": sum(1 for c in claims if c.status.phase == "Running"),
             "shared": len(service.list_shared_with(user.email)),
         }
 

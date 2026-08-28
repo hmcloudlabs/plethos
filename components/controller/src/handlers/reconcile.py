@@ -216,7 +216,7 @@ def reconcile_vcluster(ctx: ReconciliationContext, vc_set: V1StatefulSet) -> Non
     desired_replicas = vc_set_spec.replicas or 0
     ready_replicas = vc_set_status.ready_replicas or 0
     if desired_replicas > 0 and ready_replicas >= desired_replicas:
-        ctx.patch.status["phase"] = Phase.READY
+        ctx.patch.status["phase"] = Phase.RUNNING
         ctx.patch.status["message"] = "vCluster is ready."
     else:
         ctx.patch.status["phase"] = Phase.PENDING
@@ -351,7 +351,7 @@ def sync_ready_condition(ctx: ReconciliationContext) -> None:
         set_condition(
             ctx,
             cond_type=ConditionType.READY,
-            cond_status="True" if phase == Phase.READY else "False",
+            cond_status="True" if phase == Phase.RUNNING else "False",
             reason=str(phase),
             message=ctx.patch.status.get("message", ""),
         )

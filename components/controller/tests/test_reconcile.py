@@ -33,14 +33,14 @@ class TestCreate:
         names = VClusterNames(resource_name)
         create_vcluster_claim()
 
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
         assert "vCluster is ready" in obj["status"]["message"]
 
-        # Check that `Ready` status condition is true with reason "Ready"
+        # Check that `Ready` status condition is true with reason "Running"
         ready = next((c for c in obj["status"].get("conditions", []) if c["type"] == "Ready"), None)
         assert ready is not None
         assert ready["status"] == "True"
-        assert ready["reason"] == Phase.READY
+        assert ready["reason"] == Phase.RUNNING
 
         # Panics if any of the resources don't exist
         clients.core.read_namespace(name=names.namespace)
@@ -68,9 +68,9 @@ class TestCreateIdempotency:
         clients.core.create_namespace(body=make_namespace(names.namespace))
 
         create_vcluster_claim()
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
-        assert obj["status"]["phase"] == Phase.READY
+        assert obj["status"]["phase"] == Phase.RUNNING
 
     def test_handles_existing_cluster_role_binding(
         self, operator, clients, create_vcluster_claim, resource_name
@@ -90,9 +90,9 @@ class TestCreateIdempotency:
         )
 
         create_vcluster_claim()
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
-        assert obj["status"]["phase"] == Phase.READY
+        assert obj["status"]["phase"] == Phase.RUNNING
 
 
 class TestCreateFailureAndRecovery:
@@ -220,7 +220,7 @@ class TestUpdate:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         clients.custom.patch_namespaced_custom_object(
             group=GROUP,
@@ -255,7 +255,7 @@ class TestUpdate:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         clients.core.create_namespaced_pod(
             namespace=names.namespace,
@@ -293,7 +293,7 @@ class TestUpdate:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         # First sleep
         clients.custom.patch_namespaced_custom_object(
@@ -316,7 +316,7 @@ class TestUpdate:
             body={"spec": {"state": "Running"}},
         )
 
-        obj = wait_for_phase(clients.custom, resource_name, Phase.READY)
+        obj = wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
         assert "vCluster is ready" in obj["status"]["message"]
 
         apps = client.AppsV1Api()
@@ -331,7 +331,7 @@ class TestUpdate:
         """Setting state to Sleeping when already sleeping should not error."""
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         clients.custom.patch_namespaced_custom_object(
             group=GROUP,

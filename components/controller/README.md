@@ -116,7 +116,7 @@ The `status.phase` field described the operator-controlled status of a `VCluster
 |---|---|
 | `Provisioning` | Creating the Helm install Job, or the Job is still running |
 | `Pending` | vCluster StatefulSet exists but isn't ready yet |
-| `Ready` | vCluster is up |
+| `Running` | vCluster is up |
 | `Sleeping` | vCluster scaled to zero and its workload pods deleted |
 | `Waking` | vCluster scaling back up after sleep |
 | `Error` | Terminal problem (e.g. unsupported version, resource creation failed) |

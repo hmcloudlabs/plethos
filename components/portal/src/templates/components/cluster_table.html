@@ -28,10 +28,10 @@
       {% set phase = vcluster_claim.status.phase %}
       {% set state = vcluster_claim.spec.state %}
       {% set msg = vcluster_claim.status.message %}
-      {% set steady_running = phase == 'Ready' and state == 'Running' %}
+      {% set steady_running = phase == 'Running' and state == 'Running' %}
       {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
       {% set needs_renewal = obj in pending_renewal %}
-      {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
+      {% set can_connect = phase in ['Running', 'Sleeping', 'Waking'] %}
       {% set public_url = public_urls.get(obj) %}
       <tr>
         <td class="text-body-secondary text-truncate" title="{{ name }}">{{ name }}</td>
@@ -40,7 +40,7 @@
           <span class="badge text-bg-success"{% if msg %} title="{{ msg }}"{% endif %}>Running</span>
           {% elif steady_sleeping %}
           <span class="badge text-bg-info"{% if msg %} title="{{ msg }}"{% endif %}>Sleeping</span>
-          {% elif phase in ['Ready', 'Sleeping', 'Waking'] %}
+          {% elif phase in ['Running', 'Sleeping', 'Waking'] %}
             {% if state == 'Sleeping' %}
             <span class="badge text-bg-warning"{% if msg %} title="{{ msg }}"{% endif %}>Sleeping&hellip;</span>
             {% else %}

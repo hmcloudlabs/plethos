@@ -18,7 +18,7 @@ class State(StrEnum):
 class Phase(StrEnum):
     PENDING = "Pending"
     PROVISIONING = "Provisioning"
-    READY = "Ready"
+    RUNNING = "Running"
     SLEEPING = "Sleeping"
     WAKING = "Waking"
     ERROR = "Error"

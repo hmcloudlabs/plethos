@@ -17,7 +17,7 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         # Remove VClusterClaim resource
         clients.custom.delete_namespaced_custom_object(
@@ -60,7 +60,7 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         # Manually delete the namespace before deleting the claim
         clients.core.delete_namespace(name=names.namespace)
@@ -107,7 +107,7 @@ class TestDeleteFailure:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
-        wait_for_phase(clients.custom, resource_name, Phase.READY)
+        wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         clients.custom.delete_namespaced_custom_object(
             group=GROUP,
