@@ -45,12 +45,12 @@ class TestList:
     def test_list_for_owner_returns_the_owners_claims(self, service, repo, make_vcluster_claim):
         claim = make_vcluster_claim(owner_subject="alice-sub")
 
-        repo.list_by_owner.return_value = [claim]
+        repo.list_for_owner.return_value = [claim]
         assert service.list_for_owner("alice-sub") == [claim]
 
     def test_list_shared_with_returns_claims_where_email_is_a_member(self, service, repo, make_vcluster_claim):
         claim = make_vcluster_claim(members=[Member(email="bob@example.com")])
-        repo.list_by_shared_member.return_value = [claim]
+        repo.list_shared_with.return_value = [claim]
 
         assert service.list_shared_with("bob@example.com") == [claim]
 
@@ -59,7 +59,7 @@ class TestList:
     ):
         claim = make_vcluster_claim(owner_email="bob@example.com", members=[Member(email="bob@example.com")])
 
-        repo.list_by_shared_member.return_value = [claim]
+        repo.list_shared_with.return_value = [claim]
         assert service.list_shared_with("bob@example.com") == []
 
 
@@ -174,13 +174,13 @@ class TestRemoveMember:
 class TestGetKubeconfig:
     def test_returns_none_if_the_kubeconfig_is_missing(self, service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub")
-        repo.read_kubeconfig.return_value = None
+        repo.get_kubeconfig.return_value = None
 
         assert service.get_kubeconfig("u123-test-cluster", "owner-sub", "") is None
 
     def test_returns_the_claim_name_and_kubeconfig(self, service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub")
-        repo.read_kubeconfig.return_value = "some-kubeconfig-yaml"
+        repo.get_kubeconfig.return_value = "some-kubeconfig-yaml"
 
         result = service.get_kubeconfig("u123-test-cluster", "owner-sub", "")
         assert result == ("test-cluster", "some-kubeconfig-yaml")
@@ -189,13 +189,13 @@ class TestGetKubeconfig:
 class TestGetMountedVolumeContents:
     def test_returns_none_if_there_is_no_data(self, service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub")
-        repo.read_mounted_volume_contents.return_value = None
+        repo.get_mounted_volume_contents.return_value = None
 
         assert service.get_mounted_volume_contents("u123-test-cluster", "owner-sub", "") is None
 
     def test_returns_the_claim_name_and_data(self, service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub")
-        repo.read_mounted_volume_contents.return_value = b"some-bytes"
+        repo.get_mounted_volume_contents.return_value = b"some-bytes"
 
         result = service.get_mounted_volume_contents("u123-test-cluster", "owner-sub", "")
         assert result == ("test-cluster", b"some-bytes")
@@ -209,13 +209,13 @@ class TestAdminGetKubeconfig:
 
     def test_returns_none_if_the_kubeconfig_is_missing(self, admin_service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim()
-        repo.read_kubeconfig.return_value = None
+        repo.get_kubeconfig.return_value = None
 
         assert admin_service.get_kubeconfig("u123-test-cluster") is None
 
     def test_returns_the_claim_name_and_kubeconfig(self, admin_service, repo, make_vcluster_claim):
         repo.get.return_value = make_vcluster_claim()
-        repo.read_kubeconfig.return_value = "some-kubeconfig-yaml"
+        repo.get_kubeconfig.return_value = "some-kubeconfig-yaml"
 
         result = admin_service.get_kubeconfig("u123-test-cluster")
         assert result == ("test-cluster", "some-kubeconfig-yaml")

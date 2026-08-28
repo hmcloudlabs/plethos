@@ -83,7 +83,7 @@ class TestListAndGet:
     def test_filters_by_owner_hash_label(self, repo, api):
         api.list_namespaced_custom_object.return_value = {"items": []}
 
-        repo.list_by_owner("ted-sub")
+        repo.list_for_owner("ted-sub")
         api.list_namespaced_custom_object.assert_called_once_with(
             group=GROUP,
             version=VERSION,
@@ -95,15 +95,15 @@ class TestListAndGet:
     def test_caches_filter_by_owner_hash_label(self, repo, api):
         api.list_namespaced_custom_object.return_value = {"items": []}
 
-        repo.list_by_owner("ted-sub")
-        repo.list_by_owner("ted-sub")
+        repo.list_for_owner("ted-sub")
+        repo.list_for_owner("ted-sub")
 
         assert api.list_namespaced_custom_object.call_count == 1
 
     def test_filters_by_member_hash_label(self, repo, api):
         api.list_namespaced_custom_object.return_value = {"items": []}
 
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
         api.list_namespaced_custom_object.assert_called_once_with(
             group=GROUP,
             version=VERSION,
@@ -115,8 +115,8 @@ class TestListAndGet:
     def test_caches_filter_by_member_hash_label(self, repo, api):
         api.list_namespaced_custom_object.return_value = {"items": []}
         
-        repo.list_by_shared_member("bob@example.com")
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
+        repo.list_shared_with("bob@example.com")
 
         assert api.list_namespaced_custom_object.call_count == 1
 
@@ -151,16 +151,16 @@ class TestCreate:
         api.list_namespaced_custom_object.return_value = {"items": []}
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_for_owner("ted-sub")
+        repo.list_shared_with("bob@example.com")
 
         # Creating new VClusterClaim invalidates "all" and owner cache entries, but not member entries
         api.create_namespaced_custom_object.return_value = raw_vcluster_claim("u123-new-cluster")
         repo.create("ted-sub", "test-cluster", make_spec(owner_subject="ted-sub"))
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
-        repo.list_by_shared_member("bob@example.com")   # not being refetched
+        repo.list_for_owner("ted-sub")
+        repo.list_shared_with("bob@example.com")   # not being refetched
 
         assert api.list_namespaced_custom_object.call_count == 5
 
@@ -187,15 +187,15 @@ class TestPatchState:
         api.list_namespaced_custom_object.return_value = {"items": []}
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_for_owner("ted-sub")
+        repo.list_shared_with("bob@example.com")
 
         # Patching a VClusterClaim invalidates every cache entry, not just "all"/owner
         repo.patch_state("u123-test-cluster", State.SLEEPING)
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_for_owner("ted-sub")
+        repo.list_shared_with("bob@example.com")
 
         assert api.list_namespaced_custom_object.call_count == 6
 
@@ -222,14 +222,14 @@ class TestManageMembers:
         api.list_namespaced_custom_object.return_value = {"items": []}
 
         repo.list_all()
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
 
         # Adding a member to a VClusterClaim invalidates every cache entry, not just "all"/owner
         api.patch_namespaced_custom_object.return_value = raw_vcluster_claim("u1")
         repo.add_member("u123-test-cluster", [Member(email="bob@example.com")], "bob@example.com")
 
         repo.list_all()
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
 
         assert api.list_namespaced_custom_object.call_count == 4
 
@@ -254,13 +254,13 @@ class TestManageMembers:
         api.list_namespaced_custom_object.return_value = {"items": []}
 
         repo.list_all()
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
 
         api.patch_namespaced_custom_object.return_value = raw_vcluster_claim("u123-test-cluster")
         repo.remove_member("u123-test-cluster", [], "bob@example.com")
 
         repo.list_all()
-        repo.list_by_shared_member("bob@example.com")
+        repo.list_shared_with("bob@example.com")
 
         assert api.list_namespaced_custom_object.call_count == 4
 
@@ -282,12 +282,12 @@ class TestDelete:
         api.list_namespaced_custom_object.return_value = {"items": []}
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
+        repo.list_for_owner("ted-sub")
 
         repo.delete("u123-test-cluster")
 
         repo.list_all()
-        repo.list_by_owner("ted-sub")
+        repo.list_for_owner("ted-sub")
 
         assert api.list_namespaced_custom_object.call_count == 4
 
@@ -298,30 +298,30 @@ class TestReadKubeconfig:
             "config": base64.b64encode(b"apiVersion: v1").decode()
         }
 
-        assert repo.read_kubeconfig("u123-test-cluster") == "apiVersion: v1"
+        assert repo.get_kubeconfig("u123-test-cluster") == "apiVersion: v1"
 
     def test_uses_vc_prefixed_secret_name_in_the_vcluster_namespace(self, repo, core_api):
         core_api.read_namespaced_secret.return_value.data = {"config": base64.b64encode(b"x").decode()}
 
-        repo.read_kubeconfig("u123-test-cluster")
+        repo.get_kubeconfig("u123-test-cluster")
         core_api.read_namespaced_secret.assert_called_once_with(name="vc-u123-test-cluster", namespace="vcluster-u123-test-cluster")
 
     def test_returns_none_when_secret_is_missing(self, repo, core_api):
         core_api.read_namespaced_secret.side_effect = ApiException(status=404)
 
-        assert repo.read_kubeconfig("u123-test-cluster") is None
+        assert repo.get_kubeconfig("u123-test-cluster") is None
 
 
 class TestReadControlPlaneLogs:
     def test_returns_none_when_pod_is_missing(self, repo, core_api):
         core_api.read_namespaced_pod.side_effect = ApiException(status=404)
 
-        assert repo.read_control_plane_logs("u123-test-cluster") is None
+        assert repo.get_control_plane_logs("u123-test-cluster") is None
 
     def test_returns_none_when_the_pod_has_no_containers(self, repo, core_api):
         core_api.read_namespaced_pod.return_value.spec.containers = []
 
-        assert repo.read_control_plane_logs("u123-test-cluster") is None
+        assert repo.get_control_plane_logs("u123-test-cluster") is None
 
     def test_strips_ansi_escape_codes(self, repo, core_api):
         container = Mock()
@@ -329,7 +329,7 @@ class TestReadControlPlaneLogs:
         core_api.read_namespaced_pod.return_value.spec.containers = [container]
         core_api.read_namespaced_pod_log.return_value.data = b"\x1b[31mhello\x1b[0m world"
 
-        assert repo.read_control_plane_logs("u123-test-cluster") == "hello world"
+        assert repo.get_control_plane_logs("u123-test-cluster") == "hello world"
 
     def test_reads_the_first_containers_log_with_given_tail(self, repo, core_api):
         container = Mock()
@@ -337,7 +337,7 @@ class TestReadControlPlaneLogs:
         core_api.read_namespaced_pod.return_value.spec.containers = [container]
         core_api.read_namespaced_pod_log.return_value.data = b"Interesting logs..."
 
-        repo.read_control_plane_logs("u123-test-cluster", tail_lines=50)
+        repo.get_control_plane_logs("u123-test-cluster", tail_lines=50)
 
         core_api.read_namespaced_pod_log.assert_called_once_with(
             name="u123-test-cluster-0", namespace="vcluster-u123-test-cluster", container="syncer", tail_lines=50, _preload_content=False

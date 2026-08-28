@@ -75,7 +75,7 @@ class VClusterClaimRepository:
 
         return _vclusterclaim_cache.get_or_set("all", fetch)
 
-    def list_by_owner(self, sub: str) -> list[VClusterClaim]:
+    def list_for_owner(self, sub: str) -> list[VClusterClaim]:
         """VClusterClaims labeled as owned by the given subject id."""
 
         owner_hash = get_owner_hash(sub)
@@ -92,7 +92,7 @@ class VClusterClaimRepository:
 
         return _vclusterclaim_cache.get_or_set(owner_hash, fetch)
 
-    def list_by_shared_member(self, email: str) -> list[VClusterClaim]:
+    def list_shared_with(self, email: str) -> list[VClusterClaim]:
         """VClusterClaims labeled as shared with the given email."""
 
         member_hash = get_member_hash(email)
@@ -260,7 +260,7 @@ class VClusterClaimRepository:
 
         _vclusterclaim_cache.invalidate_all()
 
-    def read_kubeconfig(self, object_name: str) -> str | None:
+    def get_kubeconfig(self, object_name: str) -> str | None:
         """Returns the kubeconfig for a vCluster (or None if the kubeconfig secret doesn't exist)."""
 
         # The chart names its kubeconfig secret `vc-<release>`, and the release is
@@ -285,7 +285,7 @@ class VClusterClaimRepository:
 
         return base64.b64decode(raw).decode("utf-8")
 
-    def read_control_plane_logs(self, object_name: str, tail_lines: int = 200) -> str | None:
+    def get_control_plane_logs(self, object_name: str, tail_lines: int = 200) -> str | None:
         """Logs of the vcluster control-plane pod, or None if it isn't up yet.
 
         The vClusters run a single container, so we just use that one. We still
@@ -333,7 +333,7 @@ class VClusterClaimRepository:
 
         return ANSI_ESCAPE_RE.sub("", text)
 
-    def read_mounted_volume_contents(self, object_name: str) -> bytes | None:
+    def get_mounted_volume_contents(self, object_name: str) -> bytes | None:
         """Tars up volumes mounted by the vCluster's workload pods if there are any."""
 
         namespace = vcluster_namespace(object_name)

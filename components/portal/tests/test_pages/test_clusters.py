@@ -91,7 +91,7 @@ class TestCreateCluster:
 
 class TestClusterInvitation:
     def test_rejects_inviting_yourself(self, client, vcc_service, user, make_vcluster_claim):
-        vcc_service.get_by_object_name.return_value = make_vcluster_claim(owner_subject=user.sub)
+        vcc_service.get.return_value = make_vcluster_claim(owner_subject=user.sub)
 
         res = client.post("/clusters/u123-test-cluster/members", data={"email": user.email})
 
@@ -99,7 +99,7 @@ class TestClusterInvitation:
         vcc_service.invite_member.assert_not_called()
 
     def test_rejects_invalid_email(self, client, vcc_service, user, make_vcluster_claim):
-        vcc_service.get_by_object_name.return_value = make_vcluster_claim(owner_subject=user.sub)
+        vcc_service.get.return_value = make_vcluster_claim(owner_subject=user.sub)
 
         res = client.post("/clusters/u123-test-cluster/members", data={"email": "not-an-email"})
 
@@ -109,7 +109,7 @@ class TestClusterInvitation:
     def test_rejects_when_team_quota_is_reached(
         self, client, vcc_service, settings_service, user, make_vcluster_claim
     ):
-        vcc_service.get_by_object_name.return_value = make_vcluster_claim(
+        vcc_service.get.return_value = make_vcluster_claim(
             owner_subject=user.sub, members=[Member(email="existing@example.com")]
         )
         
@@ -124,7 +124,7 @@ class TestClusterInvitation:
         self, client, vcc_service, settings_service, user, make_vcluster_claim, monkeypatch
     ):
         claim = make_vcluster_claim(owner_subject=user.sub)
-        vcc_service.get_by_object_name.return_value = claim
+        vcc_service.get.return_value = claim
         settings_service.max_team_size.return_value = 5
         vcc_service.invite_member.return_value = (claim, "some-token")
 

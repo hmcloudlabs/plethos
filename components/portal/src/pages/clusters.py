@@ -33,7 +33,7 @@ def _owned_claim_or_404(
 ) -> VClusterClaim:
     """Fetch a claim the user owns, or raise 404 (used by the owner-only member panel)."""
 
-    claim = vcc_service.get_by_object_name(object_name)
+    claim = vcc_service.get(object_name)
     if claim is None or claim.access_for(sub) is not AccessType.OWNER:
         raise HTTPException(status_code=404, detail="Cluster not found.")
     return claim

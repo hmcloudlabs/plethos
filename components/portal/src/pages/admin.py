@@ -156,8 +156,8 @@ def admin_cluster_logs(
     user: User = Depends(require_admin),
     vcc_service: VClusterClaimAdminService = Depends(get_vcc_admin_service),
 ) -> HTMLResponse:
-    vcc_claim = vcc_service.get_by_object_name(object_name)
-    logs = vcc_service.get_logs(object_name)
+    vcc_claim = vcc_service.get(object_name)
+    logs = vcc_service.get_control_plane_logs(object_name)
 
     return templates.TemplateResponse(
         request,

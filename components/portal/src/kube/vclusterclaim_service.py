@@ -19,7 +19,7 @@ class VClusterClaimUserService:
     def list_for_owner(self, sub: str) -> list[VClusterClaim]:
         """List all VClusterClaims owned by a user given their subject id."""
 
-        claims = self._repo.list_by_owner(sub)
+        claims = self._repo.list_for_owner(sub)
 
         # The label-selector only embeds the sub's hash so re-check raw sub to avoid hash collisions
         return [claim for claim in claims if claim.spec.owner_subject == sub]
@@ -28,7 +28,7 @@ class VClusterClaimUserService:
         """Lists all clusters that a user's email was invited to (ie. written into `members`)."""
 
         email = email.lower()
-        claims = self._repo.list_by_shared_member(email)
+        claims = self._repo.list_shared_with(email)
 
         # The label-selector only embeds the email's hash so re-check raw email to avoid hash collisions
         return [
@@ -38,7 +38,7 @@ class VClusterClaimUserService:
             and any(member.email.lower() == email for member in claim.spec.members)
         ]
 
-    def get_by_object_name(self, object_name: str) -> VClusterClaim | None:
+    def get(self, object_name: str) -> VClusterClaim | None:
         """Fetch a VClusterClaim by its full object name. No authorization."""
 
         return self._repo.get(object_name)
@@ -155,7 +155,7 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
-        kubeconfig = self._repo.read_kubeconfig(object_name)
+        kubeconfig = self._repo.get_kubeconfig(object_name)
         if kubeconfig is None:
             return None
 
@@ -173,7 +173,7 @@ class VClusterClaimUserService:
         if claim is None:
             return None
 
-        data = self._repo.read_mounted_volume_contents(object_name)
+        data = self._repo.get_mounted_volume_contents(object_name)
         if data is None:
             return None
 
@@ -234,12 +234,12 @@ class VClusterClaimAdminService:
         """Every VClusterClaim across all users."""
         return self._repo.list_all()
 
-    def get_by_object_name(self, object_name: str) -> VClusterClaim | None:
+    def get(self, object_name: str) -> VClusterClaim | None:
         return self._repo.get(object_name)
 
-    def get_logs(self, object_name: str, tail_lines: int = 200) -> str | None:
+    def get_control_plane_logs(self, object_name: str, tail_lines: int = 200) -> str | None:
         """Logs of the vcluster control-plane pod, or None if it isn't up yet."""
-        return self._repo.read_control_plane_logs(object_name, tail_lines)
+        return self._repo.get_control_plane_logs(object_name, tail_lines)
 
     def set_state(self, object_name: str, state: State) -> None:
         """Sleep/wake any cluster, regardless of ownership."""
@@ -273,7 +273,7 @@ class VClusterClaimAdminService:
         if claim is None:
             return None
 
-        kubeconfig = self._repo.read_kubeconfig(object_name)
+        kubeconfig = self._repo.get_kubeconfig(object_name)
         if kubeconfig is None:
             return None
 

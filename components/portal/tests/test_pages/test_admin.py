@@ -81,8 +81,8 @@ class TestAdminClustersActions:
         vcc_service.delete.assert_called_once_with("u123-test-cluster")
 
     def test_shows_logs_when_available(self, client, vcc_service, make_vcluster_claim):
-        vcc_service.get_by_object_name.return_value = make_vcluster_claim(name="test-cluster")
-        vcc_service.get_logs.return_value = "interesting logs"
+        vcc_service.get.return_value = make_vcluster_claim(name="test-cluster")
+        vcc_service.get_control_plane_logs.return_value = "interesting logs"
 
         res = client.get("/admin/clusters/u123-test-cluster/logs")
 
@@ -90,8 +90,8 @@ class TestAdminClustersActions:
         assert "interesting logs" in res.text
 
     def test_shows_not_available_message_when_no_logs_found(self, client, vcc_service, make_vcluster_claim):
-        vcc_service.get_by_object_name.return_value = make_vcluster_claim()
-        vcc_service.get_logs.return_value = None
+        vcc_service.get.return_value = make_vcluster_claim()
+        vcc_service.get_control_plane_logs.return_value = None
 
         res = client.get("/admin/clusters/u123-test-cluster/logs")
 
