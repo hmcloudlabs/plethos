@@ -7,8 +7,9 @@ from kubernetes.client import V1Namespace
 from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
 
+from shared.gateway import GatewayConvention
 from shared.vclusterclaim import GROUP
-from context import GatewayConvention, VClusterNames
+from context import VClusterNames
 
 
 # Set by vCluster's syncer on every object it copies to the host cluster, recording which

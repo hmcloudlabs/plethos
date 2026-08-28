@@ -1,7 +1,10 @@
 import re
 from typing import Literal
-
 from starlette.requests import Request
+
+from config import config
+from shared.gateway import GatewayConvention
+
 
 
 def is_valid_email(email: str) -> bool:
@@ -30,3 +33,11 @@ def pop_flash(request: Request) -> tuple[str, FlashLevel] | None:
 
     level: FlashLevel = request.session.pop("flash_level", "error")
     return message, level
+
+
+def gateway_host(vcluster_name: str) -> str | None:
+    """A cluster's public gateway host, or `None` if `VCLUSTERS_BASE_DOMAIN` isn't configured."""
+
+    if not config.vclusters_base_domain:
+        return None
+    return GatewayConvention.host(vcluster_name, config.vclusters_base_domain)

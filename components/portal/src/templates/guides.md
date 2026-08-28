@@ -47,19 +47,20 @@ cluster, sleep and wake it and download its kubeconfig - only the owner can dele
 
 Open a cluster and click the *trash* icon to delete it. This is permanent, so export any data you need first.
 
-### Exposing a deployment publicly
+### Exposing an application publicly
 
-To make something you deploy reachable from outside your cluster, create a plain `Service`
-named `gateway` in the `default` namespace, listening on port 80:
+To make something you deploy reachable from outside your cluster, create a plain `Service` named `gateway` in the `default` namespace, listening on port 80:
 
 ```bash
 kubectl expose deployment <your-app> --name=gateway --namespace=default --port=80
 ```
 
+Works the same for a bare `Pod`, `StatefulSet` or anything else `kubectl expose` support.
+
 The portal shows the exact URL for your cluster (it looks like
 `https://<your-cluster-id>.plethos-apps.<your-organizations-domain>`).
 
-**Need to expose more than one app?** Your cluster gets one public hostname, so point gateway at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster  your proxy receives plain HTTP on port 80
+**Need to expose more than one app?** Your cluster gets one public hostname, so point the gateway at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster, so your proxy receives plain HTTP on port 80.
 
 ## Cluster expiration
 

@@ -33,6 +33,10 @@ spec:
           env:
             - name: VCLUSTERCLAIMS_NAMESPACE
               value: {{ .Release.Namespace }}
+            {{- if .Values.controller.vclustersBaseDomain }}
+            - name: VCLUSTERS_BASE_DOMAIN
+              value: {{ .Values.controller.vclustersBaseDomain }}
+            {{- end }}
             {{- if .Values.portal.oidc.issuer }}
             - name: OIDC_ISSUER
               value: {{ .Values.portal.oidc.issuer }}

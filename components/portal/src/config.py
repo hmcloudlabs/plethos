@@ -20,6 +20,10 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
 
+    # Domain each vCluster's public host is built from. Must match the controller's
+    # VCLUSTERS_BASE_DOMAIN (see components/controller/src/config.py).
+    vclusters_base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
+
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 
     support_email: str = os.getenv("SUPPORT_EMAIL", "")

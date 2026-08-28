@@ -62,8 +62,9 @@ controller:
 
   replicas: 1
 
-  # Domain each vCluster is exposed under, as <claim-name>.<vclustersBaseDomain>.
-  # Leave blank for a domain-less/local setup.
+  # Domain each vCluster is exposed under, as <claim-name>.<vclustersBaseDomain>. Also passed to
+  # the portal, which uses it only to display a cluster's gateway host - provisioning the actual
+  # Ingress is the controller's job alone. Leave blank for a domain-less/local setup.
   vclustersBaseDomain: ""
   vclustersIngressNamespace: ingress-nginx
 

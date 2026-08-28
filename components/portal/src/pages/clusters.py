@@ -15,7 +15,7 @@ from kube.vclusterclaim_service import (
 from mailer import send_email
 from shared.vclusterclaim import State
 from templating import templates
-from utils import FlashLevel, is_valid_email, pop_flash, set_flash
+from utils import FlashLevel, gateway_host, is_valid_email, pop_flash, set_flash
 
 router = APIRouter()
 
@@ -101,6 +101,12 @@ def _pending_renewal(claims: list[VClusterClaim]) -> dict[str, dict]:
     return result
 
 
+def _public_urls(claims: list[VClusterClaim]) -> dict[str, str | None]:
+    """Each claim's public gateway URL (or None), keyed by object name."""
+
+    return {c.object_name: f"https://{host}" if (host := gateway_host(c.object_name)) else None for c in claims}
+
+
 def _render_clusters(
     request: Request,
     user: User,
@@ -121,6 +127,7 @@ def _render_clusters(
             "vcluster_claims": owned,
             "shared_vcluster_claims": shared,
             "pending_renewal": _pending_renewal(owned) | _pending_renewal(shared),
+            "public_urls": _public_urls(owned) | _public_urls(shared),
             "flash_message": flash[0] if flash else None,
             "flash_level": flash[1] if flash else None,
             "form_name": form_name,
@@ -138,7 +145,11 @@ def _render_cluster_list(
     return templates.TemplateResponse(
         request,
         "components/cluster_list.html",
-        {"vcluster_claims": owned, "pending_renewal": _pending_renewal(owned)},
+        {
+            "vcluster_claims": owned,
+            "pending_renewal": _pending_renewal(owned),
+            "public_urls": _public_urls(owned),
+        },
     )
 
 
@@ -151,7 +162,11 @@ def _render_shared_cluster_list(
     return templates.TemplateResponse(
         request,
         "components/shared_cluster_list.html",
-        {"shared_vcluster_claims": shared, "pending_renewal": _pending_renewal(shared)},
+        {
+            "shared_vcluster_claims": shared,
+            "pending_renewal": _pending_renewal(shared),
+            "public_urls": _public_urls(shared),
+        },
     )
 
 

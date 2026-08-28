@@ -4,8 +4,9 @@ from kubernetes import client
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
+from shared.gateway import GatewayConvention
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
-from context import GatewayConvention, ReconciliationContext, VClusterAnnotations
+from context import ReconciliationContext, VClusterAnnotations
 from resources import (
     make_namespace,
     make_service_account,

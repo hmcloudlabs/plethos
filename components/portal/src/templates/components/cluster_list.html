@@ -10,5 +10,5 @@
   hx-trigger="every 3s [!document.querySelector('#cluster-list .modal.show')]"
   hx-swap="outerHTML"
 >
-  {{ cluster_table(vcluster_claims, pending_renewal=pending_renewal) }}
+  {{ cluster_table(vcluster_claims, pending_renewal=pending_renewal, public_urls=public_urls) }}
 </div>

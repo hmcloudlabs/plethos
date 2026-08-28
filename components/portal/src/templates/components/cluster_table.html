@@ -1,7 +1,7 @@
 {% from "components/icons.html" import icon %}
 {% from "components/confirm_modal.html" import confirm_modal %}
 
-{% macro cluster_table(vcluster_claims, shared=False, list_id="cluster-list", empty_text="You don't have any clusters yet.", pending_renewal={}) %}
+{% macro cluster_table(vcluster_claims, shared=False, list_id="cluster-list", empty_text="You don't have any clusters yet.", pending_renewal={}, public_urls={}) %}
 {% if vcluster_claims %}
 <div class="table-responsive">
   <table class="table cluster-table align-middle">
@@ -31,6 +31,8 @@
       {% set steady_running = phase == 'Ready' and state == 'Running' %}
       {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
       {% set needs_renewal = obj in pending_renewal %}
+      {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
+      {% set public_url = public_urls.get(obj) %}
       <tr>
         <td class="text-body-secondary text-truncate" title="{{ name }}">{{ name }}</td>
         <td>
@@ -87,14 +89,52 @@
             </div>
             {% else %}
 
-            {% set can_connect = phase in ['Ready', 'Sleeping', 'Waking'] %}
             <a
               class="btn btn-sm btn-success {{ '' if can_connect else 'disabled' }}"
               title="{{ 'Download kubeconfig' if can_connect else 'Available once the cluster is ready' }}"
               {% if can_connect %}href="/clusters/{{ obj }}/kubeconfig"{% else %}aria-disabled="true" tabindex="-1"{% endif %}
             >
-              {{ icon("download") }} Connect
+              {{ icon("download") }} Kubeconfig
             </a>
+
+            {% if public_url %}
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary {{ '' if can_connect else 'disabled' }}"
+              title="{{ 'Public URL' if can_connect else 'Available once the cluster is ready' }}"
+              {% if can_connect %}
+              data-bs-toggle="modal"
+              data-bs-target="#url-modal-{{ obj }}"
+              {% else %}
+              aria-disabled="true" tabindex="-1"
+              {% endif %}
+            >
+              {{ icon("link") }} URL
+            </button>
+            {% if can_connect %}
+            <div class="modal fade" id="url-modal-{{ obj }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Public URL</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p class="mb-3">
+                      Reachable once you deploy a plain <code>Service</code> named <code>gateway</code> in the
+                      <code>default</code> namespace inside this cluster, listening on port 80. See the
+                      <a href="/guides#exposing-an-application-publicly">guide</a> for details.
+                    </p>
+                    <a href="{{ public_url }}" target="_blank" rel="noopener">{{ public_url }}</a>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            {% endif %}
 
             <a
               class="btn btn-sm btn-warning {{ '' if steady_running else 'disabled' }}"
