@@ -97,7 +97,10 @@
     {# Deployers can add org-specific links (imprint, privacy, ...) here. #}
     <footer class="app-footer">
       <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <span>Plethos - a self-service platform for creating and managing Kubernetes clusters.</span>
+        <span class="d-flex align-items-center gap-2">
+          <img class="brand-mark--sm" src="{{ url_for('static', path='image/logo.svg') }}" alt="" />
+          Plethos - a self-service platform for creating and managing Kubernetes clusters using vCluster.
+        </span>
         {% if config.support_email %}
         <span>Need help? Contact your platform admin at <a href="mailto:{{ config.support_email }}">{{ config.support_email }}</a></span>
         {% endif %}

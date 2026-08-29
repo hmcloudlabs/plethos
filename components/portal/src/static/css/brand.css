@@ -83,8 +83,8 @@ main {
   margin-top: 100px;
 }
 .brand-mark--sm {
-  width: 1.1rem;
   height: 1.1rem;
+  width: auto;
 }
 
 
@@ -118,9 +118,12 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--gray-700);
+  /* Drop Bootstrap's default brand padding so the mark can grow without
+     adding its own height on top of the navbar's. */
+  padding-block: 0;
 }
 .brand-mark {
-  height: 2.1rem;
+  height: 2.8rem;
   width: auto;
   display: inline-block;
 }
@@ -128,16 +131,21 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 .navbar .navbar-nav { column-gap: 0.75rem; }
 .navbar .nav-link { color: var(--gray-500); }
 .navbar .nav-link:hover { color: var(--gray-900); }
-/* Active tab: emphasized text + a red underline accent (no layout shift). */
+/* Active tab: label and icon in the accent red. The icons are
+   stroke="currentColor", so `color` carries both. */
 .navbar .nav-link.active {
-  color: var(--gray-900);
-  box-shadow: inset 0 -2px 0 var(--red-500);
+  color: var(--red-500);
+}
+/* Keep some hover feedback on the tab you're already on. */
+.navbar .nav-link.active:hover {
+  color: var(--red-600);
 }
 .navbar .navbar-text { color: var(--gray-500); }
 
 .navbar .container {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    /* Brand takes the free space, so both nav groups sit together on the right. */
+    grid-template-columns: 1fr auto auto;
     align-items: center;
     gap: 1rem;
 }
@@ -146,6 +154,8 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 }
 .navbar .container > .navbar-nav:last-child {
     justify-self: end;
+    /* On top of the grid's 1rem, to set the account button apart from the nav links. */
+    margin-left: 1rem;
 }
 
 .navbar-nav {
@@ -160,9 +170,9 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: var(--radius);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-200);
-  color: var(--gray-800);
+  background: var(--red-500);
+  border: 1px solid var(--red-600);
+  color: var(--gray-0);
   font-family: var(--font-mono);
   font-size: 0.78rem;
   font-weight: 600;
@@ -174,8 +184,8 @@ h1, h2, h3, h4, h5, h6, .fw-semibold {
 /* Clickable avatar that opens the account dropdown */
 .avatar-link { display: inline-flex; text-decoration: none; cursor: pointer; }
 .avatar-link:hover .avatar {
-  border-color: var(--gray-300);
-  background: var(--gray-150);
+  border-color: var(--red-700);
+  background: var(--red-600);
 }
 
 /* Account dropdown */

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/plethos-logo.svg" alt="plethos logo" width="180" />
+  <img src="assets/plethos-logo-framed.svg" alt="plethos logo" width="180" />
 </p>
 
 # plethos
