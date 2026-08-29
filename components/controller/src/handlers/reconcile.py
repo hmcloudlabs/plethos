@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, UTC
 from typing import cast
 import kopf
@@ -76,11 +77,36 @@ def reconcile(ctx: ReconciliationContext) -> None:
     ctx.patch.status["observedGeneration"] = ctx.generation
 
 
+def resource_exists(ctx: ReconciliationContext, read: Callable[[], object]) -> bool:
+    """
+    Checks if a K8s resource already exist, so callers can skip creating it.
+
+    Using this helper the `ensure_*` functions will check if their resource already exists
+    instead of trying to create it and be rejected by a 409, because a read is cheaper than 
+    a failed write.
+    """
+
+    try:
+        read()
+        return True
+    except ApiException as e:
+        if e.status == 404:
+            return False
+
+        ctx.patch.status["phase"] = Phase.ERROR
+        ctx.patch.status["message"] = f"Failed to find resource. {e.reason}"
+        raise
+
+
 def ensure_namespace(ctx: ReconciliationContext) -> None:
+    if resource_exists(ctx, lambda: ctx.clients.core.read_namespace(name=ctx.names.namespace)):
+        return
+
     try:
         ctx.clients.core.create_namespace(body=make_namespace(ctx.names.namespace))
         ctx.logger.info(f"Created namespace {ctx.names.namespace}.")
     except ApiException as e:
+        # Another reconciliation can still win the race between the read and this create
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
             ctx.patch.status["message"] = f"Failed to create namespace: {e.reason}"
@@ -88,6 +114,9 @@ def ensure_namespace(ctx: ReconciliationContext) -> None:
 
 
 def ensure_service_account(ctx: ReconciliationContext) -> None:
+    if resource_exists(ctx, lambda: ctx.clients.core.read_namespaced_service_account(name=ctx.names.service_account, namespace=ctx.names.namespace)):
+        return
+
     try:
         ctx.clients.core.create_namespaced_service_account(
             namespace=ctx.names.namespace,
@@ -104,6 +133,9 @@ def ensure_service_account(ctx: ReconciliationContext) -> None:
 
 
 def ensure_rbac(ctx: ReconciliationContext) -> None:
+    if resource_exists(ctx, lambda: ctx.clients.rbac.read_cluster_role_binding(name=ctx.names.crb)):
+        return
+
     try:
         ctx.clients.rbac.create_cluster_role_binding(
             body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb)
