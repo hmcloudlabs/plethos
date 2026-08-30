@@ -31,6 +31,9 @@ spec:
                   message: name is immutable
               ownerSubject:
                 type: string
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: ownerSubject is immutable
               ownerEmail:
                 type: string
               vClusterVersion:
