@@ -54,8 +54,6 @@ Project tree:
 └── k8s/                # standalone k8s reference material
 ```
 
-For the full design rationale, see the [ADRs](adr/).
-
 ## 🚀 Getting started
 
 **Deploying plethos to a cluster:** see [charts/plethos/README.md](charts/plethos/README.md) for the
@@ -101,4 +99,4 @@ and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
 ## ⚖️ License
 
-Apache License 2.0, see [LICENSE](LICENSE).
+GNU AFFERO GENERAL PUBLIC LICENSE Version 3, see [LICENSE](LICENSE).
