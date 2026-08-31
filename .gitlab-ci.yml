@@ -1,0 +1,160 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "plethos"'
+
+stages:
+  - lint
+  - test
+  - build
+
+default:
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  cache:
+    key:
+      files:
+        - uv.lock
+    paths:
+      - .uv-cache
+
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
+  RELEASE_COMPONENT:
+    description: "Component to build + release (only used when manually running this pipeline)"
+    value: "portal"
+    options:
+      - "portal"
+      - "controller"
+      - "chart"
+
+lint:
+  stage: lint
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "plethos"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - uv sync --frozen --all-packages
+    - uv run ruff check .
+    - uv run ruff format --check .
+
+test:shared:
+  stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "plethos"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - uv sync --frozen --all-packages
+    - cd components/shared && uv run pytest
+
+test:portal:
+  stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "plethos"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - components/portal/**/*
+        - components/shared/**/*
+  script:
+    - uv sync --frozen --all-packages
+    - cd components/portal && uv run pytest
+
+test:controller:
+  stage: test
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    KIND_VERSION: "v0.24.0"
+    KUBECTL_VERSION: "v1.31.0"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "plethos"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - components/controller/**/*
+        - components/shared/**/*
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
+    - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" && chmod +x /usr/local/bin/kind
+    - curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && chmod +x /usr/local/bin/kubectl
+    - uv sync --frozen --all-packages
+  script:
+    - cd components/controller && uv run pytest
+
+
+.build:
+  stage: build
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apk add --no-cache jq curl
+    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+
+# Creates the git tag + GitLab Release for $1 = component name, $2 = version.
+.create_release: &create_release |
+  create_release() {
+    curl --fail --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
+      --header "JOB-TOKEN: $CI_JOB_TOKEN" --header "Content-Type: application/json" \
+      --data "$(jq -n --arg tag "$1-v$2" --arg ref "$CI_COMMIT_SHA" --arg name "$1 v$2" \
+                '{tag_name:$tag, ref:$ref, name:$name}')"
+  }
+
+build:portal:
+  extends: .build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "portal"'
+  script:
+    - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
+    - docker build
+      -f components/portal/Dockerfile
+      -t "$CI_REGISTRY_IMAGE/portal:$VERSION"
+      -t "$CI_REGISTRY_IMAGE/portal:latest"
+      .
+    - docker push "$CI_REGISTRY_IMAGE/portal:$VERSION"
+    - docker push "$CI_REGISTRY_IMAGE/portal:latest"
+    - *create_release
+    - create_release portal "$VERSION"
+
+build:controller:
+  extends: .build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "controller"'
+  script:
+    - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
+    - docker build
+      -f components/controller/Dockerfile
+      -t "$CI_REGISTRY_IMAGE/controller:$VERSION"
+      -t "$CI_REGISTRY_IMAGE/controller:latest" .
+    - docker push "$CI_REGISTRY_IMAGE/controller:$VERSION"
+    - docker push "$CI_REGISTRY_IMAGE/controller:latest"
+    - *create_release
+    - create_release controller "$VERSION"
+
+release:chart:
+  stage: build
+  image: alpine/helm:3.15.4
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "chart"'
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - 'VERSION=$(grep -m1 "^version:" charts/plethos/Chart.yaml | sed -E "s/version: *(.+)/\1/")'
+    - helm package charts/plethos --destination /tmp/chart-out
+    - |
+      curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --upload-file "/tmp/chart-out/plethos-$VERSION.tgz" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/plethos-chart/$VERSION/plethos-$VERSION.tgz"
+    - |
+      curl --fail --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" --header "Content-Type: application/json" \
+        --data "$(jq -n --arg tag "chart-v$VERSION" --arg ref "$CI_COMMIT_SHA" --arg name "chart v$VERSION" \
+                  --arg url "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/plethos-chart/$VERSION/plethos-$VERSION.tgz" \
+                  '{tag_name:$tag, ref:$ref, name:$name, assets:{links:[{name:"plethos-\($tag).tgz", url:$url, link_type:"package"}]}}')"
