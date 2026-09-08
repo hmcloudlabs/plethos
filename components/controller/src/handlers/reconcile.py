@@ -69,8 +69,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
         provision_vcluster(ctx)
     else:
         reconcile_vcluster(ctx, vc_set)
-
-    ensure_gateway_exposure(ctx)
+        ensure_gateway_exposure(ctx)
 
     sync_ready_condition(ctx)
 
