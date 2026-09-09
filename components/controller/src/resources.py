@@ -248,6 +248,9 @@ def make_helm_uninstall_job(
             },
         },
         "spec": {
+            # Same self-retry/cleanup as the install job
+            "backoffLimit": 3,
+            "ttlSecondsAfterFinished": 120,
             "template": {
                 "spec": {
                     "restartPolicy": "Never",
@@ -262,10 +265,11 @@ def make_helm_uninstall_job(
                                 vcluster_name,
                                 "--namespace",
                                 namespace,
+                                "--ignore-not-found",
                             ],
                         }
                     ],
                 }
-            }
+            },
         },
     }

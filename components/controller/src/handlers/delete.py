@@ -93,6 +93,7 @@ def cleanup_cluster_scoped_resources(ctx: DeletionContext) -> None:
             raise
 
     try:
+        # Deleting the namespace also deletes the Helm uninstall Job
         core.delete_namespace(name=ctx.names.namespace)
         ctx.logger.info(f"Deleted namespace {ctx.names.namespace}.")
     except ApiException as e:
