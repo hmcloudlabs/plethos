@@ -6,7 +6,9 @@ from dataclasses import dataclass
 class Config:
     host: str = os.getenv("PORTAL_HOST", "0.0.0.0")
     port: int = int(os.getenv("PORTAL_PORT", "8000"))
+
     session_secret: str = os.getenv("PORTAL_SESSION_SECRET", "dev-secret-change-me")
+    csrf_token_secret: str = os.getenv("CSRF_TOKEN_SECRET", "dev-secret-change-me")
 
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_dir: str = os.getenv("LOG_DIR", "")

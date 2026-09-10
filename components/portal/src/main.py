@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+import re
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -7,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
+from starlette_csrf import CSRFMiddleware
 
 from auth import (
     NotAuthenticatedError,
@@ -38,7 +40,10 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="plethos Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
+
+app.add_middleware(CSRFMiddleware, secret=config.csrf_token_secret, exempt_urls=[re.compile(r"^/auth/callback")])
 app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(home.router)

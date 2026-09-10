@@ -120,3 +120,7 @@ def require_admin(
         raise NotAuthorizedError()
 
     return user
+
+
+def add_csrf_token(request: Request):
+    return {"csrf_token": request.cookies.get("csrftoken", None)}

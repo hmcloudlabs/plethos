@@ -8,7 +8,7 @@
 
 <div class="bento bento--pad mb-4">
   <span class="bento__label">New cluster</span>
-  <form method="post" action="/clusters" class="d-flex flex-wrap align-items-end gap-2 mt-2">
+  <form hx-post="/clusters" hx-target="body" hx-swap="outerHTML" class="d-flex flex-wrap align-items-end gap-2 mt-2">    
     <div style="flex: 0 1 22rem;">
       <input
         type="text"
