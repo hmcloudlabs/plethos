@@ -42,7 +42,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="plethos Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
 
 app.add_middleware(CSRFMiddleware, secret=config.csrf_token_secret, exempt_urls=[re.compile(r"^/auth/callback")])
-app.add_middleware(SessionMiddleware, secret_key=config.session_secret)
+app.add_middleware(SessionMiddleware, secret_key=config.session_secret, https_only=True)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
