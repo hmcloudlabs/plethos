@@ -7,7 +7,18 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
+class EmailDeliveryError(Exception):
+    """Raised when an email could not be handed over to the SMTP server."""
+
+
 def send_email(*, to: str, subject: str, body: str, html: str) -> None:
+    """
+    Sends an email, raising EmailDeliveryError if it could not be delivered.
+
+    Callers must not report success to the user (or persist "notified" state) unless
+    this returns without raising.
+    """
+
     if not config.smtp_host:
         logger.info(f"SMTP not configured, skipping email to {to}")
         return
@@ -30,6 +41,6 @@ def send_email(*, to: str, subject: str, body: str, html: str) -> None:
             smtp.send_message(message)
     except OSError as e:
         logger.warning(f"Failed to send email to {to}: {e}")
-        return
+        raise EmailDeliveryError(f"Failed to send email to {to}") from e
 
     logger.info(f"Sent email to {to}: {subject}")

@@ -12,7 +12,7 @@ from kube.vclusterclaim_service import (
     AccessType,
     VClusterClaimUserService,
 )
-from mailer import send_email
+from mailer import EmailDeliveryError, send_email
 from shared.vclusterclaim import State
 from templating import templates
 from utils import FlashLevel, gateway_host, is_valid_email, pop_flash, set_flash
@@ -378,16 +378,20 @@ def invite_cluster_member(
                 button_url=accept_url,
                 support_email=config.support_email,
             )
-            send_email(
-                to=email,
-                subject=f"You've been invited to cluster '{claim.spec.name}'",
-                body=(
-                    f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.\n\n"
-                    f"Accept the invite: {accept_url}"
-                ),
-                html=html,
-            )
-            message = f"Invite sent to {email}."
+            try:
+                send_email(
+                    to=email,
+                    subject=f"You've been invited to cluster '{claim.spec.name}'",
+                    body=(
+                        f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.\n\n"
+                        f"Accept the invite: {accept_url}"
+                    ),
+                    html=html,
+                )
+            except EmailDeliveryError:
+                error = f"Could not send the invite email to {email}. Please try again later."
+            else:
+                message = f"Invite sent to {email}."
 
     return _render_member_panel(request, claim, error=error, message=message)
 

@@ -15,7 +15,7 @@ from kube.client import load_kube_config
 from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimRepository
 from logging_setup import setup_logging
-from mailer import send_email
+from mailer import EmailDeliveryError, send_email
 from shared.vclusterclaim import State
 from templating import templates
 from tokens import keep_alive_tokens
@@ -27,8 +27,10 @@ def check_inactive_clusters(repo: VClusterClaimRepository) -> None:
     for claim in repo.list_all():
         try:
             _check_vcluster_claim(repo, claim)
-        except Exception:
-            logger.exception(f"Inactivity check failed for cluster '{claim.object_name}'")
+        except EmailDeliveryError as e:
+            logger.warning(f"Failed to send warning email for cluster '{claim.object_name}'. Error:\n{e}")
+        except Exception as e:
+            logger.exception(f"Inactivity check failed for cluster '{claim.object_name}'. Error:\n{e}")
 
 
 def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -> None:
@@ -100,6 +102,12 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
 
 
 def _send_warning_email(claim: VClusterClaim, *, subject: str, body_intro: str) -> None:
+    """
+    Callers must check if this raises EmailDeliveryError, because the warning annotations 
+    must only be written once the owner was actually warned, otherwise the next run would 
+    sleep or delete the cluster unannounced.
+    """
+
     token = keep_alive_tokens.generate({"object_name": claim.object_name})
     confirm_url = f"{config.portal_base_url}/keep-alive/confirm?token={token}"
     button_text = "Confirm you're still using it"
