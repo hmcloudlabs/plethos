@@ -1,7 +1,7 @@
 from unittest.mock import create_autospec
 import pytest
-from fastapi.testclient import TestClient
 from auth import User, require_admin
+from conftest import make_test_client
 
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_service import VClusterClaimAdminService
@@ -43,7 +43,7 @@ def client(user, vcc_service, settings_service):
     app.dependency_overrides[require_admin] = lambda: user
     app.dependency_overrides[get_vcc_admin_service] = lambda: vcc_service
     app.dependency_overrides[get_settings_service] = lambda: settings_service
-    yield TestClient(app)
+    yield make_test_client("/admin")
     app.dependency_overrides.clear()
 
 

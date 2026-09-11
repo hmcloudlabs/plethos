@@ -1,7 +1,20 @@
 import pytest
+from fastapi.testclient import TestClient
 
 from kube.vclusterclaim_model import VClusterClaim
+from main import app
 from shared.vclusterclaim import Member, State, VClusterClaimSpec, VClusterClaimStatus
+
+
+def make_test_client(seed_url: str) -> TestClient:
+    """Custom TestClient that carries CSRF token."""
+
+    client = TestClient(app, base_url="https://testserver")
+
+    client.get(seed_url)
+    client.headers["x-csrftoken"] = client.cookies["csrftoken"]
+
+    return client
 
 
 @pytest.fixture

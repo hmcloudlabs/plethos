@@ -1,15 +1,16 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import create_autospec
 import pytest
-from fastapi.testclient import TestClient
 
 from auth import User, require_user
+from conftest import make_test_client
 from config import config
 from kube.settings_service import SettingsService
 from kube.vclusterclaim_model import ExpiryAnnotation
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import VClusterClaimUserService
 from main import app
+from mailer import EmailDeliveryError
 from pages.clusters import (
     _pending_renewal,
     _validate_new_cluster,
@@ -50,7 +51,8 @@ def client(user, vcc_service, settings_service):
     app.dependency_overrides[require_user] = lambda: user
     app.dependency_overrides[get_vcc_user_service] = lambda: vcc_service
     app.dependency_overrides[get_settings_service] = lambda: settings_service
-    yield TestClient(app)
+
+    yield make_test_client("/clusters")
     app.dependency_overrides.clear()
 
 
@@ -141,6 +143,23 @@ class TestClusterInvitation:
         assert sent_email_args["to"] == "new@example.com"
         assert "some-token" in sent_email_args["body"]
         assert "Invite sent to new@example.com" in res.text
+
+    def test_shows_an_error_if_the_invite_email_could_not_be_sent(
+        self, client, vcc_service, settings_service, user, make_vcluster_claim, monkeypatch
+    ):
+        claim = make_vcluster_claim(owner_subject=user.sub)
+        vcc_service.get.return_value = claim
+        settings_service.max_team_size.return_value = 5
+        vcc_service.invite_member.return_value = (claim, "some-token")
+
+        def failed_email(**mail_args):
+            raise EmailDeliveryError("smtp is down")
+
+        monkeypatch.setattr("pages.clusters.send_email", failed_email)
+
+        res = client.post("/clusters/u123-test-cluster/members", data={"email": "new@example.com"})
+
+        assert "Could not send the invite email" in res.text
 
     def test_accepting_invalid_invite_token_shows_error_message(self, client, vcc_service):
         vcc_service.accept_invite.return_value = None

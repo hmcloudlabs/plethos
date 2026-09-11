@@ -7,6 +7,7 @@ from cluster_expiry_job import _check_vcluster_claim, check_inactive_clusters
 from config import config
 from kube.vclusterclaim_model import ExpiryAnnotation
 from kube.vclusterclaim_repository import VClusterClaimRepository
+from mailer import EmailDeliveryError
 from shared.vclusterclaim import State
 
 EXPIRY = config.expiry_period_days
@@ -188,6 +189,17 @@ class TestDeletionStage:
         repo.delete.assert_not_called()
         send_email_mock.assert_called_once()
         repo.patch_annotations.assert_called_once_with(claim.object_name, {ExpiryAnnotation.DELETION_WARNING: "True"})
+
+
+class TestFailedWarningEmail:
+    def test_does_not_mark_as_warned_if_the_email_failed(self, make_vcluster_claim, repo, send_email_mock):
+        send_email_mock.side_effect = EmailDeliveryError("smtp is down")
+        claim = _vcluster_claim(make_vcluster_claim, renewed_days_ago=EXPIRY - LEAD + PAST)
+
+        with pytest.raises(EmailDeliveryError):
+            _check_vcluster_claim(repo, claim)
+
+        repo.patch_annotations.assert_not_called()
 
 
 class TestCheckInactiveClusters:
