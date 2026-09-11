@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from auth import User, require_user
 from config import config
-from kube.settings_service import SettingsService
+from kube.settings_service import SettingsService, get_settings_service
 from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
 from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
 from kube.vclusterclaim_service import (
@@ -22,10 +22,6 @@ router = APIRouter()
 
 def get_vcc_user_service() -> VClusterClaimUserService:
     return VClusterClaimUserService()
-
-
-def get_settings_service() -> SettingsService:
-    return SettingsService()
 
 
 def _owned_claim_or_404(

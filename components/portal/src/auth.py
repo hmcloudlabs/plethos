@@ -16,7 +16,7 @@ from fastapi import Depends
 from starlette.requests import Request
 
 from config import config
-from kube.settings_service import SettingsService
+from kube.settings_service import SettingsService, get_settings_service
 
 
 SSO_PROVIDER = "sso"
@@ -104,10 +104,6 @@ def require_user(request: Request) -> User:
         raise NotAuthenticatedError()
 
     return user
-
-
-def get_settings_service() -> SettingsService:
-    return SettingsService()
 
 
 def require_admin(

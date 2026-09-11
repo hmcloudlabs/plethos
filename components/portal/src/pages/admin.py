@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
 from auth import User, require_admin
-from kube.settings_service import SettingsService
+from kube.settings_service import SettingsService, get_settings_service
 from kube.vclusterclaim_model import VClusterClaim
 from kube.vclusterclaim_service import VClusterClaimAdminService
 from shared.vclusterclaim import State
@@ -14,10 +14,6 @@ router = APIRouter()
 
 def get_vcc_admin_service() -> VClusterClaimAdminService:
     return VClusterClaimAdminService()
-
-
-def get_settings_service() -> SettingsService:
-    return SettingsService()
 
 
 def _derive_owners(claims: list[VClusterClaim]) -> list[dict]:

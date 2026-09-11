@@ -147,3 +147,7 @@ class SettingsService:
             {_SettingsKey.ADMIN_EMAILS: ",".join(a for a in self.list_admins() if a != email)}
         )
         logger.info(f"Admin access revoked from {email}")
+
+
+def get_settings_service() -> SettingsService:
+    return SettingsService()
