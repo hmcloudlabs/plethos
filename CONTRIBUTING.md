@@ -108,14 +108,14 @@ This project follows trunk-based development: `plethos` is the trunk and all wor
 
 ## Lint and format
 
-This project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting:
+This project uses `ruff` for linting and formatting and `pyright` as a type checker:
 
 ```bash
 uv run ruff check .          # lint
 uv run ruff check --fix .    # lint + autofix
 uv run ruff format .         # format
+uv run pyright               # type check
 ```
-
 Please run these before opening a PR.
 
 ## Tests

@@ -5,6 +5,7 @@ members = ["components/portal", "components/controller", "components/shared"]
 dev = [
     "ruff>=0.6",
     "pytest>=8",
+    "pyright[nodejs]>=1.1.414",
 ]
 
 [tool.ruff]
@@ -15,6 +16,10 @@ src = ["components/portal/src", "components/controller/src", "components/shared/
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+
+# Only the workspace members, so `uv run pyright` checks the same files in CI as it does
+# locally, regardless of what else is lying around the working tree (e.g. a vcluster-api clone).
+include = ["components"]
 
 [[tool.pyright.executionEnvironments]]
 root = "components/portal"

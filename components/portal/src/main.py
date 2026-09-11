@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
-from starlette_csrf import CSRFMiddleware
+from starlette_csrf.middleware import CSRFMiddleware
 
 from auth import (
     NotAuthenticatedError,
