@@ -35,7 +35,6 @@ def delete(ctx: DeletionContext) -> None:
         core.read_namespace(name=ctx.names.namespace)
     except ApiException as e:
         if e.status == 404:
-            cleanup_cluster_scoped_resources(ctx)
             ctx.logger.info(f"Namespace {ctx.names.namespace} already gone, nothing to clean up.")
             return
         raise
@@ -53,6 +52,7 @@ def delete(ctx: DeletionContext) -> None:
                 body=make_helm_uninstall_job(
                     ctx.claim_name,
                     ctx.names.namespace,
+                    ctx.names.service_account,
                     ctx.names.uninstall_job,
                     ctx.names.vcluster,
                 ),
@@ -72,7 +72,7 @@ def delete(ctx: DeletionContext) -> None:
 
     match uninstall_job_status:
         case JobStatus.SUCCEEDED:
-            cleanup_cluster_scoped_resources(ctx)
+            delete_namespace(ctx)
         case JobStatus.RUNNING:
             raise kopf.TemporaryError("Uninstall job still running.", delay=10)
         case JobStatus.FAILED:
@@ -81,19 +81,15 @@ def delete(ctx: DeletionContext) -> None:
             raise kopf.TemporaryError("Uninstall job failed, will keep retrying.", delay=30)
 
 
-def cleanup_cluster_scoped_resources(ctx: DeletionContext) -> None:
-    rbac = client.RbacAuthorizationV1Api()
+def delete_namespace(ctx: DeletionContext) -> None:
+    """
+    Everything the controller creates per vCluster is namespaced, so deleting the namespace is
+    the whole cleanup (deletes the ServiceAccount its RoleBinding and the Helm uninstall Job).
+    """
+
     core = client.CoreV1Api()
 
     try:
-        rbac.delete_cluster_role_binding(name=ctx.names.crb)
-        ctx.logger.info(f"Deleted ClusterRoleBinding {ctx.names.crb}.")
-    except ApiException as e:
-        if e.status != 404:
-            raise
-
-    try:
-        # Deleting the namespace also deletes the Helm uninstall Job
         core.delete_namespace(name=ctx.names.namespace)
         ctx.logger.info(f"Deleted namespace {ctx.names.namespace}.")
     except ApiException as e:

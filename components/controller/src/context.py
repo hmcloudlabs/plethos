@@ -33,8 +33,8 @@ class VClusterNames:
         return "helm-installer"
 
     @property
-    def crb(self) -> str:
-        return f"helm-installer-{self.name}"
+    def installer_role_binding(self) -> str:
+        return "helm-installer-rb"
 
     @property
     def install_job(self) -> str:

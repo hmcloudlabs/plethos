@@ -106,11 +106,6 @@ def cleanup(clients, resource_name):
         except Exception:
             pass
 
-        try:
-            clients.rbac.delete_cluster_role_binding(name=f"helm-installer-{resource_name}")
-        except Exception:
-            pass
-
         # Wait until namespace has been deleted
         deadline = time.time() + 60
         while time.time() < deadline:

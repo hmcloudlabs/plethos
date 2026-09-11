@@ -25,6 +25,16 @@ Apply the `VClusterClaim` CRD:
 kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
 ```
 
+Apply the `plethos-vcluster-installer` ClusterRole, which the `helm install`/`helm uninstall`
+Jobs run as:
+
+```bash
+kubectl apply -f charts/plethos/templates/controller/vcluster-installer-rbac.yaml
+```
+
+The controller creates a `helm-installer` ServiceAccount in every vCluster namespace and binds
+it to this ClusterRole, so the Jobs get exactly the permissions the `vCluster` chart needs in that one namespace.
+
 (For a full cluster deployment rather than local development, see [charts/plethos/README.md](../../charts/plethos/README.md).)
 
 ## Running the controller

@@ -30,7 +30,7 @@ Plethos has three independently versioned release artifacts: the portal image, t
 The portal's and controller's version lives in their `pyproject.toml` and both have a `CHANGELOG.md` in their workspace directory. The chart's version lives in `/Chart.yaml`,
 and its `CHANGELOG.md` is the repository's root, since the Helm chart bundles the portal and the controller together and is the main artifact people actually install.
 
-## Set up
+## Set up for local developmet
 
 Prerequisites: `uv`, `kubectl`, Docker and [kind](https://kind.sigs.k8s.io/) (the controller's
 test suite specifically drives a `kind` cluster).
@@ -52,14 +52,21 @@ To run the portal and controller together locally:
    ```bash
    kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
    ```
-3. Seed the portal's settings `ConfigMap` (admin emails, quotas):
+3. Apply the `plethos-vcluster-installer` ClusterRole:
+   ```bash
+   kubectl apply -f charts/plethos/templates/controller/vcluster-installer-rbac.yaml
+   ```
+   The controller creates one `helm-installer` ServiceAccount per vCluster namespace and
+   binds it to this ClusterRole. This ServiceAccount is used to install the `vCluster` chart 
+   into the corresponding namespace.
+4. Seed the portal's settings `ConfigMap` (admin emails, quotas):
    ```bash
    kubectl create configmap plethos-portal-settings -n plethos-system \
      --from-literal=adminEmails="testuser@example.com" \
      --from-literal=maxVclustersPerUser="5" \
      --from-literal=maxTeamSize="5"
    ```
-4. Start the local Keycloak IdP the portal authenticates against (includes Mailpit):
+5. Start Keycloak as a local IdP that the portal authenticates against (includes Mailpit):
    ```bash
    docker compose -f components/portal/dev-setup/docker-compose.yml up
    ```
@@ -70,13 +77,12 @@ To run the portal and controller together locally:
    |---|---|---|
    | `testuser@example.com` | Admin | test |
    | `testuser2@example.com` | User | test |
-
-5. In separate terminals, run the controller and the portal (both from the project root):
+6. In separate terminals, run the controller and the portal (both from the project root):
    ```bash
    uv run kopf run components/controller/src/main.py --namespace plethos-system --verbose
    uv run uvicorn main:app --reload --app-dir components/portal/src
    ```
-6. Open `http://localhost:8000` and log in with one of the seeded users above.
+7. Open `http://localhost:8000` and log in with one of the seeded users above.
 
 For component-specific details (configuration options, admin settings, the `VClusterClaim` spec,
 etc.), see [components/portal/README.md](components/portal/README.md) and

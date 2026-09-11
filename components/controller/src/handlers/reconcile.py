@@ -12,7 +12,7 @@ from context import ReconciliationContext
 from resources import (
     make_namespace,
     make_service_account,
-    make_cluster_role_binding,
+    make_role_binding,
     make_helm_install_job,
     make_gateway_ingress,
 )
@@ -132,18 +132,28 @@ def ensure_service_account(ctx: ReconciliationContext) -> None:
 
 
 def ensure_rbac(ctx: ReconciliationContext) -> None:
-    if resource_exists(ctx, lambda: ctx.clients.rbac.read_cluster_role_binding(name=ctx.names.crb)):
+    if resource_exists(
+        ctx,
+        lambda: ctx.clients.rbac.read_namespaced_role_binding(
+            name=ctx.names.installer_role_binding, namespace=ctx.names.namespace
+        ),
+    ):
         return
 
     try:
-        ctx.clients.rbac.create_cluster_role_binding(
-            body=make_cluster_role_binding(ctx.names.namespace, ctx.names.crb)
+        ctx.clients.rbac.create_namespaced_role_binding(
+            namespace=ctx.names.namespace,
+            body=make_role_binding(
+                ctx.names.namespace, ctx.names.service_account, ctx.names.installer_role_binding
+            ),
         )
-        ctx.logger.info(f"Created ClusterRoleBinding {ctx.names.crb}.")
+        ctx.logger.info(
+            f"Created RoleBinding {ctx.names.installer_role_binding} in {ctx.names.namespace}."
+        )
     except ApiException as e:
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
-            ctx.patch.status["message"] = f"Failed to create ClusterRoleBinding: {e.reason}"
+            ctx.patch.status["message"] = f"Failed to create RoleBinding: {e.reason}"
             raise
 
 
@@ -171,6 +181,7 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
                 body=make_helm_install_job(
                     ctx.claim_name,
                     ctx.names.namespace,
+                    ctx.names.service_account,
                     ctx.names.install_job,
                     ctx.names.vcluster,
                     vcluster_version=version,

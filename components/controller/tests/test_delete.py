@@ -28,7 +28,8 @@ class TestDelete:
             name=resource_name,
         )
 
-        # Expects the claim, namespace and CRB to disappear
+        # Expects the claim and namespace to disappear (the ServiceAccount and its
+        # RoleBinding are namespaced, so they go with it)
         wait_for_404(
             lambda: clients.custom.get_namespaced_custom_object(
                 group=GROUP,
@@ -43,18 +44,14 @@ class TestDelete:
             lambda: clients.core.read_namespace(name=names.namespace),
             resource_type="Namespace",
         )
-        wait_for_404(
-            lambda: clients.rbac.read_cluster_role_binding(name=names.crb),
-            resource_type="ClusterRoleBinding",
-        )
 
     def test_delete_when_namespace_already_gone(
         self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
-        If the vcluster namespace is already gone (e.g. deleted manually),
-        on_delete should skip the uninstall job entirely, but still
-        clean up the cluster-scoped ClusterRoleBinding.
+        If the vcluster namespace is already gone (e.g. deleted manually), on_delete should
+        skip the uninstall job entirely and still finish, rather than blocking the claim's
+        finalizer forever waiting for a job it can never run.
         """
 
         names = VClusterNames(resource_name)
@@ -86,12 +83,6 @@ class TestDelete:
                 name=resource_name,
             ),
             resource_type="VClusterClaim",
-        )
-
-        # Cluster-scoped cleanup should still have run, even though no uninstall job ran.
-        wait_for_404(
-            lambda: clients.rbac.read_cluster_role_binding(name=names.crb),
-            resource_type="ClusterRoleBinding",
         )
 
 

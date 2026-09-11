@@ -47,7 +47,9 @@ class TestCreate:
         clients.core.read_namespaced_service_account(
             names.service_account, namespace=names.namespace
         )
-        clients.rbac.read_cluster_role_binding(name=names.crb)
+        clients.rbac.read_namespaced_role_binding(
+            names.installer_role_binding, namespace=names.namespace
+        )
         clients.batch.read_namespaced_job(names.install_job, namespace=names.namespace)
 
 
@@ -72,21 +74,25 @@ class TestCreateIdempotency:
 
         assert obj["status"]["phase"] == Phase.RUNNING
 
-    def test_handles_existing_cluster_role_binding(
+    def test_handles_existing_role_binding(
         self, operator, clients, create_vcluster_claim, resource_name
     ):
         """
-        If the ClusterRoleBinding already exists (409), the operator should not
+        If the RoleBinding already exists (409), the operator should not
         enter ERROR phase, instead it should continue and eventually reach READY.
         """
 
-        from resources import make_cluster_role_binding
+        from resources import make_namespace, make_role_binding
 
         names = VClusterNames(resource_name)
 
-        # Create pre-existing CRB
-        clients.rbac.create_cluster_role_binding(
-            body=make_cluster_role_binding(names.namespace, names.crb)
+        # Create pre-existing namespace + RoleBinding
+        clients.core.create_namespace(body=make_namespace(names.namespace))
+        clients.rbac.create_namespaced_role_binding(
+            namespace=names.namespace,
+            body=make_role_binding(
+                names.namespace, names.service_account, names.installer_role_binding
+            ),
         )
 
         create_vcluster_claim()

@@ -16,7 +16,8 @@ _VCLUSTER_ISOLATION_VALUES = {
         "networkPolicy": {"enabled": True},
         "resourceQuota": {"enabled": False},
         "limitRange": {"enabled": False},
-    }
+    },
+    "rbac": {"enableVolumeSnapshotRules": {"enabled": False}},
 }
 
 # Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features
@@ -24,6 +25,11 @@ _VCLUSTER_ISOLATION_VALUES = {
 _VCLUSTER_IMAGE_VALUES = {
     "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
 }
+
+
+# The ClusterRole the plethos chart ships for the helm-installer SA, see
+# charts/plethos/templates/controller/vcluster-installer-rbac.yaml.
+VCLUSTER_INSTALLER_ROLE = "plethos-vcluster-installer"
 
 
 def make_namespace(namespace: str) -> dict:
@@ -65,22 +71,23 @@ def make_service_account(namespace: str, service_account_name: str) -> dict:
     }
 
 
-def make_cluster_role_binding(namespace: str, crb_name: str) -> dict:
+def make_role_binding(namespace: str, service_account: str, role_binding: str) -> dict:
     return {
         "apiVersion": "rbac.authorization.k8s.io/v1",
-        "kind": "ClusterRoleBinding",
+        "kind": "RoleBinding",
         "metadata": {
-            "name": crb_name,
+            "name": role_binding,
+            "namespace": namespace,
         },
         "roleRef": {
             "apiGroup": "rbac.authorization.k8s.io",
             "kind": "ClusterRole",
-            "name": "cluster-admin",
+            "name": VCLUSTER_INSTALLER_ROLE,
         },
         "subjects": [
             {
                 "kind": "ServiceAccount",
-                "name": "helm-installer",
+                "name": service_account,
                 "namespace": namespace,
             }
         ],
@@ -179,6 +186,7 @@ def make_gateway_ingress(host: str, namespace: str, target_service_name: str) ->
 def make_helm_install_job(
     claim_name: str,
     namespace: str,
+    service_account: str,
     helm_install_name: str,
     vcluster_name: str,
     vcluster_version: str,
@@ -204,7 +212,7 @@ def make_helm_install_job(
             "template": {
                 "spec": {
                     "restartPolicy": "Never",
-                    "serviceAccountName": "helm-installer",
+                    "serviceAccountName": service_account,
                     "containers": [
                         {
                             "name": "helm",
@@ -234,7 +242,11 @@ def make_helm_install_job(
 
 
 def make_helm_uninstall_job(
-    claim_name: str, namespace: str, helm_uninstall_name: str, vcluster_name: str
+    claim_name: str,
+    namespace: str,
+    service_account: str,
+    helm_uninstall_name: str,
+    vcluster_name: str,
 ) -> dict:
     return {
         "apiVersion": "batch/v1",
@@ -254,7 +266,7 @@ def make_helm_uninstall_job(
             "template": {
                 "spec": {
                     "restartPolicy": "Never",
-                    "serviceAccountName": "helm-installer",
+                    "serviceAccountName": service_account,
                     "containers": [
                         {
                             "name": "helm",
