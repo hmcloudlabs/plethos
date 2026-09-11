@@ -42,11 +42,11 @@ def _owned_claim_or_404(
 def _validate_new_cluster(name: str) -> str | None:
     """Return a user-facing error message, or None if the name is valid."""
 
-    NAME_RE = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+    name_re = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
     
     # The VClusterClaim object name is "u<16-hex-char-owner-hash>-<name>" and that whole thing is used as
     # the Helm release name, which Helm caps at 53 characters, so this stays comfortably under that.
-    if not name or len(name) > 32 or not NAME_RE.match(name):
+    if not name or len(name) > 32 or not name_re.match(name):
         return "Name must be lowercase letters, digits and hyphens (max 32 chars)."
 
     return None

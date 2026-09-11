@@ -326,12 +326,12 @@ class VClusterClaimRepository:
                 return None
             raise
 
-        ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+        ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
 
         raw = resp.data
         text = raw.decode("utf-8", "replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
 
-        return ANSI_ESCAPE_RE.sub("", text)
+        return ansi_escape_re.sub("", text)
 
     def get_mounted_volume_contents(self, object_name: str) -> bytes | None:
         """Tars up volumes mounted by the vCluster's workload pods if there are any."""

@@ -8,9 +8,9 @@ from shared.gateway import GatewayConvention
 
 
 def is_valid_email(email: str) -> bool:
-    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email_re = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-    return EMAIL_RE.match(email) is not None
+    return email_re.match(email) is not None
 
 
 FlashLevel = Literal["error", "warning", "success"]
