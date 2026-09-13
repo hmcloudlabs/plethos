@@ -60,6 +60,3 @@ class VClusterClaimStatus(_Model):
     message: str | None = None
     observed_generation: int | None = None
     conditions: list[Condition] = Field(default_factory=list)
-
-    def has_condition(self, cond_type: ConditionType, status: str = "True") -> bool:
-        return any(c.type == cond_type and c.status == status for c in self.conditions)
