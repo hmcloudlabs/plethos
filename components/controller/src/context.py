@@ -69,6 +69,7 @@ class DeletionContext:
     claim_name: str
     patch: kopf.Patch
     logger: logging.Logger
+    clients: KubernetesClients = field(default_factory=KubernetesClients)
     names: VClusterNames = field(init=False)
 
     def __post_init__(self):

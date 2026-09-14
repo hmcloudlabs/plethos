@@ -1,5 +1,4 @@
 import kopf
-from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
@@ -27,12 +26,9 @@ def delete(ctx: DeletionContext) -> None:
 
     ctx.patch.status["phase"] = Phase.DELETING
 
-    batch = client.BatchV1Api()
-    core = client.CoreV1Api()
-
     # Check if namespace still exists, otherwise a helm uninstall job can't be run
     try:
-        core.read_namespace(name=ctx.names.namespace)
+        ctx.clients.core.read_namespace(name=ctx.names.namespace)
     except ApiException as e:
         if e.status == 404:
             ctx.logger.info(f"Namespace {ctx.names.namespace} already gone, nothing to clean up.")
@@ -41,13 +37,15 @@ def delete(ctx: DeletionContext) -> None:
 
     # If the helm uninstall job doesn't exist yet, create it
     try:
-        job = get_job(batch, name=ctx.names.uninstall_job, namespace=ctx.names.namespace)
+        job = get_job(
+            ctx.clients.batch, name=ctx.names.uninstall_job, namespace=ctx.names.namespace
+        )
     except ApiException as e:
         if e.status != 404:
             raise
 
         try:
-            batch.create_namespaced_job(
+            ctx.clients.batch.create_namespaced_job(
                 namespace=ctx.names.namespace,
                 body=make_helm_uninstall_job(
                     ctx.claim_name,
@@ -87,10 +85,8 @@ def delete_namespace(ctx: DeletionContext) -> None:
     the whole cleanup (deletes the ServiceAccount its RoleBinding and the Helm uninstall Job).
     """
 
-    core = client.CoreV1Api()
-
     try:
-        core.delete_namespace(name=ctx.names.namespace)
+        ctx.clients.core.delete_namespace(name=ctx.names.namespace)
         ctx.logger.info(f"Deleted namespace {ctx.names.namespace}.")
     except ApiException as e:
         if e.status != 404:
