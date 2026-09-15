@@ -3,42 +3,24 @@ import json
 from shared.vclusterclaim import GROUP
 
 
-_PSA_LABELS = {
-    "pod-security.kubernetes.io/enforce": "baseline",
-    "pod-security.kubernetes.io/audit": "restricted",
-    "pod-security.kubernetes.io/warn": "restricted",
-}
-
-# Isolation values for a vCluster release, passed to `helm install` as `--set` flags.
-_VCLUSTER_ISOLATION_VALUES = {
-    "policies": {
-        "podSecurityStandard": "baseline",
-        "networkPolicy": {"enabled": True},
-        "resourceQuota": {"enabled": False},
-        "limitRange": {"enabled": False},
-    },
-    "rbac": {"enableVolumeSnapshotRules": {"enabled": False}},
-}
-
-# Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features
-# not licensed in Apache 2.0, therefore pin the pure open-source build instead.
-_VCLUSTER_IMAGE_VALUES = {
-    "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
-}
-
-
 # The ClusterRole the plethos chart ships for the helm-installer SA, see
 # charts/plethos/templates/controller/vcluster-installer-rbac.yaml.
 VCLUSTER_INSTALLER_ROLE = "plethos-vcluster-installer"
 
 
 def make_namespace(namespace: str) -> dict:
+    psa_labels = {
+        "pod-security.kubernetes.io/enforce": "baseline",
+        "pod-security.kubernetes.io/audit": "restricted",
+        "pod-security.kubernetes.io/warn": "restricted",
+    }
+
     return {
         "apiVersion": "v1",
         "kind": "Namespace",
         "metadata": {
             "name": namespace,
-            "labels": {f"{GROUP}/managed": "true", **_PSA_LABELS},
+            "labels": {f"{GROUP}/managed": "true", **psa_labels},
         },
     }
 
@@ -193,6 +175,22 @@ def make_helm_install_job(
     base_domain: str,
     ingress_namespace: str,
 ) -> dict:
+    isolation_values = {
+        "policies": {
+            "podSecurityStandard": "baseline",
+            "networkPolicy": {"enabled": True},
+            "resourceQuota": {"enabled": False},
+            "limitRange": {"enabled": False},
+        },
+        "rbac": {"enableVolumeSnapshotRules": {"enabled": False}},
+    }
+
+    # Since v0.20.0 the chart's default image is `vcluster-pro`, which contains Pro features
+    # not licensed in Apache 2.0, therefore pin the pure open-source build instead.
+    image_values = {
+        "controlPlane": {"statefulSet": {"image": {"repository": "loft-sh/vcluster-oss"}}}
+    }
+
     return {
         "apiVersion": "batch/v1",
         "kind": "Job",
@@ -229,8 +227,8 @@ def make_helm_install_job(
                                 namespace,
                                 "--version",
                                 vcluster_version,
-                                *_helm_set_args(_VCLUSTER_ISOLATION_VALUES),
-                                *_helm_set_args(_VCLUSTER_IMAGE_VALUES),
+                                *_helm_set_args(isolation_values),
+                                *_helm_set_args(image_values),
                                 *_ingress_helm_args(vcluster_name, base_domain, ingress_namespace),
                             ],
                         }
