@@ -17,6 +17,7 @@ TIMEOUT = int(os.getenv("TEST_TIMEOUT", "90"))
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 CRD_PATH = PROJECT_ROOT / "charts" / "plethos" / "crds" / "vclusterclaim.yaml"
+ROLE_PATH = PROJECT_ROOT / "charts" / "plethos" / "templates" / "controller" / "vcluster-installer-rbac.yaml"
 OPERATOR_PATH = PROJECT_ROOT / "components" / "controller" / "src" / "main.py"
 
 
@@ -36,7 +37,8 @@ def kind_cluster():
             check=True,
         )
 
-    config.load_kube_config(context=f"kind-{CLUSTER_NAME}")
+    kube_context = f"kind-{CLUSTER_NAME}"
+    config.load_kube_config(context=kube_context)
 
     core = client.CoreV1Api()
     try:
@@ -44,8 +46,12 @@ def kind_cluster():
     except Exception:
         pass
 
-    subprocess.run(["kubectl", "apply", "-f", CRD_PATH], check=True)
+    # Apply VClusterClaim CRD to cluster
+    subprocess.run(["kubectl", "--context", kube_context, "apply", "-f", CRD_PATH], check=True)
     time.sleep(1)
+
+    # Apply plethos-vcluster-installer ClusterRole to cluster
+    subprocess.run(["kubectl", "--context", kube_context, "apply", "-f", ROLE_PATH], check=True)
 
     yield
 
@@ -60,10 +66,7 @@ def clients(kind_cluster):
 
 @pytest.fixture
 def operator(kind_cluster):
-    """
-    Run the operator as a background subprocess for the duration of a single
-    test, then shut it down cleanly. Uses --standalone to skip leader election.
-    """
+    """Runs the operator for the duration of a single test, then shut it down cleanly."""
 
     with KopfRunner(["run", "--standalone", str(OPERATOR_PATH)]) as runner:
         time.sleep(2)  # give the operator time to start and load kube config
@@ -74,10 +77,7 @@ def operator(kind_cluster):
 
 @pytest.fixture
 def resource_name():
-    """
-    Unique resource name per test.
-    Keeps names distinct across runs and across tests within the same run.
-    """
+    """Unique resource name per test. Keeps names distinct across runs and across tests within the same run."""
 
     return f"test-{uuid.uuid4().hex[:8]}"
 
@@ -85,8 +85,8 @@ def resource_name():
 @pytest.fixture(autouse=True)
 def cleanup(clients, resource_name):
     """
-    Deletes the VClusterClaim (and wait for propagation) before and after
-    each test so leftover resources from a crashed previous run don't cause conflicts.
+    Deletes the VClusterClaim (and wait for propagation) before and after each
+    test so leftover resources from a crashed previous run don't cause conflicts.
     """
 
     def delete():
@@ -126,6 +126,7 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=TIMEOUT):
     Polls the VClusterClaim status until it reaches `expected_phase` or times out.
     Raises AssertionError immediately if the resource enters Error phase (unless that's what we want).
     """
+
     deadline = time.time() + timeout
     last_phase = None
 
@@ -158,43 +159,6 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=TIMEOUT):
     )
 
 
-def wait_for_condition(custom_api, name, cond_type: str, expected_status: str, timeout=TIMEOUT):
-    """
-    Polls the VClusterClaim status until its `cond_type` condition 
-    matches `expected_status` or times out.
-    """
-    
-    deadline = time.time() + timeout
-    last_status = None
-
-    while time.time() < deadline:
-        try:
-            obj = custom_api.get_namespaced_custom_object(
-                group=GROUP,
-                version=VERSION,
-                plural=PLURAL,
-                namespace=NAMESPACE,
-                name=name,
-            )
-        except Exception:
-            time.sleep(2)
-            continue
-
-        conditions = obj.get("status", {}).get("conditions", [])
-        matching = next((c for c in conditions if c["type"] == cond_type), None)
-        last_status = matching["status"] if matching else None
-
-        if last_status == expected_status:
-            return obj
-
-        time.sleep(2)
-
-    raise TimeoutError(
-        f"Timed out after {timeout}s waiting for condition '{cond_type}={expected_status}', "
-        f"last observed: '{last_status}'."
-    )
-
-
 def wait_for_404(api_fn, resource_type: str, timeout=TIMEOUT):
     """
     Polls read_fn until it raises a 404 ApiException (resource is gone).
@@ -218,6 +182,7 @@ def wait_for_job(batch_api, namespace: str, job_name: str, timeout: int = TIMEOU
     """
     Polls until the named Job exists, returning it.
     """
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -237,6 +202,7 @@ def wait_for_job_recreation(
     Polls until a Job named `job_name` exists with a uid different from `old_uid`,
     i.e. the previous Job was deleted and the controller recreated a fresh one.
     """
+    
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
