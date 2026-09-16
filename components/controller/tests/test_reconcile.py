@@ -13,7 +13,7 @@ from conftest import (
 from context import VClusterNames
 from shared.vclusterclaim import Phase, GROUP, PLURAL, VERSION
 
-from kube import get_statefulset, unwrap_statefulset
+from kube import get_statefulset, unwrap_statefulset, VCLUSTER_MANAGED_BY_LABEL
 
 
 class TestCreate:
@@ -268,7 +268,7 @@ class TestUpdate:
             body=client.V1Pod(
                 metadata=client.V1ObjectMeta(
                     name="synced-workload",
-                    labels={"vcluster.loft.sh/managed-by": names.vcluster},
+                    labels={VCLUSTER_MANAGED_BY_LABEL: names.vcluster},
                 ),
                 spec=client.V1PodSpec(
                     containers=[client.V1Container(name="pause", image="registry.k8s.io/pause:3.9")]

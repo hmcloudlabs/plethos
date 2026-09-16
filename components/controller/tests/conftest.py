@@ -85,8 +85,8 @@ def resource_name():
 @pytest.fixture(autouse=True)
 def cleanup(clients, resource_name):
     """
-    Deletes the VClusterClaim (and wait for propagation) before and after each
-    test so leftover resources from a crashed previous run don't cause conflicts.
+    Deletes the VClusterClaim (and wait for propagation) after each test so leftover 
+    resources from a crashed previous run don't cause conflicts.
     """
 
     def delete():
