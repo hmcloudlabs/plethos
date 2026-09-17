@@ -52,7 +52,9 @@ class TestRenewedAt:
 
 class TestExpiresAt:
     def test_falls_back_to_use_creation_timestamp_when_never_renewed(self, make_vcluster_claim):
-        vcluster_claim = make_vcluster_claim(creation_timestamp="2024-01-01T00:00:00Z", annotations={})
+        vcluster_claim = make_vcluster_claim(
+            creation_timestamp="2024-01-01T00:00:00Z", annotations={}
+        )
 
         expected = datetime(2024, 1, 1, tzinfo=UTC) + timedelta(days=config.expiry_period_days)
         assert vcluster_claim.expires_at == expected

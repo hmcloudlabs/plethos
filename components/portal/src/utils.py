@@ -6,7 +6,6 @@ from config import config
 from shared.gateway import GatewayConvention
 
 
-
 def is_valid_email(email: str) -> bool:
     email_re = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 

@@ -83,7 +83,7 @@ class TestInvalidate:
         cache = TTLCache(ttl=10)
 
         cache.get_or_set("a", Mock(return_value="value-a"))
-        
+
         loader_b = Mock(return_value="value-b")
         cache.get_or_set("b", loader_b)
 

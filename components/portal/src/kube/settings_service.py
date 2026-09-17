@@ -17,7 +17,6 @@ _SETTINGS_CACHE_KEY = "settings"
 _settings_cache: TTLCache[dict[str, str]] = TTLCache(config.cache_ttl_seconds)
 
 
-
 class _SettingsKey(StrEnum):
     ADMIN_EMAILS = "adminEmails"
     MAX_VCLUSTERS_PER_USER = "maxVclustersPerUser"
@@ -82,7 +81,9 @@ class SettingsService:
 
     def max_clusters_per_user(self, email: str | None = None) -> int:
         if email is not None:
-            override = self._get_overrides(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES).get(email.strip().lower())
+            override = self._get_overrides(_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES).get(
+                email.strip().lower()
+            )
             if override is not None:
                 return override
 
@@ -104,7 +105,9 @@ class SettingsService:
 
     def max_team_size(self, email: str | None = None) -> int:
         if email is not None:
-            override = self._get_overrides(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES).get(email.strip().lower())
+            override = self._get_overrides(_SettingsKey.MAX_TEAM_SIZE_OVERRIDES).get(
+                email.strip().lower()
+            )
             if override is not None:
                 return override
 

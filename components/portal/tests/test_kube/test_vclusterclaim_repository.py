@@ -20,7 +20,9 @@ from shared.vclusterclaim import GROUP, PLURAL, VERSION, Member, State, VCluster
 _NAMESPACE = "plethos-system"
 
 
-def raw_vcluster_claim(object_name: str, owner_subject: str = "owner-sub", owner_email: str = "owner@example.com") -> dict:
+def raw_vcluster_claim(
+    object_name: str, owner_subject: str = "owner-sub", owner_email: str = "owner@example.com"
+) -> dict:
     return {
         "metadata": {"name": object_name},
         "spec": {
@@ -31,7 +33,9 @@ def raw_vcluster_claim(object_name: str, owner_subject: str = "owner-sub", owner
     }
 
 
-def make_spec(name="test-cluster", owner_subject: str = "owner-sub", owner_email: str = "owner@example.com") -> VClusterClaimSpec:
+def make_spec(
+    name="test-cluster", owner_subject: str = "owner-sub", owner_email: str = "owner@example.com"
+) -> VClusterClaimSpec:
     return VClusterClaimSpec(name=name, owner_subject=owner_subject, owner_email=owner_email)
 
 
@@ -67,7 +71,9 @@ class TestHelpers:
 
 class TestListAndGet:
     def test_list_all_returns_every_claim(self, repo, api):
-        api.list_namespaced_custom_object.return_value = {"items": [raw_vcluster_claim("u1"), raw_vcluster_claim("u2")]}
+        api.list_namespaced_custom_object.return_value = {
+            "items": [raw_vcluster_claim("u1"), raw_vcluster_claim("u2")]
+        }
 
         all_vcluster_claims = repo.list_all()
         assert [c.object_name for c in all_vcluster_claims] == ["u1", "u2"]
@@ -114,7 +120,7 @@ class TestListAndGet:
 
     def test_caches_filter_by_member_hash_label(self, repo, api):
         api.list_namespaced_custom_object.return_value = {"items": []}
-        
+
         repo.list_shared_with("bob@example.com")
         repo.list_shared_with("bob@example.com")
 
@@ -160,7 +166,7 @@ class TestCreate:
 
         repo.list_all()
         repo.list_for_owner("ted-sub")
-        repo.list_shared_with("bob@example.com")   # not being refetched
+        repo.list_shared_with("bob@example.com")  # not being refetched
 
         assert api.list_namespaced_custom_object.call_count == 5
 
@@ -214,7 +220,11 @@ class TestManageMembers:
             name="u123-test-cluster",
             body={
                 "spec": {"members": [{"email": "bob@example.com"}]},
-                "metadata": {"labels": {f"{_MEMBER_LABEL_PREFIX}{get_member_hash('bob@example.com')}": "true"}},
+                "metadata": {
+                    "labels": {
+                        f"{_MEMBER_LABEL_PREFIX}{get_member_hash('bob@example.com')}": "true"
+                    }
+                },
             },
         )
 
@@ -236,7 +246,9 @@ class TestManageMembers:
     def test_removes_members_and_unsets_member_label(self, repo, api):
         api.patch_namespaced_custom_object.return_value = raw_vcluster_claim("u123-test-cluster")
 
-        repo.remove_member("u123-test-cluster", [Member(email="previous@member.com")], "bob@example.com")
+        repo.remove_member(
+            "u123-test-cluster", [Member(email="previous@member.com")], "bob@example.com"
+        )
 
         api.patch_namespaced_custom_object.assert_called_once_with(
             group=GROUP,
@@ -246,7 +258,9 @@ class TestManageMembers:
             name="u123-test-cluster",
             body={
                 "spec": {"members": [{"email": "previous@member.com"}]},
-                "metadata": {"labels": {f"{_MEMBER_LABEL_PREFIX}{get_member_hash('bob@example.com')}": None}},
+                "metadata": {
+                    "labels": {f"{_MEMBER_LABEL_PREFIX}{get_member_hash('bob@example.com')}": None}
+                },
             },
         )
 
@@ -270,7 +284,11 @@ class TestDelete:
         repo.delete("u123-test-cluster")
 
         api.delete_namespaced_custom_object.assert_called_once_with(
-            group=GROUP, version=VERSION, namespace=_NAMESPACE, plural=PLURAL, name="u123-test-cluster"
+            group=GROUP,
+            version=VERSION,
+            namespace=_NAMESPACE,
+            plural=PLURAL,
+            name="u123-test-cluster",
         )
 
     def test_ignores_non_existing_claim(self, repo, api):
@@ -301,10 +319,14 @@ class TestReadKubeconfig:
         assert repo.get_kubeconfig("u123-test-cluster") == "apiVersion: v1"
 
     def test_uses_vc_prefixed_secret_name_in_the_vcluster_namespace(self, repo, core_api):
-        core_api.read_namespaced_secret.return_value.data = {"config": base64.b64encode(b"x").decode()}
+        core_api.read_namespaced_secret.return_value.data = {
+            "config": base64.b64encode(b"x").decode()
+        }
 
         repo.get_kubeconfig("u123-test-cluster")
-        core_api.read_namespaced_secret.assert_called_once_with(name="vc-u123-test-cluster", namespace="vcluster-u123-test-cluster")
+        core_api.read_namespaced_secret.assert_called_once_with(
+            name="vc-u123-test-cluster", namespace="vcluster-u123-test-cluster"
+        )
 
     def test_returns_none_when_secret_is_missing(self, repo, core_api):
         core_api.read_namespaced_secret.side_effect = ApiException(status=404)
@@ -340,5 +362,9 @@ class TestReadControlPlaneLogs:
         repo.get_control_plane_logs("u123-test-cluster", tail_lines=50)
 
         core_api.read_namespaced_pod_log.assert_called_once_with(
-            name="u123-test-cluster-0", namespace="vcluster-u123-test-cluster", container="syncer", tail_lines=50, _preload_content=False
+            name="u123-test-cluster-0",
+            namespace="vcluster-u123-test-cluster",
+            container="syncer",
+            tail_lines=50,
+            _preload_content=False,
         )

@@ -28,13 +28,19 @@ def check_inactive_clusters(repo: VClusterClaimRepository) -> None:
         try:
             _check_vcluster_claim(repo, claim)
         except EmailDeliveryError as e:
-            logger.warning(f"Failed to send warning email for cluster '{claim.object_name}'. Error:\n{e}")
+            logger.warning(
+                f"Failed to send warning email for cluster '{claim.object_name}'. Error:\n{e}"
+            )
         except Exception as e:
-            logger.exception(f"Inactivity check failed for cluster '{claim.object_name}'. Error:\n{e}")
+            logger.exception(
+                f"Inactivity check failed for cluster '{claim.object_name}'. Error:\n{e}"
+            )
 
 
 def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -> None:
-    renewed_at = claim.renewed_at or datetime.strptime(cast(str, claim.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    renewed_at = claim.renewed_at or datetime.strptime(
+        cast(str, claim.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=UTC)
     time_since_renewal = datetime.now(UTC) - renewed_at
 
     warning_lead = timedelta(days=config.warning_lead_days)
@@ -103,8 +109,8 @@ def _check_vcluster_claim(repo: VClusterClaimRepository, claim: VClusterClaim) -
 
 def _send_warning_email(claim: VClusterClaim, *, subject: str, body_intro: str) -> None:
     """
-    Callers must check if this raises EmailDeliveryError, because the warning annotations 
-    must only be written once the owner was actually warned, otherwise the next run would 
+    Callers must check if this raises EmailDeliveryError, because the warning annotations
+    must only be written once the owner was actually warned, otherwise the next run would
     sleep or delete the cluster unannounced.
     """
 

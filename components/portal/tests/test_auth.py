@@ -18,6 +18,7 @@ from kube.settings_service import SettingsService
 def make_request() -> Request:
     return Request({"type": "http", "session": {}})
 
+
 def make_user(sub: str = "user-1", email: str = "bob@example.com", name: str = "bob") -> User:
     return User(sub=sub, email=email, name=name)
 

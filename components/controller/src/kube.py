@@ -119,7 +119,7 @@ def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:
     ns = cast(V1Namespace, core.read_namespace(name=namespace))
     if ns.metadata is None:
         raise ValueError("Invalid Namespace: missing metadata.")
-    
+
     return (ns.metadata.labels or {}).get(f"{GROUP}/managed") == "true"
 
 

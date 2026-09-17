@@ -123,7 +123,9 @@ class VClusterClaimUserService:
             return claim  # already a member, nothing to do
 
         if len(claim.spec.members) >= settings_service.max_team_size(claim.spec.owner_email):
-            logger.warning(f"{member_email} could not join '{object_name}': team-size quota reached")
+            logger.warning(
+                f"{member_email} could not join '{object_name}': team-size quota reached"
+            )
             return None
 
         members = [*claim.spec.members, Member(email=member_email)]
@@ -165,7 +167,7 @@ class VClusterClaimUserService:
         self, object_name: str, sub: str, email: str
     ) -> tuple[str, bytes] | None:
         """
-        Returns the VClusterClaim name and a tar archive of the data in 
+        Returns the VClusterClaim name and a tar archive of the data in
         its workload pods PVC volumes, for the owner or a shared member.
         """
 
@@ -192,7 +194,7 @@ class VClusterClaimUserService:
                 ExpiryAnnotation.DELETION_WARNING: None,
             },
         )
-    
+
     def renew(self, object_name: str, sub: str, email: str) -> None:
         """Keep-alive click from the portal UI. Allowed for the owner or any shared member."""
 
@@ -201,7 +203,7 @@ class VClusterClaimUserService:
 
         self._mark_renewed(object_name)
         logger.info(f"{email} renewed cluster '{object_name}'")
-        
+
     def confirm_keep_alive(self, token: str) -> VClusterClaim | None:
         """
         Renews a cluster from a signed keep-alive token (sent by the inactivity job's warning
@@ -278,4 +280,3 @@ class VClusterClaimAdminService:
             return None
 
         return claim.spec.name, kubeconfig
-

@@ -71,7 +71,9 @@ class VClusterClaimRepository:
                 namespace=self._namespace,
                 plural=PLURAL,
             )
-            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+            return [
+                VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])
+            ]
 
         return _vclusterclaim_cache.get_or_set("all", fetch)
 
@@ -88,7 +90,9 @@ class VClusterClaimRepository:
                 plural=PLURAL,
                 label_selector=f"{_OWNER_LABEL}={owner_hash}",
             )
-            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+            return [
+                VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])
+            ]
 
         return _vclusterclaim_cache.get_or_set(owner_hash, fetch)
 
@@ -105,7 +109,9 @@ class VClusterClaimRepository:
                 plural=PLURAL,
                 label_selector=f"{_MEMBER_LABEL_PREFIX}{member_hash}=true",
             )
-            return [VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])]
+            return [
+                VClusterClaim.from_obj(obj) for obj in cast(dict[str, Any], res).get("items", [])
+            ]
 
         return _vclusterclaim_cache.get_or_set(member_hash, fetch)
 
@@ -349,7 +355,6 @@ class VClusterClaimRepository:
         with tempfile.TemporaryDirectory() as tmp_dir:
             has_data = False
             for pod in workload_pods:
-
                 pod_dir = os.path.join(tmp_dir, pod.metadata.name)
                 if self._extract_pvc_mounts(pod, namespace, pod_dir):
                     has_data = True
@@ -365,20 +370,26 @@ class VClusterClaimRepository:
 
     def _extract_pvc_mounts(self, pod: Any, namespace: str, dest_dir: str) -> bool:
         """
-        Execs into a pod, tars each of its volume mounts, extracts them 
+        Execs into a pod, tars each of its volume mounts, extracts them
         into `dest_dir` and returns whether any data was written.
         """
 
-        pvc_volume_names = {volume.name for volume in (pod.spec.volumes or []) if volume.persistent_volume_claim}
+        pvc_volume_names = {
+            volume.name for volume in (pod.spec.volumes or []) if volume.persistent_volume_claim
+        }
         if not pvc_volume_names:
             return False
 
         wrote_data = False
         for container in pod.spec.containers:
-            mounts = [mount for mount in (container.volume_mounts or []) if mount.name in pvc_volume_names]
+            mounts = [
+                mount for mount in (container.volume_mounts or []) if mount.name in pvc_volume_names
+            ]
 
             for mount in mounts:
-                archive_bytes = self._tar_remote_path(pod.metadata.name, namespace, mount.mount_path)
+                archive_bytes = self._tar_remote_path(
+                    pod.metadata.name, namespace, mount.mount_path
+                )
                 if not archive_bytes:
                     continue
 

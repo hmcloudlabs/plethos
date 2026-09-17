@@ -4,7 +4,12 @@ from unittest.mock import create_autospec
 import pytest
 from kubernetes import client
 
-from kube.settings_service import _SETTINGS_CONFIGMAP_NAME, SettingsService, _settings_cache, _SettingsKey
+from kube.settings_service import (
+    _SETTINGS_CONFIGMAP_NAME,
+    SettingsService,
+    _settings_cache,
+    _SettingsKey,
+)
 
 _NAMESPACE = "plethos-system"
 
@@ -38,17 +43,23 @@ class TestAdminList:
         assert settings.list_admins() == ["bob@example.com", "ted@example.com"]
 
     def test_is_admin_is_true_for_a_listed_admin(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "ted@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "ted@example.com"
+        }
 
         assert settings.is_admin("Ted@Example.com") is True
 
     def test_is_admin_false_for_a_non_admin(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "bob@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "bob@example.com"
+        }
 
         assert settings.is_admin("ted@example.com") is False
 
     def test_add_admin_appends_a_new_admin(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "ted@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "ted@example.com"
+        }
 
         settings.add_admin("bob@example.com")
 
@@ -59,7 +70,9 @@ class TestAdminList:
         )
 
     def test_add_admin_does_not_duplicate_an_existing_admin(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "ted@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "ted@example.com"
+        }
 
         settings.add_admin("ted@example.com")
 
@@ -85,7 +98,9 @@ class TestAdminList:
 
 class TestMaxClusters:
     def test_returns_the_default_when_no_override(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.MAX_VCLUSTERS_PER_USER: "3"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.MAX_VCLUSTERS_PER_USER: "3"
+        }
 
         assert settings.max_clusters_per_user("bob@example.com") == 3
 
@@ -113,7 +128,13 @@ class TestMaxClusters:
         core_api.patch_namespaced_config_map.assert_called_once_with(
             name=_SETTINGS_CONFIGMAP_NAME,
             namespace=_NAMESPACE,
-            body={"data": {_SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES: json.dumps({"bob@example.com": 7})}},
+            body={
+                "data": {
+                    _SettingsKey.MAX_VCLUSTERS_PER_USER_OVERRIDES: json.dumps(
+                        {"bob@example.com": 7}
+                    )
+                }
+            },
         )
 
     def test_set_override_none_clears_existing_override(self, settings, core_api):
@@ -151,19 +172,25 @@ class TestMaxTeamSize:
             settings.max_team_size()
 
     def test_set_override(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: "{}"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.MAX_TEAM_SIZE_OVERRIDES: "{}"
+        }
 
         settings.set_max_team_size_override("bob@example.com", 7)
 
         core_api.patch_namespaced_config_map.assert_called_once_with(
             name=_SETTINGS_CONFIGMAP_NAME,
             namespace=_NAMESPACE,
-            body={"data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"bob@example.com": 7})}},
+            body={
+                "data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"bob@example.com": 7})}
+            },
         )
 
     def test_set_override_none_clears_existing_override(self, settings, core_api):
         core_api.read_namespaced_config_map.return_value.data = {
-            _SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"bob@example.com": 7, "ted@example.com": 7})
+            _SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps(
+                {"bob@example.com": 7, "ted@example.com": 7}
+            )
         }
 
         settings.set_max_team_size_override("bob@example.com", None)
@@ -171,13 +198,17 @@ class TestMaxTeamSize:
         core_api.patch_namespaced_config_map.assert_called_once_with(
             name=_SETTINGS_CONFIGMAP_NAME,
             namespace=_NAMESPACE,
-            body={"data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"ted@example.com": 7})}},
+            body={
+                "data": {_SettingsKey.MAX_TEAM_SIZE_OVERRIDES: json.dumps({"ted@example.com": 7})}
+            },
         )
 
 
 class TestSettingsCaching:
     def test_reads_are_cached_within_ttl(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "ted@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "ted@example.com"
+        }
 
         settings.list_admins()
         settings.list_admins()
@@ -185,7 +216,9 @@ class TestSettingsCaching:
         assert core_api.read_namespaced_config_map.call_count == 1
 
     def test_writes_invalidate_the_cache(self, settings, core_api):
-        core_api.read_namespaced_config_map.return_value.data = {_SettingsKey.ADMIN_EMAILS: "ted@example.com"}
+        core_api.read_namespaced_config_map.return_value.data = {
+            _SettingsKey.ADMIN_EMAILS: "ted@example.com"
+        }
         settings.list_admins()
 
         settings.add_admin("bob@example.com")

@@ -81,7 +81,7 @@ def resource_exists(ctx: ReconciliationContext, read: Callable[[], object]) -> b
     Checks if a K8s resource already exist, so callers can skip creating it.
 
     Using this helper the `ensure_*` functions will check if their resource already exists
-    instead of trying to create it and be rejected by a 409, because a read is cheaper than 
+    instead of trying to create it and be rejected by a 409, because a read is cheaper than
     a failed write.
     """
 
@@ -113,7 +113,12 @@ def ensure_namespace(ctx: ReconciliationContext) -> None:
 
 
 def ensure_service_account(ctx: ReconciliationContext) -> None:
-    if resource_exists(ctx, lambda: ctx.clients.core.read_namespaced_service_account(name=ctx.names.service_account, namespace=ctx.names.namespace)):
+    if resource_exists(
+        ctx,
+        lambda: ctx.clients.core.read_namespaced_service_account(
+            name=ctx.names.service_account, namespace=ctx.names.namespace
+        ),
+    ):
         return
 
     try:
@@ -274,17 +279,21 @@ def delete_workload_pods(ctx: ReconciliationContext) -> None:
     label_selector = f"{VCLUSTER_MANAGED_BY_LABEL}={ctx.names.vcluster}"
 
     try:
-        synced_pods = cast(
-            V1PodList,
-            ctx.clients.core.list_namespaced_pod(
-                namespace=ctx.names.namespace,
-                label_selector=label_selector,
-                resource_version="0",
-            ),
-        ).items or []
+        synced_pods = (
+            cast(
+                V1PodList,
+                ctx.clients.core.list_namespaced_pod(
+                    namespace=ctx.names.namespace,
+                    label_selector=label_selector,
+                    resource_version="0",
+                ),
+            ).items
+            or []
+        )
 
         running_pods = [
-            pod for pod in synced_pods
+            pod
+            for pod in synced_pods
             if pod.metadata is None or pod.metadata.deletion_timestamp is None
         ]
         if len(running_pods) > 0:

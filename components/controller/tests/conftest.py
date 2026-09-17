@@ -17,7 +17,14 @@ TIMEOUT = int(os.getenv("TEST_TIMEOUT", "90"))
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 CRD_PATH = PROJECT_ROOT / "charts" / "plethos" / "crds" / "vclusterclaim.yaml"
-ROLE_PATH = PROJECT_ROOT / "charts" / "plethos" / "templates" / "controller" / "vcluster-installer-rbac.yaml"
+ROLE_PATH = (
+    PROJECT_ROOT
+    / "charts"
+    / "plethos"
+    / "templates"
+    / "controller"
+    / "vcluster-installer-rbac.yaml"
+)
 OPERATOR_PATH = PROJECT_ROOT / "components" / "controller" / "src" / "main.py"
 
 
@@ -85,7 +92,7 @@ def resource_name():
 @pytest.fixture(autouse=True)
 def cleanup(clients, resource_name):
     """
-    Deletes the VClusterClaim (and wait for propagation) after each test so leftover 
+    Deletes the VClusterClaim (and wait for propagation) after each test so leftover
     resources from a crashed previous run don't cause conflicts.
     """
 
@@ -202,7 +209,7 @@ def wait_for_job_recreation(
     Polls until a Job named `job_name` exists with a uid different from `old_uid`,
     i.e. the previous Job was deleted and the controller recreated a fresh one.
     """
-    
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:

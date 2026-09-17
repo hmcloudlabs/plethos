@@ -61,13 +61,15 @@ class VClusterClaim:
     def expires_at(self) -> datetime:
         """When this VClusterClaim expires (EXPIRY_PERIOD_DAYS after its last renewal, or after creation if never renewed before)."""
 
-        renewed_at = self.renewed_at or datetime.strptime(cast(str, self.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        renewed_at = self.renewed_at or datetime.strptime(
+            cast(str, self.creation_timestamp), "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=UTC)
         return renewed_at + timedelta(days=config.expiry_period_days)
 
     @property
     def renewed_at(self) -> datetime | None:
         """When this VClusterClaim was last renewed after an upcoming expiration."""
-        
+
         renewed_at_annotation = self.annotations.get(ExpiryAnnotation.RENEWED_AT)
         if not renewed_at_annotation:
             return None

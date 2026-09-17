@@ -70,7 +70,9 @@ class TestCreateCluster:
 
         vcc_service.create.assert_not_called()
 
-    def test_rejects_when_quota_is_reached(self, client, vcc_service, settings_service, make_vcluster_claim):
+    def test_rejects_when_quota_is_reached(
+        self, client, vcc_service, settings_service, make_vcluster_claim
+    ):
         settings_service.max_clusters_per_user.return_value = 1
         vcc_service.list_for_owner.return_value = [make_vcluster_claim()]
 
@@ -119,7 +121,7 @@ class TestClusterInvitation:
         vcc_service.get.return_value = make_vcluster_claim(
             owner_subject=user.sub, members=[Member(email="existing@example.com")]
         )
-        
+
         settings_service.max_team_size.return_value = 1
 
         res = client.post("/clusters/u123-test-cluster/members", data={"email": "new@example.com"})
@@ -136,7 +138,9 @@ class TestClusterInvitation:
         vcc_service.invite_member.return_value = (claim, "some-token")
 
         sent_email_args = {}
-        monkeypatch.setattr("pages.clusters.send_email", lambda **mail_args: sent_email_args.update(mail_args))
+        monkeypatch.setattr(
+            "pages.clusters.send_email", lambda **mail_args: sent_email_args.update(mail_args)
+        )
 
         res = client.post("/clusters/u123-test-cluster/members", data={"email": "new@example.com"})
 
@@ -168,7 +172,9 @@ class TestClusterInvitation:
 
         assert "invalid or has expired" in res.text
 
-    def test_accepting_valid_token_shows_success_message(self, client, vcc_service, make_vcluster_claim):
+    def test_accepting_valid_token_shows_success_message(
+        self, client, vcc_service, make_vcluster_claim
+    ):
         vcc_service.accept_invite.return_value = make_vcluster_claim()
 
         res = client.get("/invites/accept", params={"token": "good-token"})
@@ -184,7 +190,9 @@ class TestKeepClusterAlive:
 
         assert "invalid or has expired" in res.text
 
-    def test_confirming_valid_token_shows_success_message(self, client, vcc_service, make_vcluster_claim):
+    def test_confirming_valid_token_shows_success_message(
+        self, client, vcc_service, make_vcluster_claim
+    ):
         vcc_service.confirm_keep_alive.return_value = make_vcluster_claim()
 
         res = client.get("/keep-alive/confirm", params={"token": "good-token"})
@@ -279,7 +287,9 @@ class TestCheckPendingRenewals:
 
         assert result[claim.object_name]["expired"] is True
 
-    def test_deletion_date_equals_expiry_period_plus_grace_period_from_renewal(self, make_vcluster_claim):
+    def test_deletion_date_equals_expiry_period_plus_grace_period_from_renewal(
+        self, make_vcluster_claim
+    ):
         claim = make_vcluster_claim(
             annotations={
                 ExpiryAnnotation.RENEWED_AT: "2024-01-01T00:00:00Z",

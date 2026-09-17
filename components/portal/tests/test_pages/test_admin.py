@@ -59,7 +59,9 @@ class TestAdminDashboard:
         assert "owner1@example.com" in res.text
         assert "owner2@example.com" in res.text
 
-    def test_lists_every_cluster_regardless_of_owner(self, client, vcc_service, make_vcluster_claim):
+    def test_lists_every_cluster_regardless_of_owner(
+        self, client, vcc_service, make_vcluster_claim
+    ):
         vcc_service.list_all.return_value = [make_vcluster_claim(name="someones-cluster")]
 
         res = client.get("/admin/clusters/list")
@@ -89,7 +91,9 @@ class TestAdminClustersActions:
         assert "test-cluster" in res.text
         assert "interesting logs" in res.text
 
-    def test_shows_not_available_message_when_no_logs_found(self, client, vcc_service, make_vcluster_claim):
+    def test_shows_not_available_message_when_no_logs_found(
+        self, client, vcc_service, make_vcluster_claim
+    ):
         vcc_service.get.return_value = make_vcluster_claim()
         vcc_service.get_control_plane_logs.return_value = None
 
@@ -134,7 +138,8 @@ class TestAdminSettings:
 class TestAdminMaxClustersOverrides:
     def test_rejects_an_invalid_email(self, client, settings_service):
         res = client.post(
-            "/admin/settings/max-clusters/override", data={"email": "not-an-email", "max_clusters": "5"}
+            "/admin/settings/max-clusters/override",
+            data={"email": "not-an-email", "max_clusters": "5"},
         )
 
         assert "Enter a valid email address" in res.text
@@ -142,19 +147,25 @@ class TestAdminMaxClustersOverrides:
 
     def test_rejects_a_value_below_one(self, client, settings_service):
         res = client.post(
-            "/admin/settings/max-clusters/override", data={"email": "bob@example.com", "max_clusters": "0"}
+            "/admin/settings/max-clusters/override",
+            data={"email": "bob@example.com", "max_clusters": "0"},
         )
 
         assert "must be at least 1" in res.text
         settings_service.set_max_clusters_override.assert_not_called()
 
     def test_adds_the_override(self, client, settings_service):
-        client.post("/admin/settings/max-clusters/override", data={"email": "Bob@Example.com", "max_clusters": "7"})
+        client.post(
+            "/admin/settings/max-clusters/override",
+            data={"email": "Bob@Example.com", "max_clusters": "7"},
+        )
 
         settings_service.set_max_clusters_override.assert_called_once_with("bob@example.com", 7)
 
     def test_removes_the_override(self, client, settings_service):
-        client.post("/admin/settings/max-clusters/override/remove", data={"email": "Bob@Example.com"})
+        client.post(
+            "/admin/settings/max-clusters/override/remove", data={"email": "Bob@Example.com"}
+        )
 
         settings_service.set_max_clusters_override.assert_called_once_with("bob@example.com", None)
 
@@ -162,7 +173,8 @@ class TestAdminMaxClustersOverrides:
 class TestAdminMaxTeamSizeOverrides:
     def test_rejects_an_invalid_email(self, client, settings_service):
         res = client.post(
-            "/admin/settings/max-team-size/override", data={"email": "not-an-email", "max_team_size": "5"}
+            "/admin/settings/max-team-size/override",
+            data={"email": "not-an-email", "max_team_size": "5"},
         )
 
         assert "Enter a valid email address" in res.text
@@ -170,19 +182,25 @@ class TestAdminMaxTeamSizeOverrides:
 
     def test_rejects_a_value_below_one(self, client, settings_service):
         res = client.post(
-            "/admin/settings/max-team-size/override", data={"email": "bob@example.com", "max_team_size": "0"}
+            "/admin/settings/max-team-size/override",
+            data={"email": "bob@example.com", "max_team_size": "0"},
         )
 
         assert "must be at least 1" in res.text
         settings_service.set_max_team_size_override.assert_not_called()
 
     def test_adds_the_override(self, client, settings_service):
-        client.post("/admin/settings/max-team-size/override", data={"email": "Bob@Example.com", "max_team_size": "7"})
+        client.post(
+            "/admin/settings/max-team-size/override",
+            data={"email": "Bob@Example.com", "max_team_size": "7"},
+        )
 
         settings_service.set_max_team_size_override.assert_called_once_with("bob@example.com", 7)
 
     def test_removes_the_override(self, client, settings_service):
-        client.post("/admin/settings/max-team-size/override/remove", data={"email": "Bob@Example.com"})
+        client.post(
+            "/admin/settings/max-team-size/override/remove", data={"email": "Bob@Example.com"}
+        )
 
         settings_service.set_max_team_size_override.assert_called_once_with("bob@example.com", None)
 

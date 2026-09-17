@@ -39,7 +39,7 @@ def _validate_new_cluster(name: str) -> str | None:
     """Return a user-facing error message, or None if the name is valid."""
 
     name_re = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
-    
+
     # The VClusterClaim object name is "u<16-hex-char-owner-hash>-<name>" and that whole thing is used as
     # the Helm release name, which Helm caps at 53 characters, so this stays comfortably under that.
     if not name or len(name) > 32 or not name_re.match(name):
@@ -100,7 +100,10 @@ def _pending_renewal(claims: list[VClusterClaim]) -> dict[str, dict]:
 def _public_urls(claims: list[VClusterClaim]) -> dict[str, str | None]:
     """Each claim's public gateway URL (or None), keyed by object name."""
 
-    return {c.object_name: f"https://{host}" if (host := gateway_host(c.object_name)) else None for c in claims}
+    return {
+        c.object_name: f"https://{host}" if (host := gateway_host(c.object_name)) else None
+        for c in claims
+    }
 
 
 def _render_clusters(
@@ -405,7 +408,11 @@ def accept_invite(
     if claim is None:
         set_flash(request, "This invite link is invalid or has expired.", level="error")
     else:
-        set_flash(request, f"You now have access to cluster '{claim.spec.name}'. Sign in to view it.", level="success")
+        set_flash(
+            request,
+            f"You now have access to cluster '{claim.spec.name}'. Sign in to view it.",
+            level="success",
+        )
 
     return RedirectResponse("/clusters", status_code=303)
 

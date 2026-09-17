@@ -48,7 +48,9 @@ class TestList:
         repo.list_for_owner.return_value = [claim]
         assert service.list_for_owner("alice-sub") == [claim]
 
-    def test_list_shared_with_returns_claims_where_email_is_a_member(self, service, repo, make_vcluster_claim):
+    def test_list_shared_with_returns_claims_where_email_is_a_member(
+        self, service, repo, make_vcluster_claim
+    ):
         claim = make_vcluster_claim(members=[Member(email="bob@example.com")])
         repo.list_shared_with.return_value = [claim]
 
@@ -57,7 +59,9 @@ class TestList:
     def test_list_shared_with_excludes_claims_where_the_email_is_the_owner(
         self, service, repo, make_vcluster_claim
     ):
-        claim = make_vcluster_claim(owner_email="bob@example.com", members=[Member(email="bob@example.com")])
+        claim = make_vcluster_claim(
+            owner_email="bob@example.com", members=[Member(email="bob@example.com")]
+        )
 
         repo.list_shared_with.return_value = [claim]
         assert service.list_shared_with("bob@example.com") == []
@@ -111,11 +115,15 @@ class TestInviteMember:
 
 
 class TestAcceptInvite:
-    def test_adds_the_invited_email_as_a_member(self, service, repo, settings_service, make_vcluster_claim):
+    def test_adds_the_invited_email_as_a_member(
+        self, service, repo, settings_service, make_vcluster_claim
+    ):
         repo.get.return_value = make_vcluster_claim(object_name="u123-test-cluster")
         settings_service.max_team_size.return_value = 5
 
-        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+        token = invite_tokens.generate(
+            {"object_name": "u123-test-cluster", "email": "new@example.com"}
+        )
 
         service.accept_invite(token, settings_service)
         repo.add_member.assert_called_once_with(
@@ -129,7 +137,9 @@ class TestAcceptInvite:
     def test_returns_none_if_the_claim_no_longer_exists(self, service, repo, settings_service):
         repo.get.return_value = None
 
-        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+        token = invite_tokens.generate(
+            {"object_name": "u123-test-cluster", "email": "new@example.com"}
+        )
 
         assert service.accept_invite(token, settings_service) is None
 
@@ -137,15 +147,21 @@ class TestAcceptInvite:
         claim = make_vcluster_claim(members=[Member(email="new@example.com")])
         repo.get.return_value = claim
 
-        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+        token = invite_tokens.generate(
+            {"object_name": "u123-test-cluster", "email": "new@example.com"}
+        )
 
         result = service.accept_invite(token, settings_service)
         assert result == claim
         repo.add_member.assert_not_called()
 
-    def test_rejects_when_the_team_quota_is_reached(self, service, repo, settings_service, make_vcluster_claim):
+    def test_rejects_when_the_team_quota_is_reached(
+        self, service, repo, settings_service, make_vcluster_claim
+    ):
         repo.get.return_value = make_vcluster_claim(members=[Member(email="existing@example.com")])
-        token = invite_tokens.generate({"object_name": "u123-test-cluster", "email": "new@example.com"})
+        token = invite_tokens.generate(
+            {"object_name": "u123-test-cluster", "email": "new@example.com"}
+        )
 
         settings_service.max_team_size.return_value = 1
 
@@ -207,7 +223,9 @@ class TestAdminGetKubeconfig:
 
         assert admin_service.get_kubeconfig("u123-test-cluster") is None
 
-    def test_returns_none_if_the_kubeconfig_is_missing(self, admin_service, repo, make_vcluster_claim):
+    def test_returns_none_if_the_kubeconfig_is_missing(
+        self, admin_service, repo, make_vcluster_claim
+    ):
         repo.get.return_value = make_vcluster_claim()
         repo.get_kubeconfig.return_value = None
 
@@ -222,10 +240,18 @@ class TestAdminGetKubeconfig:
 
 
 class TestAdminDeleteAllForOwner:
-    def test_deletes_only_claims_owned_by_the_given_email(self, admin_service, repo, make_vcluster_claim):
-        owner_a_first = make_vcluster_claim(object_name="u1-first-cluster", owner_email="bob@example.com")
-        owner_a_second = make_vcluster_claim(object_name="u1-second-cluster", owner_email="bob@example.com")
-        owner_b_first = make_vcluster_claim(object_name="u2-first-cluster", owner_email="ted@example.com")
+    def test_deletes_only_claims_owned_by_the_given_email(
+        self, admin_service, repo, make_vcluster_claim
+    ):
+        owner_a_first = make_vcluster_claim(
+            object_name="u1-first-cluster", owner_email="bob@example.com"
+        )
+        owner_a_second = make_vcluster_claim(
+            object_name="u1-second-cluster", owner_email="bob@example.com"
+        )
+        owner_b_first = make_vcluster_claim(
+            object_name="u2-first-cluster", owner_email="ted@example.com"
+        )
 
         repo.list_all.return_value = [owner_a_first, owner_a_second, owner_b_first]
 
@@ -235,7 +261,9 @@ class TestAdminDeleteAllForOwner:
         assert repo.delete.call_args_list == [call("u1-first-cluster"), call("u1-second-cluster")]
 
     def test_matches_owner_email_case_insensitively(self, admin_service, repo, make_vcluster_claim):
-        repo.list_all.return_value = [make_vcluster_claim(object_name="u1-first-cluster", owner_email="Bob@Example.com")]
+        repo.list_all.return_value = [
+            make_vcluster_claim(object_name="u1-first-cluster", owner_email="Bob@Example.com")
+        ]
 
         count = admin_service.delete_all_for_owner("bob@example.com")
 
@@ -278,7 +306,9 @@ class TestRenew:
         _assert_marked_as_renewed(repo, "u123-test-cluster")
 
     def test_stranger_cannot_renew(self, service, repo, make_vcluster_claim):
-        repo.get.return_value = make_vcluster_claim(owner_subject="owner-sub", members=[Member(email="bob@example.com")])
+        repo.get.return_value = make_vcluster_claim(
+            owner_subject="owner-sub", members=[Member(email="bob@example.com")]
+        )
 
         service.renew("u123-test-cluster", "strangers-sub", "strangers@mail.com")
         repo.patch_annotations.assert_not_called()

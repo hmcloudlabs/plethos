@@ -44,6 +44,7 @@ class TestAuthExceptionHandlers:
         assert res.status_code == 403
         assert "Forbidden" in res.text
 
+
 class TestLogout:
     def test_clears_session_and_redirects_home(self, client):
         user = User(sub="user-1-sub", email="bob@example.com", name="bob")
