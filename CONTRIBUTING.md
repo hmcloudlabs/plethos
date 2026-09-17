@@ -164,4 +164,4 @@ See [SECURITY.md](SECURITY.md) for how to report a vulnerability.
 ## License
 
 By contributing, you agree that your contributions will be licensed under the project's
-[Apache License 2.0](LICENSE).
+[AGPL-3.0](LICENSE) license.
