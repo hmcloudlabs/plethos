@@ -27,10 +27,10 @@ This is a `uv` workspace with two apps and a shared library:
 
 Plethos has three independently versioned release artifacts: the portal image, the controller image and the `plethos` Helm chart. Each follows [Semantic Versioning](https://semver.org/) and has its own version number and changelog. 
 
-The portal's and controller's version lives in their `pyproject.toml` and both have a `CHANGELOG.md` in their workspace directory. The chart's version lives in `/Chart.yaml`,
+The portal's and controller's version lives in their `pyproject.toml` and both have a `CHANGELOG.md` in their workspace directory. The chart's version lives in `charts/plethos/Chart.yaml`,
 and its `CHANGELOG.md` is the repository's root, since the Helm chart bundles the portal and the controller together and is the main artifact people actually install.
 
-## Set up for local developmet
+## Set up for local development
 
 Prerequisites: `uv`, `kubectl`, Docker and [kind](https://kind.sigs.k8s.io/) (the controller's
 test suite specifically drives a `kind` cluster).
@@ -70,7 +70,7 @@ To run the portal and controller together locally:
    ```bash
    docker compose -f components/portal/dev-setup/docker-compose.yml up
    ```
-   Keycloak runs at `http://localhost:9090` and Mailpit at `http://localhost:8025`. It comes preloaded with three dummy users
+   Keycloak runs at `http://localhost:9090` and Mailpit at `http://localhost:8025`. It comes preloaded with two dummy users
    (password matches the username):
 
    | Email | Type | Password |
@@ -104,9 +104,9 @@ Branch names, commit messages and PR titles all use the same set of type prefixe
 
 ## Making changes
 
-This project follows trunk-based development: `plethos` is the trunk and all work happens on short-lived branches created off it and merged back via PR.
+This project follows trunk-based development: `main` is the trunk and all work happens on short-lived branches created off it and merged back via PR.
 
-1. Create a branch off `plethos`, named `<prefix>/<short-description>` using a prefix from the
+1. Create a branch off `main`, named `<prefix>/<short-description>` using a prefix from the
    [table above](#type-prefixes) (e.g. `feat/vcluster-export`, `fix/name-hash-collision`).
 2. Keep changes focused, prefer several small, reviewable PRs over one large one where possible.
 3. Add or update tests for behavior you change.
@@ -155,7 +155,7 @@ messages that describe *why* a change was made, not just what changed (e.g.
 Please open an issue describing:
 
 - For bugs: What you expected to happen vs. what actually happened, including steps to reproduce.
-- For feature prosposals: The motivation and rough shape and scope of the change.
+- For feature proposals: The motivation and rough shape and scope of the change.
 
 ## Security issues
 

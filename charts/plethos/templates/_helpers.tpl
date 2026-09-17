@@ -1,10 +1,3 @@
-{{/*
-Base name of the release, used to prefix every resource.
-With `helm install plethos ./charts/plethos` this resolves to "plethos", matching
-the fixed names used by the k8s/ Kustomize base (plethos-portal, plethos-controller, ...).
-Installing under a different release name prefixes resources with that name instead,
-so multiple installs can coexist in a cluster without colliding.
-*/}}
 {{- define "plethos.fullname" -}}
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
@@ -41,4 +34,62 @@ a Secret you already manage.
 */}}
 {{- define "plethos.portal.secretName" -}}
 {{- .Values.portal.secretName | default (printf "%s-secrets" (include "plethos.portal.fullname" .)) -}}
+{{- end -}}
+
+{{/*
+Env of the portal image, shared by the portal Deployment and the inactivity-check CronJob: the
+job signs keep-alive links the portal has to verify, and sends email through the same SMTP server.
+*/}}
+{{- define "plethos.portal.env" -}}
+- name: VCLUSTERCLAIMS_NAMESPACE
+  value: {{ .Release.Namespace }}
+{{- if .Values.controller.vclustersBaseDomain }}
+- name: VCLUSTERS_BASE_DOMAIN
+  value: {{ .Values.controller.vclustersBaseDomain }}
+{{- end }}
+{{- if .Values.portal.oidc.issuer }}
+- name: OIDC_ISSUER
+  value: {{ .Values.portal.oidc.issuer }}
+{{- end }}
+- name: OIDC_CLIENT_ID
+  value: {{ .Values.portal.oidc.clientId }}
+- name: OIDC_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "plethos.portal.secretName" . }}
+      key: OIDC_CLIENT_SECRET
+- name: PORTAL_SESSION_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "plethos.portal.secretName" . }}
+      key: PORTAL_SESSION_SECRET
+- name: CSRF_TOKEN_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "plethos.portal.secretName" . }}
+      key: CSRF_TOKEN_SECRET
+- name: SUPPORT_EMAIL
+  value: {{ .Values.portal.supportEmail }}
+- name: PORTAL_BASE_URL
+  value: {{ .Values.portal.baseUrl }}
+- name: SUPPORTED_VCLUSTER_VERSIONS
+  value: {{ .Values.supportedVclusterVersions | quote }}
+{{- if .Values.portal.smtp.host }}
+- name: SMTP_HOST
+  value: {{ .Values.portal.smtp.host }}
+{{- end }}
+- name: SMTP_PORT
+  value: {{ .Values.portal.smtp.port | quote }}
+- name: SMTP_FROM_ADDRESS
+  value: {{ .Values.portal.smtp.fromAddress }}
+- name: SMTP_USERNAME
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "plethos.portal.secretName" . }}
+      key: SMTP_USERNAME
+- name: SMTP_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "plethos.portal.secretName" . }}
+      key: SMTP_PASSWORD
 {{- end -}}

@@ -1,4 +1,3 @@
-# Keep the build context small and reproducible.
 .venv/
 **/__pycache__/
 **/*.pyc
@@ -6,9 +5,8 @@
 .ruff_cache/
 .git/
 .gitignore
-
-# Not needed inside images
 **/tests/
-components/portal/dev/
+components/portal/dev-setup/
 k8s/
-*.md
+**/*.md
+!components/portal/src/templates/guides.md

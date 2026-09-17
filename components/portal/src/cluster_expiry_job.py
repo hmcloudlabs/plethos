@@ -1,11 +1,3 @@
-"""
-Standalone entrypoint: checks every VClusterClaim for their upcoming expiration, sending owners a
-warning email (with a keep-alive link) before sleeping and eventually deleting their cluster.
-
-Meant to be run on a schedule by something external to the portal, optimally the K8s CRON job
-already configured in the /k8s folder.
-"""
-
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import cast

@@ -1,7 +1,7 @@
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "plethos"'
-    - if: '$CI_COMMIT_BRANCH == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
 
 stages:
   - lint
@@ -30,7 +30,7 @@ variables:
 lint:
   stage: lint
   rules:
-    - if: '$CI_COMMIT_BRANCH == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   script:
@@ -42,7 +42,7 @@ lint:
 test:shared:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   script:
@@ -52,7 +52,7 @@ test:shared:
 test:portal:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
@@ -72,7 +72,7 @@ test:controller:
     KIND_VERSION: "v0.24.0"
     KUBECTL_VERSION: "v1.31.0"
   rules:
-    - if: '$CI_COMMIT_BRANCH == "plethos"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
@@ -111,7 +111,7 @@ test:controller:
 build:portal:
   extends: .build
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "portal"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "portal"'
   script:
     - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - docker build
@@ -127,7 +127,7 @@ build:portal:
 build:controller:
   extends: .build
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "controller"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "controller"'
   script:
     - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - docker build
@@ -143,7 +143,7 @@ release:chart:
   stage: build
   image: alpine/helm:3.15.4
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "plethos" && $RELEASE_COMPONENT == "chart"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "chart"'
   before_script:
     - apk add --no-cache curl jq
   script:

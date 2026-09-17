@@ -27,6 +27,7 @@ VClusterClaim CRD).
    ```bash
    kubectl create secret generic plethos-portal-secrets -n plethos-system \
      --from-literal=PORTAL_SESSION_SECRET="$(openssl rand -hex 32)" \
+     --from-literal=CSRF_TOKEN_SECRET="$(openssl rand -hex 32)" \
      --from-literal=OIDC_CLIENT_SECRET="<your OIDC client secret>" \
      --from-literal=SMTP_USERNAME="<your SMTP username>" \
      --from-literal=SMTP_PASSWORD="<your SMTP password>"

@@ -121,7 +121,8 @@ that path to survive pod restarts.
 |---|---|---|
 | `PORTAL_HOST` | `0.0.0.0` | uvicorn bind host |
 | `PORTAL_PORT` | `8000` | uvicorn bind port |
-| `PORTAL_SESSION_SECRET` | `dev-secret-change-me` | Signs the session cookie - set a real secret in production |
+| `PORTAL_SESSION_SECRET` | `dev-secret-change-me` | Signs the session cookie and emailed links (set a real secret in production) |
+| `CSRF_TOKEN_SECRET` | `dev-secret-change-me` | Signs CSRF tokens (set a real secret in production) |
 | `TOKEN_MAX_AGE_SECONDS` | `604800` (7 days) | How long signed links (member invites, keep-alive) stay valid |
 | `LOG_LEVEL` | `INFO` | Root log level (see [Logging](#logging)) |
 | `LOG_DIR` | _(unset)_ | Directory to also write rotating log files to. Left unset, logging is console-only |
@@ -140,8 +141,8 @@ that path to survive pod restarts.
 | `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `SMTP_FROM_ADDRESS` | `plethos@example.com` | `From` address on invite/keep-alive emails |
 | `PORTAL_BASE_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
-| `EXPIRY_PERIOD_DAYS` | `30` | Days a claim stays valid since it was last renewed before it expires and is put to sleep (see [Cluster expiry](#cluster-expiry)) |
-| `GRACE_PERIOD_DAYS` | `30` | Days a claim may stay asleep, unrenewed, before it's deleted |
+| `EXPIRY_PERIOD_DAYS` | `90` | Days a claim stays valid since it was last renewed before it expires and is put to sleep (see [Cluster expiry](#cluster-expiry)) |
+| `GRACE_PERIOD_DAYS` | `60` | Days a claim may stay asleep, unrenewed, before it's deleted |
 | `WARNING_LEAD_DAYS` | `7` | Days of advance notice before each of the two warning emails (before sleep, before deletion) |
 
 ## Testing

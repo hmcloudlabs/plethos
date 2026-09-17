@@ -5,6 +5,7 @@ credentials from:
 
   kubectl create secret generic {{ include "plethos.portal.secretName" . }} -n {{ .Release.Namespace }} \
     --from-literal=PORTAL_SESSION_SECRET="$(openssl rand -hex 32)" \
+    --from-literal=CSRF_TOKEN_SECRET="$(openssl rand -hex 32)" \
     --from-literal=OIDC_CLIENT_SECRET="<your OIDC client secret>" \
     --from-literal=SMTP_USERNAME="<your SMTP username>" \
     --from-literal=SMTP_PASSWORD="<your SMTP password>"
@@ -16,7 +17,11 @@ CreateContainerConfigError. In that case, restart:
 
 {{- if .Values.portal.ingress.enabled }}
 
-Portal will be reachable at: http://{{ .Values.portal.ingress.host }}
-(requires an ingress controller with SSL passthrough, e.g. nginx-ingress with
+The portal will be reachable at: https://{{ .Values.portal.ingress.host }}
+{{- end }}
+{{- if .Values.controller.vclustersBaseDomain }}
+
+vClusters are exposed as <name>.{{ .Values.controller.vclustersBaseDomain }}, which requires
+an ingress controller with SSL passthrough (e.g. ingress-nginx with
 --enable-ssl-passthrough).
 {{- end }}

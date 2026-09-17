@@ -93,9 +93,10 @@ and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 - [x] expiration tests
 - [x] backup strategy
 - [x] style emails
-- [ ] ingress for in-vCluster deployments
-- [ ] fix potential isolation escape because of per vCluster ClusterRole
-- [ ] initial GitLab CI pipeline
+- [x] ingress for in-vCluster deployments
+- [x] fix potential isolation escape because of per vCluster ClusterRole
+- [x] initial GitLab CI pipeline
+- [ ] PVC size limit
 
 ## ⚖️ License
 

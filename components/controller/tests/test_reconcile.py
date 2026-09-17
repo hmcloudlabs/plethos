@@ -108,10 +108,6 @@ class TestCreateFailureAndRecovery:
         """
         A terminally failed install Job keeps the claim in PROVISIONING and
         once the finished Job is gone the controller provisions a fresh one.
-
-        TODO:
-        Delete or rewrite this test because the recreation is driven by our manual
-        delete and not the failure, so it doesn't truely verify failure recovery.
         """
 
         names = VClusterNames(resource_name)

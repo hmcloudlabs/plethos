@@ -20,3 +20,5 @@ spec:
               image: "{{ .Values.portal.image.repository }}:{{ .Values.portal.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.portal.image.pullPolicy }}
               command: ["python", "src/cluster_expiry_job.py"]
+              env:
+                {{- include "plethos.portal.env" . | nindent 16 }}
