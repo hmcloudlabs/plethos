@@ -2,7 +2,6 @@ from collections.abc import Callable
 from datetime import datetime, UTC
 from typing import cast
 import kopf
-from kubernetes import client
 from kubernetes.client import V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
@@ -22,8 +21,8 @@ from kube import (
     get_job_status,
     get_job,
     get_statefulset,
+    is_transitional,
     unwrap_statefulset,
-    get_crd_object,
     find_gateway_service_name,
     is_namespace_managed,
     SCALED_DOWN_REPLICAS_ANNOTATION,
@@ -33,13 +32,27 @@ from kube import (
 
 @kopf.on.create(GROUP, VERSION, PLURAL)
 @kopf.on.update(GROUP, VERSION, PLURAL)
-@kopf.timer(GROUP, VERSION, PLURAL, interval=config.reconciliation_interval)
+@kopf.timer(
+    GROUP,
+    VERSION,
+    PLURAL,
+    id="drift",
+    interval=config.reconciliation_interval,
+)
+@kopf.timer(
+    GROUP,
+    VERSION,
+    PLURAL,
+    id="transitional",
+    interval=config.transitional_reconciliation_interval,
+    when=is_transitional,
+)
 def on_reconcile(
     spec: kopf.Spec, meta, name: str | None, patch: kopf.Patch, status, logger, **_: object
 ) -> None:
     """
-    Time interval based handler that reconciles the vCluster, while also being
-    triggered by a VClusterClaim creation or update event.
+    Reconciles the vCluster on VClusterClaim creation/update events and on two timers: a short
+    one that only runs while the claim is in a transitional phase and in a bigger drift check.
     """
 
     if not name or name.startswith("vcluster"):
@@ -342,56 +355,6 @@ def wake_vcluster(apps, vc_set, logger) -> None:
         name=vc_set.metadata.name, namespace=vc_set.metadata.namespace, body=vc_set
     )
     logger.info(f"Scaled up StatefulSet of vCluster {vc_set.metadata.name}.")
-
-
-def reconcile_claim_by_name(claim_name: str, logger) -> None:
-    custom = client.CustomObjectsApi()
-
-    try:
-        claim = get_crd_object(
-            custom,
-            group=GROUP,
-            version=VERSION,
-            plural=PLURAL,
-            namespace=config.namespace,
-            name=claim_name,
-        )
-    except ApiException as e:
-        if e.status == 404:
-            logger.info(f"VClusterClaim '{claim_name}' no longer exists, skipping wake-up.")
-            return
-        raise
-
-    ctx = ReconciliationContext(
-        claim_name=claim["metadata"]["name"],
-        spec=claim["spec"],
-        meta=claim["metadata"],
-        patch=kopf.Patch(),
-        status=claim.get("status") or {},
-        logger=logger,
-    )
-
-    reconcile(ctx)
-
-    try:
-        # Since the here the reconciliation ran outside of a CRD event handler,
-        # the status is written manually from the context into the custom resource.
-        custom.patch_namespaced_custom_object_status(
-            group=GROUP,
-            version=VERSION,
-            plural=PLURAL,
-            namespace=config.namespace,
-            name=ctx.claim_name,
-            body={"status": dict(ctx.patch.status)},
-        )
-    except ApiException as e:
-        if e.status != 404:
-            raise
-
-
-@kopf.on.field("batch/v1", "jobs", field="status", labels={f"{GROUP}/job-type": "install"})
-def on_install_job_event(labels, logger, **_: object) -> None:
-    reconcile_claim_by_name(labels[f"{GROUP}/vcluster-claim"], logger)
 
 
 def sync_ready_condition(ctx: ReconciliationContext) -> None:

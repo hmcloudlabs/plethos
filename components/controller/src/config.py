@@ -15,7 +15,10 @@ class Config:
         if v.strip()
     )
     namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
-    reconciliation_interval: int = int(os.getenv("RECONCILIATION_INTERVAL", "30"))
+    reconciliation_interval: int = int(os.getenv("RECONCILIATION_INTERVAL", "10800"))
+    transitional_reconciliation_interval: int = int(
+        os.getenv("TRANSITIONAL_RECONCILIATION_INTERVAL", "10")
+    )
     base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
     ingress_namespace: str = os.getenv("VCLUSTERS_INGRESS_NAMESPACE", "ingress-nginx")
 

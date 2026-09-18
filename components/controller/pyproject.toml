@@ -21,6 +21,7 @@ testpaths = ["tests"]
 env = [
     "VCLUSTERCLAIMS_NAMESPACE=e2e-testing-namespace",
     "RECONCILIATION_INTERVAL=5",
+    "TRANSITIONAL_RECONCILIATION_INTERVAL=5",
     "TEST_TIMEOUT=90"
 ]
 

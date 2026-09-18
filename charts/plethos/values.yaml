@@ -68,6 +68,13 @@ controller:
   vclustersBaseDomain: ""
   vclustersIngressNamespace: ingress-nginx
 
+  # Seconds between drift-correcting reconciliations of every VClusterClaim. This is the
+  # fallback, not the path a user waits on.
+  reconciliationInterval: 10800 # 3hrs
+  # Seconds between reconciliations of VClusterClaims in Provisioning, Pending or Waking. Only those
+  # VClusterClaim are polled, so this sets how fast the portal shows a cluster becoming Running.
+  transitionalReconciliationInterval: 10
+
 notifier:
   # Daily inactivity check that flags/expires unused vClusters.
   schedule: "0 3 * * *"

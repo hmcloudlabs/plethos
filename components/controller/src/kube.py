@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, cast
+from typing import cast
 import kubernetes
 from kubernetes import client
 from kubernetes.client import V1Job
@@ -8,7 +8,7 @@ from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
 
 from shared.gateway import GatewayConvention
-from shared.vclusterclaim import GROUP
+from shared.vclusterclaim import GROUP, Phase
 from context import VClusterNames
 
 
@@ -20,6 +20,9 @@ VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
 
 # Set by us (not vCluster) when sleeping a vCluster, to remember what to scale it back up to
 SCALED_DOWN_REPLICAS_ANNOTATION = f"{GROUP}/scaled-down-replicas"
+
+# Phases of a vCluster set during state transitions
+TRANSITIONAL_PHASES = frozenset({Phase.PROVISIONING, Phase.PENDING, Phase.WAKING})
 
 
 class JobStatus(StrEnum):
@@ -83,6 +86,12 @@ def get_job_status(job: V1Job) -> JobStatus:
     return JobStatus.RUNNING
 
 
+def is_transitional(status, **_: object) -> bool:
+    """Checks whether the status of a VClusterClaim in a transitional phase"""
+
+    return (status or {}).get("phase") in TRANSITIONAL_PHASES
+
+
 def find_gateway_service_name(core: client.CoreV1Api, names: VClusterNames) -> str | None:
     """
     Finds the host-cluster name of the owner's gateway Service, which they deploy inside their
@@ -121,21 +130,3 @@ def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:
         raise ValueError("Invalid Namespace: missing metadata.")
 
     return (ns.metadata.labels or {}).get(f"{GROUP}/managed") == "true"
-
-
-def get_crd_object(
-    custom: client.CustomObjectsApi,
-    group: str,
-    version: str,
-    plural: str,
-    namespace: str,
-    name: str,
-) -> dict[str, Any]:
-    obj = custom.get_namespaced_custom_object(
-        group=group,
-        version=version,
-        plural=plural,
-        namespace=namespace,
-        name=name,
-    )
-    return cast(dict[str, Any], obj)

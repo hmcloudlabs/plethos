@@ -29,5 +29,9 @@ spec:
             {{- end }}
             - name: VCLUSTERS_INGRESS_NAMESPACE
               value: {{ .Values.controller.vclustersIngressNamespace }}
+            - name: RECONCILIATION_INTERVAL
+              value: {{ .Values.controller.reconciliationInterval | quote }}
+            - name: TRANSITIONAL_RECONCILIATION_INTERVAL
+              value: {{ .Values.controller.transitionalReconciliationInterval | quote }}
             - name: SUPPORTED_VCLUSTER_VERSIONS
               value: {{ .Values.supportedVclusterVersions | quote }}
