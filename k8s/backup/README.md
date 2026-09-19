@@ -6,7 +6,7 @@ To backup VClusterClaims and their corresponding vCluster, [Velero](https://vele
 ### 1. Check your storage class
 _Note: If your cluster's default storage class uses a CSI driver, you should be good-to-go. If it doesn't, it's worth switching to it and running the check below._
 
-In case you're adding the Velero backup after already running a plethos instance with existing vClusters:
+In case you're adding the Velero backup after already running a Plethos instance with existing vClusters:
 
 Velero silently skips `hostPath`-backed volumes and it still reports `Phase: Completed`.
 So to check if any volumes lie on `hostPath` storage, run this first:
@@ -51,7 +51,7 @@ The backup should first try to use volume snapshots on all PVCs which are on CSI
 kubectl apply -f k8s/backup/velero-volume-policy.yaml
 ```
 
-Then you can apply the Velero schedule. Adjust `excludedNamespaces` in the file first if your host cluster runs anything besides plethos and
+Then you can apply the Velero schedule. Adjust `excludedNamespaces` in the file first if your host cluster runs anything besides Plethos and
 its ingress controller and change the CRON tab, TTL to your liking. Then apply:
 ```bash
 kubectl apply -f k8s/backup/velero-schedule.yaml

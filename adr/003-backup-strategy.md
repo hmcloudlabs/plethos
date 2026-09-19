@@ -10,7 +10,7 @@ informed:
 
 ## Context and Problem Statement
 
-All of plethos's state lives in one of two places:
+All of Plethos's state lives in one of two places:
 
 * in the `plethos-system` namespace: contains every `VClusterClaim` (ownership, members, expiry annotations) and the `plethos-portal-settings` ConfigMap.
 * in one of the namespaces created per `VClusterClaim`: contains the vClusters `StatefulSet`, the K8s objects the owner created inside the vCluster, any workload PVCs (the data their applications created).
@@ -30,7 +30,7 @@ This decision covers how that state gets backed up automatically and can how it 
 ## Considered Options
 
 * **Velero**: install Velero and schedule backups to S3-compatible object storage.
-* **`vcluster snapshot` + `CronJob`**: use vCluster's built-in snapshot commands, backup the plethos resources seperately.
+* **`vcluster snapshot` + `CronJob`**: use vCluster's built-in snapshot commands, backup the Plethos resources seperately.
 * **Custom backup script + `CronJob`** (similar shape as `cluster_expiry_job.py`): serialize claims to YAML, upload to object storage, extend and reuse the existing volume-export code to use for extracting backups.
 
 ## Decision Outcome

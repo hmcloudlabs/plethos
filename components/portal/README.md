@@ -1,4 +1,4 @@
-# plethos Portal
+# Plethos Portal
 
 A FastAPI + HTMX web app that lets users provision, sleep/wake, share and delete their own
 [_vCluster_](https://www.vcluster.com/) instances by creating `VClusterClaim` custom

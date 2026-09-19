@@ -1,4 +1,4 @@
-# Contributing to plethos
+# Contributing to Plethos
 
 Thanks for your interest in contributing. Contributions of any
 size are welcome (bug reports, docs fixes, small patches or larger features).
@@ -15,7 +15,7 @@ This is a `uv` workspace with two apps and a shared library:
 ```
 .
 ├── adr/                # architecture decision records
-├── charts/plethos/       # Helm chart to deploy plethos
+├── charts/plethos/       # Helm chart to deploy Plethos
 ├── components/
 │   ├── controller/     # KOPF k8s controller
 │   ├── portal/         # FastAPI + HTMX app

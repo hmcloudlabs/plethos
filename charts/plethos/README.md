@@ -1,6 +1,6 @@
-# plethos Helm chart
+# Plethos Helm chart
 
-Official way to install plethos (portal + controller + notifier CronJob + the
+Official way to install Plethos (portal + controller + notifier CronJob + the
 VClusterClaim CRD).
 
 ## Prerequisites

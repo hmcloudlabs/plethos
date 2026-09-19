@@ -38,7 +38,7 @@ a Secret you already manage.
 
 {{/*
 Env of the portal image, shared by the portal Deployment and the inactivity-check CronJob: the
-job signs keep-alive links the portal has to verify, and sends email through the same SMTP server.
+job signs keep-alive links the portal has to verify and sends email through the same SMTP server.
 */}}
 {{- define "plethos.portal.env" -}}
 - name: VCLUSTERCLAIMS_NAMESPACE
