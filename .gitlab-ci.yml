@@ -1,7 +1,7 @@
 workflow:
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "plethos"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"'
 
 stages:
   - lint
@@ -30,10 +30,9 @@ variables:
 lint:
   stage: lint
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "chart"'
+      when: never
+    - when: on_success
   script:
     - uv sync --frozen --all-packages
     - uv run ruff check .
@@ -44,9 +43,8 @@ test:shared:
   stage: test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - when: on_success
   script:
     - uv sync --frozen --all-packages
     - cd components/shared && uv run pytest
@@ -54,13 +52,9 @@ test:shared:
 test:portal:
   stage: test
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "portal"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - components/portal/**/*
-        - components/shared/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT != "portal"'
+      when: never
+    - when: on_success
   script:
     - uv sync --frozen --all-packages
     - cd components/portal && uv run pytest
@@ -75,13 +69,9 @@ test:controller:
     KIND_VERSION: "v0.24.0"
     KUBECTL_VERSION: "v1.31.0"
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "controller"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - components/controller/**/*
-        - components/shared/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT != "controller"'
+      when: never
+    - when: on_success
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
     - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" && chmod +x /usr/local/bin/kind
