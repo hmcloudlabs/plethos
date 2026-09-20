@@ -30,6 +30,7 @@ variables:
 lint:
   stage: lint
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -42,6 +43,7 @@ lint:
 test:shared:
   stage: test
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -52,6 +54,7 @@ test:shared:
 test:portal:
   stage: test
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "portal"'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -72,6 +75,7 @@ test:controller:
     KIND_VERSION: "v0.24.0"
     KUBECTL_VERSION: "v1.31.0"
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "controller"'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
