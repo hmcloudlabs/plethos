@@ -1,13 +1,13 @@
 {% from "components/cluster_table.html" import cluster_table %}
 {#
-  hx-trigger has a filter so the 3s poll skips while a confirm modal here is open -
+  hx-trigger has a filter so the 5s poll skips while the tab is hidden and while a confirm modal here is open -
   otherwise the outerHTML swap would rip the open modal out from under the user.
 #}
 <div
   id="cluster-list"
   class="p-2 p-sm-3"
   hx-get="/clusters/list"
-  hx-trigger="every 3s [!document.querySelector('#cluster-list .modal.show')]"
+  hx-trigger="every 5s [document.visibilityState === 'visible' && !document.querySelector('#cluster-list .modal.show')]"
   hx-swap="outerHTML"
 >
   {{ cluster_table(vcluster_claims, pending_renewal=pending_renewal, public_urls=public_urls) }}
