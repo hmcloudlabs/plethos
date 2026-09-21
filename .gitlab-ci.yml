@@ -1,7 +1,7 @@
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
 
 stages:
   - lint
@@ -26,6 +26,12 @@ variables:
       - "portal"
       - "controller"
       - "chart"
+  RELEASE_DRY_RUN:
+    description: "Build + push a throwaway '<version>-dev.<pipeline>' image, skip 'latest' and the GitLab Release. Always on for branches other than main."
+    value: "false"
+    options:
+      - "false"
+      - "true"
 
 lint:
   stage: lint
@@ -100,9 +106,21 @@ test:portal:
       }
       EOF
 
-# Creates the git tag + GitLab Release for $1 = component name, $2 = version.
-.create_release: &create_release |
+# Sets DRY_RUN and defines release helpers:
+#   image_destinations $1 = component, $2 = version -> kaniko --destination args
+#   create_release $1 = component, $2 = version     -> git tag + GitLab Release (skipped on dry run)
+.release_helpers: &release_helpers |
+  if [ "$CI_COMMIT_BRANCH" != "main" ] || [ "$RELEASE_DRY_RUN" = "true" ]; then DRY_RUN=true; else DRY_RUN=false; fi
+  echo "DRY_RUN=$DRY_RUN"
+  image_destinations() {
+    if [ "$DRY_RUN" = "true" ]; then
+      echo "--destination $CI_REGISTRY_IMAGE/$1:$2-dev.$CI_PIPELINE_IID"
+    else
+      echo "--destination $CI_REGISTRY_IMAGE/$1:$2 --destination $CI_REGISTRY_IMAGE/$1:latest"
+    fi
+  }
   create_release() {
+    if [ "$DRY_RUN" = "true" ]; then echo "Dry run: skipping release $1-v$2"; return 0; fi
     curl --fail --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
       --header "JOB-TOKEN: $CI_JOB_TOKEN" --header "Content-Type: application/json" \
       --data "$(jq -n --arg tag "$1-v$2" --arg ref "$CI_COMMIT_SHA" --arg name "$1 v$2" \
@@ -112,43 +130,45 @@ test:portal:
 build:portal:
   extends: .build
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "portal"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "portal"'
   script:
+    - *release_helpers
     - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - |
       /kaniko/executor \
         --context "$CI_PROJECT_DIR" \
         --dockerfile "$CI_PROJECT_DIR/components/portal/Dockerfile" \
-        --destination "$CI_REGISTRY_IMAGE/portal:$VERSION" \
-        --destination "$CI_REGISTRY_IMAGE/portal:latest"
-    - *create_release
+        $(image_destinations portal "$VERSION")
     - create_release portal "$VERSION"
 
 build:controller:
   extends: .build
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "controller"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "controller"'
   script:
+    - *release_helpers
     - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - |
       /kaniko/executor \
         --context "$CI_PROJECT_DIR" \
         --dockerfile "$CI_PROJECT_DIR/components/controller/Dockerfile" \
-        --destination "$CI_REGISTRY_IMAGE/controller:$VERSION" \
-        --destination "$CI_REGISTRY_IMAGE/controller:latest"
-    - *create_release
+        $(image_destinations controller "$VERSION")
     - create_release controller "$VERSION"
 
 release:chart:
   stage: build
   image: alpine/helm:3.15.4
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "chart"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT == "chart"'
   before_script:
     - apk add --no-cache curl jq
   script:
+    - *release_helpers
     - 'VERSION=$(grep -m1 "^version:" charts/plethos/Chart.yaml | sed -E "s/version: *(.+)/\1/")'
+    - helm lint charts/plethos
     - helm package charts/plethos --destination /tmp/chart-out
+    - |
+      if [ "$DRY_RUN" = "true" ]; then echo "Dry run: skipping chart upload + release"; exit 0; fi
     - |
       curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" \
         --upload-file "/tmp/chart-out/plethos-$VERSION.tgz" \
