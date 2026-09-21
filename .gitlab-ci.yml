@@ -84,14 +84,12 @@ test:portal:
 .build:
   stage: build
   image:
-    name: moby/buildkit:rootless
+    name: martizih/kaniko:debug
     entrypoint: [""]
-  variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
   before_script:
-    - mkdir -p ~/.docker
+    - mkdir -p /kaniko/.docker
     - |
-      cat > ~/.docker/config.json <<EOF
+      cat > /kaniko/.docker/config.json <<EOF
       {
         "auths": {
           "$CI_REGISTRY": {
@@ -118,12 +116,11 @@ build:portal:
   script:
     - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - |
-      buildctl-daemonless.sh build \
-        --frontend dockerfile.v0 \
-        --local context="$CI_PROJECT_DIR" \
-        --local dockerfile="$CI_PROJECT_DIR/components/portal" \
-        --output type=image,name="$CI_REGISTRY_IMAGE/portal:$VERSION",push=true \
-        --output type=image,name="$CI_REGISTRY_IMAGE/portal:latest",push=true
+      /kaniko/executor \
+        --context "$CI_PROJECT_DIR" \
+        --dockerfile "$CI_PROJECT_DIR/components/portal/Dockerfile" \
+        --destination "$CI_REGISTRY_IMAGE/portal:$VERSION" \
+        --destination "$CI_REGISTRY_IMAGE/portal:latest"
     - *create_release
     - create_release portal "$VERSION"
 
@@ -134,12 +131,11 @@ build:controller:
   script:
     - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
     - |
-      buildctl-daemonless.sh build \
-        --frontend dockerfile.v0 \
-        --local context="$CI_PROJECT_DIR" \
-        --local dockerfile="$CI_PROJECT_DIR/components/controller" \
-        --output type=image,name="$CI_REGISTRY_IMAGE/controller:$VERSION",push=true \
-        --output type=image,name="$CI_REGISTRY_IMAGE/controller:latest",push=true
+      /kaniko/executor \
+        --context "$CI_PROJECT_DIR" \
+        --dockerfile "$CI_PROJECT_DIR/components/controller/Dockerfile" \
+        --destination "$CI_REGISTRY_IMAGE/controller:$VERSION" \
+        --destination "$CI_REGISTRY_IMAGE/controller:latest"
     - *create_release
     - create_release controller "$VERSION"
 
