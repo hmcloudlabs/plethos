@@ -59,39 +59,48 @@ test:portal:
     - uv sync --frozen --all-packages
     - cd components/portal && uv run pytest
 
-test:controller:
-  stage: test
-  services:
-    - docker:24-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    KIND_VERSION: "v0.24.0"
-    KUBECTL_VERSION: "v1.31.0"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT != "controller"'
-      when: never
-    - when: on_success
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
-    - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" && chmod +x /usr/local/bin/kind
-    - curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && chmod +x /usr/local/bin/kubectl
-    - uv sync --frozen --all-packages
-  script:
-    - cd components/controller && uv run pytest
-
+# Can't run on unpriviliged, self-hosted Gitlab runner
+# test:controller:
+#   stage: test
+#   services:
+#     - docker:24-dind
+#   variables:
+#     DOCKER_HOST: tcp://docker:2375
+#     DOCKER_TLS_CERTDIR: ""
+#     KIND_VERSION: "v0.24.0"
+#     KUBECTL_VERSION: "v1.31.0"
+#   rules:
+#     - if: '$CI_PIPELINE_SOURCE == "web" && $RELEASE_COMPONENT != "controller"'
+#       when: never
+#     - when: on_success
+#   before_script:
+#     - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
+#     - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" && chmod +x /usr/local/bin/kind
+#     - curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && chmod +x /usr/local/bin/kubectl
+#     - uv sync --frozen --all-packages
+#   script:
+#     - cd components/controller && uv run pytest
 
 .build:
   stage: build
-  image: docker:27-cli
-  services:
-    - docker:27-dind
+  image:
+    name: moby/buildkit:rootless
+    entrypoint: [""]
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
   before_script:
-    - apk add --no-cache jq curl
-    - docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - mkdir -p ~/.docker
+    - |
+      cat > ~/.docker/config.json <<EOF
+      {
+        "auths": {
+          "$CI_REGISTRY": {
+            "username": "$CI_REGISTRY_USER",
+            "password": "$CI_REGISTRY_PASSWORD"
+          }
+        }
+      }
+      EOF
 
 # Creates the git tag + GitLab Release for $1 = component name, $2 = version.
 .create_release: &create_release |
@@ -108,13 +117,13 @@ build:portal:
     - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "portal"'
   script:
     - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
-    - docker build
-      -f components/portal/Dockerfile
-      -t "$CI_REGISTRY_IMAGE/portal:$VERSION"
-      -t "$CI_REGISTRY_IMAGE/portal:latest"
-      .
-    - docker push "$CI_REGISTRY_IMAGE/portal:$VERSION"
-    - docker push "$CI_REGISTRY_IMAGE/portal:latest"
+    - |
+      buildctl-daemonless.sh build \
+        --frontend dockerfile.v0 \
+        --local context="$CI_PROJECT_DIR" \
+        --local dockerfile="$CI_PROJECT_DIR/components/portal" \
+        --output type=image,name="$CI_REGISTRY_IMAGE/portal:$VERSION",push=true \
+        --output type=image,name="$CI_REGISTRY_IMAGE/portal:latest",push=true
     - *create_release
     - create_release portal "$VERSION"
 
@@ -124,12 +133,13 @@ build:controller:
     - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $RELEASE_COMPONENT == "controller"'
   script:
     - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
-    - docker build
-      -f components/controller/Dockerfile
-      -t "$CI_REGISTRY_IMAGE/controller:$VERSION"
-      -t "$CI_REGISTRY_IMAGE/controller:latest" .
-    - docker push "$CI_REGISTRY_IMAGE/controller:$VERSION"
-    - docker push "$CI_REGISTRY_IMAGE/controller:latest"
+    - |
+      buildctl-daemonless.sh build \
+        --frontend dockerfile.v0 \
+        --local context="$CI_PROJECT_DIR" \
+        --local dockerfile="$CI_PROJECT_DIR/components/controller" \
+        --output type=image,name="$CI_REGISTRY_IMAGE/controller:$VERSION",push=true \
+        --output type=image,name="$CI_REGISTRY_IMAGE/controller:latest",push=true
     - *create_release
     - create_release controller "$VERSION"
 
