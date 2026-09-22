@@ -165,17 +165,28 @@ release:chart:
   script:
     - *release_helpers
     - 'VERSION=$(grep -m1 "^version:" charts/plethos/Chart.yaml | sed -E "s/version: *(.+)/\1/")'
+    - |
+      if [ "$DRY_RUN" = "true" ]; then
+        VERSION="$VERSION-dev.$CI_PIPELINE_IID"
+      fi
+      echo "Chart version: $VERSION"
     - helm lint charts/plethos
-    - helm package charts/plethos --destination /tmp/chart-out
     - |
-      if [ "$DRY_RUN" = "true" ]; then echo "Dry run: skipping chart upload + release"; exit 0; fi
+      if [ "$DRY_RUN" = "true" ]; then
+        helm package charts/plethos \
+          --version "$VERSION" \
+          --app-version "$VERSION" \
+          --destination /tmp/chart-out
+      else
+        helm package charts/plethos \
+          --destination /tmp/chart-out
+      fi
     - |
-      curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-        --upload-file "/tmp/chart-out/plethos-$VERSION.tgz" \
-        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/plethos-chart/$VERSION/plethos-$VERSION.tgz"
+      helm registry login "$CI_REGISTRY" \
+        --username "$CI_REGISTRY_USER" \
+        --password-stdin <<< "$CI_REGISTRY_PASSWORD"
     - |
-      curl --fail --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
-        --header "JOB-TOKEN: $CI_JOB_TOKEN" --header "Content-Type: application/json" \
-        --data "$(jq -n --arg tag "chart-v$VERSION" --arg ref "$CI_COMMIT_SHA" --arg name "chart v$VERSION" \
-                  --arg url "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/plethos-chart/$VERSION/plethos-$VERSION.tgz" \
-                  '{tag_name:$tag, ref:$ref, name:$name, assets:{links:[{name:"plethos-\($tag).tgz", url:$url, link_type:"package"}]}}')"
+      helm push \
+        "/tmp/chart-out/plethos-$VERSION.tgz" \
+        "oci://$CI_REGISTRY_IMAGE"
+    - create_release chart "$VERSION"
