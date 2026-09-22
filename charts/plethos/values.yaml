@@ -8,6 +8,18 @@
 # Shared between portal and controller.
 supportedVclusterVersions: "0.35.0"
 
+# Domain each vCluster's control plane is exposed under, as <claim-name>.<baseDomain>. The portal
+# uses it only to display a cluster's gateway host - provisioning the actual Ingress is the
+# controller's job alone. Leave blank for a local setup.
+# Shared between portal and controller.
+baseDomain: ""
+
+# Subdomain owner-deployed gateway workloads are exposed under, as
+# <claim-name>.<appsSubdomain>.<baseDomain>. Only used if baseDomain is set, blank turns gateway
+# exposure off.
+# Shared between portal and controller.
+appsSubdomain: plethos-apps
+
 portal:
   image:
     repository: some.registry.com/plethos-portal
@@ -62,11 +74,8 @@ controller:
 
   replicas: 1
 
-  # Domain each vCluster is exposed under, as <claim-name>.<vclustersBaseDomain>. Also passed to
-  # the portal, which uses it only to display a cluster's gateway host - provisioning the actual
-  # Ingress is the controller's job alone. Leave blank for a domain-less/local setup.
-  vclustersBaseDomain: ""
-  vclustersIngressNamespace: ingress-nginx
+  # Namespace the ingress controller runs in, each vCluster's NetworkPolicy lets it through.
+  ingressNamespace: ingress-nginx
 
   # Seconds between drift-correcting reconciliations of every VClusterClaim. This is the
   # fallback, not the path a user waits on.

@@ -23,12 +23,14 @@ spec:
           env:
             - name: VCLUSTERCLAIMS_NAMESPACE
               value: {{ .Release.Namespace }}
-            {{- if .Values.controller.vclustersBaseDomain }}
-            - name: VCLUSTERS_BASE_DOMAIN
-              value: {{ .Values.controller.vclustersBaseDomain }}
+            {{- if .Values.baseDomain }}
+            - name: BASE_DOMAIN
+              value: {{ .Values.baseDomain }}
             {{- end }}
-            - name: VCLUSTERS_INGRESS_NAMESPACE
-              value: {{ .Values.controller.vclustersIngressNamespace }}
+            - name: APPS_SUBDOMAIN
+              value: {{ .Values.appsSubdomain | quote }}
+            - name: INGRESS_NAMESPACE
+              value: {{ .Values.controller.ingressNamespace }}
             - name: RECONCILIATION_INTERVAL
               value: {{ .Values.controller.reconciliationInterval | quote }}
             - name: TRANSITIONAL_RECONCILIATION_INTERVAL

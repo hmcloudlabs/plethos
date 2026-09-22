@@ -5,7 +5,7 @@ import kopf
 from kubernetes.client import V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
-from shared.gateway import GatewayConvention
+from shared.gateway import make_gateway_host
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
 from context import ReconciliationContext
 from resources import (
@@ -373,12 +373,11 @@ def sync_ready_condition(ctx: ReconciliationContext) -> None:
 
 def ensure_gateway_exposure(ctx: ReconciliationContext) -> None:
     """
-    Makes the vCluster's gateway host (see `GatewayConvention`) reach whatever the owner has
-    deployed behind their gateway Service. Skipped if `base_domain` isn't configured, the
-    namespace wasn't provisioned by this controller, or no such Service is deployed.
+    Makes the vCluster's gateway host (see `GatewayConvention`) reach whatever
+    the owner has deployed behind their gateway Service.
     """
 
-    if not config.base_domain:
+    if not config.apps_subdomain or not config.base_domain:
         return
 
     # Don't touch vCluster namespaces not provisioned/managed by this controller
@@ -393,7 +392,8 @@ def ensure_gateway_exposure(ctx: ReconciliationContext) -> None:
 
 
 def ensure_gateway_ingress(ctx: ReconciliationContext, target_service: str) -> None:
-    host = GatewayConvention.host(ctx.names.vcluster, config.base_domain)
+    host = make_gateway_host(ctx.names.vcluster, config.apps_subdomain, config.base_domain)
+
     ingress_manifest = make_gateway_ingress(
         host,
         ctx.names.namespace,

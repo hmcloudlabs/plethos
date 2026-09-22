@@ -127,7 +127,7 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
 
 def make_gateway_ingress(host: str, namespace: str, target_service_name: str) -> dict:
     """
-    The `Ingress` routing a vCluster's gateway host (see `GatewayConvention.host`) to its
+    The `Ingress` routing a vCluster's gateway host (see `ensure_gateway_ingress`) to its
     gateway Service.
 
     TLS is terminated here by the host cluster's ingress controller, not passed through.

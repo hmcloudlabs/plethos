@@ -22,20 +22,18 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
 
-    # Domain each vCluster's public host is built from. Must match the controller's
-    # VCLUSTERS_BASE_DOMAIN (see components/controller/src/config.py).
-    vclusters_base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
+    base_domain: str = os.getenv("BASE_DOMAIN", "")
+    apps_subdomain: str = os.getenv("APPS_SUBDOMAIN", "plethos-apps")
 
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 
     support_email: str = os.getenv("SUPPORT_EMAIL", "")
-    portal_base_url: str = os.getenv("PORTAL_BASE_URL", "http://localhost:8000")
+    portal_url: str = os.getenv("PORTAL_URL", "http://localhost:8000")
 
     expiry_period_days: float = float(os.getenv("EXPIRY_PERIOD_DAYS", "90"))
     grace_period_days: float = float(os.getenv("GRACE_PERIOD_DAYS", "60"))
     warning_lead_days: float = float(os.getenv("WARNING_LEAD_DAYS", "7"))
 
-    # How long signed links (member invites, keep-alive) stay valid.
     token_max_age_seconds: int = int(os.getenv("TOKEN_MAX_AGE_SECONDS", str(7 * 24 * 60 * 60)))
 
     smtp_host: str = os.getenv("SMTP_HOST", "localhost")

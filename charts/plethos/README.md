@@ -10,7 +10,7 @@ VClusterClaim CRD).
 - An OIDC provider for the portal to authenticate against (see
   [components/portal/README.md](../../components/portal/README.md#logging-in)).
 - To make owner-deployed workloads publicly reachable: a wildcard certificate for
-  `*.plethos-apps.<vclustersBaseDomain>` configured as the ingress controller's default certificate plus a DNS record pointing `*.<vclustersBaseDomain>` at the ingress controller.
+  `*.<appsSubdomain>.<baseDomain>` (`appsSubdomain` defaults to `plethos-apps`) configured as the ingress controller's default certificate plus a DNS record pointing `*.<baseDomain>` at the ingress controller.
 ## Installing
 
 1. Write your own values file (start from `values.yaml`) and set every value in it for

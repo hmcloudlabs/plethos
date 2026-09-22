@@ -1,7 +1,6 @@
 import os
 from dataclasses import dataclass
 
-
 _DEFAULT_SUPPORTED_VCLUSTER_VERSION = "0.35.0"
 
 
@@ -19,8 +18,10 @@ class Config:
     transitional_reconciliation_interval: int = int(
         os.getenv("TRANSITIONAL_RECONCILIATION_INTERVAL", "10")
     )
-    base_domain: str = os.getenv("VCLUSTERS_BASE_DOMAIN", "")
-    ingress_namespace: str = os.getenv("VCLUSTERS_INGRESS_NAMESPACE", "ingress-nginx")
+    base_domain: str = os.getenv("BASE_DOMAIN", "")
+    apps_subdomain: str = os.getenv("APPS_SUBDOMAIN", "plethos-apps")
+
+    ingress_namespace: str = os.getenv("INGRESS_NAMESPACE", "ingress-nginx")
 
 
 config = Config()

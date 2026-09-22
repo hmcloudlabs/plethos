@@ -107,17 +107,18 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 | `RECONCILIATION_INTERVAL` | `10800 (3hrs)` | Seconds between drift-correcting reconciliations of every claim. |
 | `TRANSITIONAL_RECONCILIATION_INTERVAL` | `10` | Seconds between reconciliations of claims in transitioanl phases `Provisioning`, `Pending` or `Waking`. Sets how quickly the portal shows a cluster as `Running`. |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.35.0` |
-| `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Domain each vCluster gets exposed under, as `<vcluster-name>.<base_domain>`. Requires an ingress controller with SSL passthrough (vCluster's API server does mTLS). Unset by default so local/dev setups keep the chart's default `localhost:8443` kubeconfig. |
-| `VCLUSTERS_INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
+| `BASE_DOMAIN` | _(unset)_ | Used as for configuring ingress for the vCluster control plane and user gateway apps; requires an ingress controller with SSL passthrough. |
+| `APPS_SUBDOMAIN` | `plethos-apps` | Subdomain under which public user apps are shown under, e.g <vcluster>.plethos-apps.plethos.example.org, see [Gateway](#public-gateway) section |
+| `INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
 
 ## Public gateway
 
 If an owner deploys a `Service` named `gateway` in their vCluster's `default` namespace on
-port 80, it becomes publicly reachable at `https://<vcluster-name>.plethos-apps.<base_domain>`. Requires `VCLUSTERS_BASE_DOMAIN` to be set.
+port 80, it becomes publicly reachable at `https://<vcluster-name>.<apps_subdomain>.<base_domain>`. Requires `BASE_DOMAIN` and `APPS_SUBDOMAIN` to be set.
 
 Each vCluster gets exactly **one** host.
 
-The `plethos-apps` subdomain keeps this apart from the control-plane host, which is `<vcluster-name>.<base_domain>` and needs SSL passthrough.
+The apps subdomain keeps this apart from the control-plane host, which is `<vcluster-name>.<base_domain>` and needs SSL passthrough.
 
 ## Phases
 

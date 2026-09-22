@@ -107,7 +107,7 @@ def _send_warning_email(claim: VClusterClaim, *, subject: str, body_intro: str) 
     """
 
     token = keep_alive_tokens.generate({"object_name": claim.object_name})
-    confirm_url = f"{config.portal_base_url}/keep-alive/confirm?token={token}"
+    confirm_url = f"{config.portal_url}/keep-alive/confirm?token={token}"
     button_text = "Confirm you're still using it"
 
     html = templates.env.get_template("emails/keep_alive.html").render(

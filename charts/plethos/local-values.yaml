@@ -5,6 +5,8 @@
 #   helm install plethos ./charts/plethos -n plethos-system --create-namespace -f charts/plethos/local-values.yaml
 
 supportedVclusterVersions: "0.35.0"
+baseDomain: "" # blank -> vCluster falls back to its own localhost:8443 kubeconfig
+appsSubdomain: plethos-apps # unused while baseDomain is blank
 
 portal:
   image:
@@ -47,5 +49,4 @@ controller:
     tag: local # see the note on portal.image.tag above
     pullPolicy: Never
 
-  vclustersBaseDomain: "" # blank -> vCluster falls back to its own localhost:8443 kubeconfig
-  vclustersIngressNamespace: ingress-nginx
+  ingressNamespace: ingress-nginx

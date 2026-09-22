@@ -43,10 +43,12 @@ job signs keep-alive links the portal has to verify and sends email through the 
 {{- define "plethos.portal.env" -}}
 - name: VCLUSTERCLAIMS_NAMESPACE
   value: {{ .Release.Namespace }}
-{{- if .Values.controller.vclustersBaseDomain }}
-- name: VCLUSTERS_BASE_DOMAIN
-  value: {{ .Values.controller.vclustersBaseDomain }}
+{{- if .Values.baseDomain }}
+- name: BASE_DOMAIN
+  value: {{ .Values.baseDomain }}
 {{- end }}
+- name: APPS_SUBDOMAIN
+  value: {{ .Values.appsSubdomain | quote }}
 {{- if .Values.portal.oidc.issuer }}
 - name: OIDC_ISSUER
   value: {{ .Values.portal.oidc.issuer }}
@@ -70,7 +72,7 @@ job signs keep-alive links the portal has to verify and sends email through the 
       key: CSRF_TOKEN_SECRET
 - name: SUPPORT_EMAIL
   value: {{ .Values.portal.supportEmail }}
-- name: PORTAL_BASE_URL
+- name: PORTAL_URL
   value: {{ .Values.portal.baseUrl }}
 - name: SUPPORTED_VCLUSTER_VERSIONS
   value: {{ .Values.supportedVclusterVersions | quote }}

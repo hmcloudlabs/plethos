@@ -3,7 +3,7 @@ from typing import Literal
 from starlette.requests import Request
 
 from config import config
-from shared.gateway import GatewayConvention
+from shared.gateway import make_gateway_host
 
 
 def is_valid_email(email: str) -> bool:
@@ -35,8 +35,9 @@ def pop_flash(request: Request) -> tuple[str, FlashLevel] | None:
 
 
 def gateway_host(vcluster_name: str) -> str | None:
-    """A cluster's public gateway host, or `None` if `VCLUSTERS_BASE_DOMAIN` isn't configured."""
+    """A cluster's public gateway host, or `None` if gateway exposure isn't configured."""
 
-    if not config.vclusters_base_domain:
+    if not config.apps_subdomain or not config.base_domain:
         return None
-    return GatewayConvention.host(vcluster_name, config.vclusters_base_domain)
+
+    return make_gateway_host(vcluster_name, config.apps_subdomain, config.base_domain)

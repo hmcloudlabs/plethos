@@ -131,7 +131,8 @@ that path to survive pod restarts.
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OAuth2 client secret |
 | `OIDC_SCOPES` | `openid email profile` | Requested OIDC scopes |
 | `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
-| `VCLUSTERS_BASE_DOMAIN` | _(unset)_ | Only used to display each cluster's public host (must match the controller's value, the controller provisions the Ingress for it) |
+| `BASE_DOMAIN` | _(unset)_ | Only used to display each cluster's public host (must match the controller's value) |
+| `APPS_SUBDOMAIN` | `plethos-apps` | Subdomain under which the gateway hosts are shown under, e.g <vcluster>.plethos-apps.plethos.example.org |
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
 | `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Must match the controller's value, the portal always provisions the highest version |
@@ -140,7 +141,7 @@ that path to survive pod restarts.
 | `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
 | `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `SMTP_FROM_ADDRESS` | `plethos@example.com` | `From` address on invite/keep-alive emails |
-| `PORTAL_BASE_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
+| `PORTAL_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
 | `EXPIRY_PERIOD_DAYS` | `90` | Days a claim stays valid since it was last renewed before it expires and is put to sleep (see [Cluster expiry](#cluster-expiry)) |
 | `GRACE_PERIOD_DAYS` | `60` | Days a claim may stay asleep, unrenewed, before it's deleted |
 | `WARNING_LEAD_DAYS` | `7` | Days of advance notice before each of the two warning emails (before sleep, before deletion) |
