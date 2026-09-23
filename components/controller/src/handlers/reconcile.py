@@ -5,7 +5,7 @@ import kopf
 from kubernetes.client import V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
-from shared.gateway import make_gateway_host
+from shared.app import make_app_host
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
 from context import ReconciliationContext
 from resources import (
@@ -13,7 +13,7 @@ from resources import (
     make_service_account,
     make_role_binding,
     make_helm_install_job,
-    make_gateway_ingress,
+    make_app_ingress,
 )
 from config import config
 from kube import (
@@ -23,7 +23,7 @@ from kube import (
     get_statefulset,
     is_transitional,
     unwrap_statefulset,
-    find_gateway_service_name,
+    find_app_service_name,
     is_namespace_managed,
     SCALED_DOWN_REPLICAS_ANNOTATION,
     VCLUSTER_MANAGED_BY_LABEL,
@@ -82,7 +82,7 @@ def reconcile(ctx: ReconciliationContext) -> None:
         provision_vcluster(ctx)
     else:
         reconcile_vcluster(ctx, vc_set)
-        ensure_gateway_exposure(ctx)
+        ensure_app_exposure(ctx)
 
     sync_ready_condition(ctx)
 
@@ -371,10 +371,10 @@ def sync_ready_condition(ctx: ReconciliationContext) -> None:
         )
 
 
-def ensure_gateway_exposure(ctx: ReconciliationContext) -> None:
+def ensure_app_exposure(ctx: ReconciliationContext) -> None:
     """
-    Makes the vCluster's gateway host (see `GatewayConvention`) reach whatever
-    the owner has deployed behind their gateway Service.
+    Makes the vCluster's app host (see `AppExposureConvention`) reach whatever
+    the owner has deployed behind their app Service.
     """
 
     if not config.apps_subdomain or not config.base_domain:
@@ -384,17 +384,17 @@ def ensure_gateway_exposure(ctx: ReconciliationContext) -> None:
     if not is_namespace_managed(ctx.clients.core, ctx.names.namespace):
         return
 
-    gateway_service_on_host = find_gateway_service_name(ctx.clients.core, ctx.names)
-    if not gateway_service_on_host:
+    app_service_on_host = find_app_service_name(ctx.clients.core, ctx.names)
+    if not app_service_on_host:
         return
 
-    ensure_gateway_ingress(ctx, gateway_service_on_host)
+    ensure_app_ingress(ctx, app_service_on_host)
 
 
-def ensure_gateway_ingress(ctx: ReconciliationContext, target_service: str) -> None:
-    host = make_gateway_host(ctx.names.vcluster, config.apps_subdomain, config.base_domain)
+def ensure_app_ingress(ctx: ReconciliationContext, target_service: str) -> None:
+    host = make_app_host(ctx.names.vcluster, config.apps_subdomain, config.base_domain)
 
-    ingress_manifest = make_gateway_ingress(
+    ingress_manifest = make_app_ingress(
         host,
         ctx.names.namespace,
         target_service,
@@ -404,11 +404,11 @@ def ensure_gateway_ingress(ctx: ReconciliationContext, target_service: str) -> N
         ctx.clients.networking.create_namespaced_ingress(
             namespace=ctx.names.namespace, body=ingress_manifest
         )
-        ctx.logger.info(f"Created Ingress gateway in {ctx.names.namespace}.")
+        ctx.logger.info(f"Created app Ingress in {ctx.names.namespace}.")
     except ApiException as e:
         if e.status != 409:
             ctx.patch.status["phase"] = Phase.ERROR
-            ctx.patch.status["message"] = f"Failed to create gateway Ingress: {e.reason}"
+            ctx.patch.status["message"] = f"Failed to create app Ingress: {e.reason}"
             raise
 
 

@@ -49,10 +49,10 @@ Open a cluster and click the *trash* icon to delete it. This is permanent, so ex
 
 ### Exposing an application publicly
 
-To make something you deploy reachable from outside your cluster, create a plain `Service` named `gateway` in the `default` namespace, listening on port 80:
+To make something you deploy reachable from outside your cluster, create a plain `Service` named `http` in the `default` namespace, listening on port 80:
 
 ```bash
-kubectl expose deployment <your-app> --name=gateway --namespace=default --port=80
+kubectl expose deployment <your-app> --name=http --namespace=default --port=80
 ```
 
 Works the same for a bare `Pod`, `StatefulSet` or anything else `kubectl expose` support.
@@ -60,7 +60,7 @@ Works the same for a bare `Pod`, `StatefulSet` or anything else `kubectl expose`
 The portal shows the exact URL for your cluster (it looks like
 `https://<your-cluster-id>.{% if config.base_domain and config.apps_subdomain %}{{ config.apps_subdomain }}.{{ config.base_domain }}{% else %}<your-organizations-apps-domain>{% endif %}`).
 
-**Need to expose more than one app?** Your cluster gets one public hostname, so point the gateway at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster, so your proxy receives plain HTTP on port 80.
+**Need to expose more than one app?** Your cluster gets one public hostname, so point the `http` Service at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster, so your proxy receives plain HTTP on port 80.
 
 ## Cluster expiration
 

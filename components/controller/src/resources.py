@@ -81,7 +81,7 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
 
     The control-plane path requires an ingress controller with SSL passthrough enabled,
     since the control plane speaks mTLS directly (there's no TLS termination to do). The
-    gateway path, (i.e. the gateway Service) is plain HTTP, terminated by
+    app path (i.e. the app Service) is plain HTTP, terminated by
     the host clusters's ingress controller.
     """
 
@@ -125,10 +125,10 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
     ]
 
 
-def make_gateway_ingress(host: str, namespace: str, target_service_name: str) -> dict:
+def make_app_ingress(host: str, namespace: str, target_service_name: str) -> dict:
     """
-    The `Ingress` routing a vCluster's gateway host (see `ensure_gateway_ingress`) to its
-    gateway Service.
+    The `Ingress` routing a vCluster's app host (see `ensure_app_ingress`) to its
+    app Service.
 
     TLS is terminated here by the host cluster's ingress controller, not passed through.
     """
@@ -137,7 +137,7 @@ def make_gateway_ingress(host: str, namespace: str, target_service_name: str) ->
         "apiVersion": "networking.k8s.io/v1",
         "kind": "Ingress",
         "metadata": {
-            "name": "gateway",
+            "name": "app",
             "namespace": namespace,
         },
         "spec": {

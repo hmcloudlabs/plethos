@@ -15,7 +15,7 @@ from kube.vclusterclaim_service import (
 from mailer import EmailDeliveryError, send_email
 from shared.vclusterclaim import State
 from templating import templates
-from utils import FlashLevel, gateway_host, is_valid_email, pop_flash, set_flash
+from utils import FlashLevel, app_host, is_valid_email, pop_flash, set_flash
 
 router = APIRouter()
 
@@ -98,10 +98,10 @@ def _pending_renewal(claims: list[VClusterClaim]) -> dict[str, dict]:
 
 
 def _public_urls(claims: list[VClusterClaim]) -> dict[str, str | None]:
-    """Each claim's public gateway URL (or None), keyed by object name."""
+    """Each claim's public app URL (or None), keyed by object name."""
 
     return {
-        c.object_name: f"https://{host}" if (host := gateway_host(c.object_name)) else None
+        c.object_name: f"https://{host}" if (host := app_host(c.object_name)) else None
         for c in claims
     }
 

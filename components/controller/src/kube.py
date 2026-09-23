@@ -7,7 +7,7 @@ from kubernetes.client import V1Namespace
 from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
 
-from shared.gateway import GatewayConvention
+from shared.app import AppExposureConvention
 from shared.vclusterclaim import GROUP, Phase
 from context import VClusterNames
 
@@ -92,12 +92,12 @@ def is_transitional(status, **_: object) -> bool:
     return (status or {}).get("phase") in TRANSITIONAL_PHASES
 
 
-def find_gateway_service_name(core: client.CoreV1Api, names: VClusterNames) -> str | None:
+def find_app_service_name(core: client.CoreV1Api, names: VClusterNames) -> str | None:
     """
-    Finds the host-cluster name of the owner's gateway Service, which they deploy inside their
-    vCluster as `names.gateway_service` in `names.gateway_namespace`, by matching the
-    labels/annotations vCluster sets on every object it syncs. Returns `None` if no such
-    Service exists yet.
+    Finds the host-cluster name of the owner's app Service, which they deploy inside their
+    vCluster as `AppExposureConvention.SERVICE_NAME` in `AppExposureConvention.NAMESPACE`, by
+    matching the labels/annotations vCluster sets on every object it syncs. Returns `None` if no
+    such Service exists yet.
     """
 
     host_synced_services = cast(
@@ -114,8 +114,9 @@ def find_gateway_service_name(core: client.CoreV1Api, names: VClusterNames) -> s
 
         annotations = service.metadata.annotations or {}
         if (
-            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == GatewayConvention.SERVICE_NAME
-            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION) == GatewayConvention.NAMESPACE
+            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == AppExposureConvention.SERVICE_NAME
+            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION)
+            == AppExposureConvention.NAMESPACE
         ):
             return service.metadata.name
 

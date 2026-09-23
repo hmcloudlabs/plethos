@@ -1,0 +1,17 @@
+class AppExposureConvention:
+    """
+    The contract for exposing an app publicly from within a vCluster. An app is whatever workload
+    the owner puts behind the app Service, only HTTP can be exposed.
+
+    An owner deploys a Service named `SERVICE_NAME` in `NAMESPACE` on port 80 *inside* their
+    vCluster, the controller finds its synced counterpart on the host and creates an Ingress for it.
+    """
+
+    SERVICE_NAME = "http"
+    NAMESPACE = "default"
+
+
+def make_app_host(vcluster_name: str, apps_subdomain: str, base_domain: str) -> str:
+    """The public host a vCluster's app is served under."""
+
+    return f"{vcluster_name}.{apps_subdomain}.{base_domain}"

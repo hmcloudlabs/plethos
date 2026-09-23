@@ -107,13 +107,14 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 | `RECONCILIATION_INTERVAL` | `10800 (3hrs)` | Seconds between drift-correcting reconciliations of every claim. |
 | `TRANSITIONAL_RECONCILIATION_INTERVAL` | `10` | Seconds between reconciliations of claims in transitioanl phases `Provisioning`, `Pending` or `Waking`. Sets how quickly the portal shows a cluster as `Running`. |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.35.0` |
-| `BASE_DOMAIN` | _(unset)_ | Used as for configuring ingress for the vCluster control plane and user gateway apps; requires an ingress controller with SSL passthrough. |
-| `APPS_SUBDOMAIN` | `plethos-apps` | Subdomain under which public user apps are shown under, e.g <vcluster>.plethos-apps.plethos.example.org, see [Gateway](#public-gateway) section |
+| `BASE_DOMAIN` | _(unset)_ | Used as for configuring ingress for the vCluster control plane and user apps; requires an ingress controller with SSL passthrough. |
+| `APPS_SUBDOMAIN` | `plethos-apps` | Subdomain under which public user apps are shown under, e.g <vcluster>.plethos-apps.plethos.example.org, see [Public apps](#public-apps) section |
 | `INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
 
-## Public gateway
+## Public apps
 
-If an owner deploys a `Service` named `gateway` in their vCluster's `default` namespace on
+An app is whatever workload an owner exposes from their vCluster, over HTTP only (no other
+protocols can be exposed). If an owner deploys a `Service` named `http` in their vCluster's `default` namespace on
 port 80, it becomes publicly reachable at `https://<vcluster-name>.<apps_subdomain>.<base_domain>`. Requires `BASE_DOMAIN` and `APPS_SUBDOMAIN` to be set.
 
 Each vCluster gets exactly **one** host.

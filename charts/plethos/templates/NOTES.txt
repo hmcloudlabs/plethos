@@ -28,6 +28,6 @@ an ingress controller with SSL passthrough (e.g. ingress-nginx with
 {{- if and .Values.baseDomain .Values.appsSubdomain }}
 {{- $appsDomain := printf "%s.%s" .Values.appsSubdomain .Values.baseDomain }}
 
-Owner-deployed gateway workloads are exposed as <name>.{{ $appsDomain }}, which requires a
+Owner-deployed apps are exposed as <name>.{{ $appsDomain }}, which requires a
 wildcard certificate for *.{{ $appsDomain }} as the ingress controller's default certificate.
 {{- end }}
