@@ -80,7 +80,9 @@ To run the portal and controller together locally:
 6. In separate terminals, run the controller and the portal (both from the project root):
    ```bash
    uv run kopf run components/controller/src/main.py --namespace plethos-system --verbose
-   uv run uvicorn main:app --reload --app-dir components/portal/src
+   ```
+   ```bash
+   uv run --env-file components/portal/dev-setup/dev.env uvicorn main:app --reload --app-dir components/portal/src
    ```
 7. Open `http://localhost:8000` and log in with one of the seeded users above.
 

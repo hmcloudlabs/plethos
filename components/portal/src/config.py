@@ -2,13 +2,22 @@ import os
 from dataclasses import dataclass
 
 
+def _require_secret(name: str) -> str:
+    """Checks required secret env var and fails on startup if it's unset or empty."""
+
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Environment variable {name} must be set.")
+    return value
+
+
 @dataclass(frozen=True)
 class Config:
     host: str = os.getenv("PORTAL_HOST", "0.0.0.0")
     port: int = int(os.getenv("PORTAL_PORT", "8000"))
 
-    session_secret: str = os.getenv("PORTAL_SESSION_SECRET", "dev-secret-change-me")
-    csrf_token_secret: str = os.getenv("CSRF_TOKEN_SECRET", "dev-secret-change-me")
+    session_secret: str = _require_secret("PORTAL_SESSION_SECRET")
+    csrf_token_secret: str = _require_secret("CSRF_TOKEN_SECRET")
 
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_dir: str = os.getenv("LOG_DIR", "")

@@ -1,3 +1,9 @@
+import os
+
+# Must be set before `config` is first imported.
+os.environ.setdefault("PORTAL_SESSION_SECRET", "test-session-secret")
+os.environ.setdefault("CSRF_TOKEN_SECRET", "test-csrf-secret")
+
 import pytest
 from fastapi.testclient import TestClient
 
