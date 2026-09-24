@@ -367,7 +367,10 @@ def invite_cluster_member(
         result = vcc_service.invite_member(object_name, user.sub, email)
         if result is not None:
             claim, token = result
-            accept_url = str(request.url_for("accept_invite")) + f"?token={token}"
+            accept_url = (
+                f"{config.portal_url.rstrip('/')}{request.app.url_path_for('accept_invite')}"
+                f"?token={token}"
+            )
             html = templates.env.get_template("emails/invite.html").render(
                 subject=f"You've been invited to cluster '{claim.spec.name}'",
                 preheader=f"{user.email} has invited you to the Kubernetes cluster '{claim.spec.name}'.",

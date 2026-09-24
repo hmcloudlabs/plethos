@@ -6,16 +6,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}{{ title }}{% endblock %}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='image/logo.svg') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', path='vendor/bootstrap/bootstrap.min.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', path='css/brand.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}" />
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='image/logo.svg').path }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='vendor/bootstrap/bootstrap.min.css').path }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='css/brand.css').path }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css').path }}" />
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <a class="navbar-brand" href="/">
-          <img class="brand-mark" src="{{ url_for('static', path='image/logo.svg') }}" alt="plethos" />
+          <img class="brand-mark" src="{{ url_for('static', path='image/logo.svg').path }}" alt="plethos" />
         </a>
         {% set path = request.url.path %}
         <ul class="navbar-nav">
@@ -92,7 +92,7 @@
     <footer class="app-footer">
       <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
         <span class="d-flex align-items-center gap-2">
-          <img class="brand-mark--sm" src="{{ url_for('static', path='image/logo.svg') }}" alt="" />
+          <img class="brand-mark--sm" src="{{ url_for('static', path='image/logo.svg').path }}" alt="" />
           Plethos - a self-service platform for creating and managing Kubernetes clusters using vCluster.
         </span>
         {% if config.support_email %}
@@ -101,8 +101,8 @@
       </div>
     </footer>
 
-    <script src="{{ url_for('static', path='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', path='vendor/htmx/htmx.min.js') }}"></script>
+    <script src="{{ url_for('static', path='vendor/bootstrap/bootstrap.bundle.min.js').path }}"></script>
+    <script src="{{ url_for('static', path='vendor/htmx/htmx.min.js').path }}"></script>
     <script>
       // Shows a toast and removes it from the DOM once it's dismissed/hidden.
       function showToast(toastEl) {
