@@ -1,4 +1,13 @@
-plethos has been installed into namespace "{{ .Release.Namespace }}".
+Done!
+ ____     __       ____    ______   __  __    _____     ____       
+/\  _`\  /\ \     /\  _`\ /\__  _\ /\ \/\ \  /\  __`\  /\  _`\     
+\ \ \L \ \ \ \    \ \ \L\_\/_/\ \/ \ \ \_\ \ \ \ \/\ \ \ \,\L\_\   
+ \ \ ,__/ \ \ \  _ \ \  _\L  \ \ \  \ \  _  \ \ \ \ \ \ \/_\__ \   
+  \ \ \/   \ \ \L\ \\ \ \L\ \ \ \ \  \ \ \ \ \ \ \ \_\ \  /\ \L\ \ 
+   \ \_\    \ \____/ \ \____/  \ \_\  \ \_\ \_\ \ \_____\ \ `\____\
+    \/_/     \/___/   \/___/    \/_/   \/_/\/_/  \/_____/ \/_____/       
+
+Plethos has been installed into namespace "{{ .Release.Namespace }}".
 
 If you haven't already, create the secret the portal reads OIDC/session/SMTP
 credentials from:
