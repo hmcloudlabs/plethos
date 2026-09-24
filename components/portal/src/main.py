@@ -89,8 +89,8 @@ async def healthz() -> dict[str, str]:
 
 @app.get("/login")
 async def login(request: Request):
-    redirect_uri = request.url_for("auth_callback")
-    return await sso_client().authorize_redirect(request, str(redirect_uri))
+    redirect_uri = f"{config.portal_url.rstrip('/')}{app.url_path_for('auth_callback')}"
+    return await sso_client().authorize_redirect(request, redirect_uri)
 
 
 @app.get("/auth/callback", name="auth_callback")
