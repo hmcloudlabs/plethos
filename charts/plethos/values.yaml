@@ -31,7 +31,8 @@ portal:
   replicas: 1
 
   # Name of an existing Secret (in the release namespace) with keys:
-  # PORTAL_SESSION_SECRET, CSRF_TOKEN_SECRET, OIDC_CLIENT_SECRET, SMTP_USERNAME, SMTP_PASSWORD.
+  # PORTAL_SESSION_SECRET, CSRF_TOKEN_SECRET, OIDC_CLIENT_SECRET and optionally SMTP_USERNAME,
+  # SMTP_PASSWORD (leave out if your SMTP server doesn't require authentication).
   # This chart never creates it - see NOTES.txt after install for the kubectl
   # command to create it. Leave blank to use the default "<release>-portal-secrets".
   secretName: ""

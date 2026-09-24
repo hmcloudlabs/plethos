@@ -33,6 +33,9 @@ VClusterClaim CRD).
      --from-literal=SMTP_PASSWORD="<your SMTP password>"
    ```
 
+   `SMTP_USERNAME` and `SMTP_PASSWORD` are optional, leave them out if your SMTP server doesn't
+   require authentication.
+
   If the portal pod started before the secret existed, it'll be stuck in a
   `CreateContainerConfigError`. In that case, restart:
 

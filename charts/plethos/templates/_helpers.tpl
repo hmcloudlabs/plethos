@@ -89,9 +89,11 @@ job signs keep-alive links the portal has to verify and sends email through the 
     secretKeyRef:
       name: {{ include "plethos.portal.secretName" . }}
       key: SMTP_USERNAME
+      optional: true
 - name: SMTP_PASSWORD
   valueFrom:
     secretKeyRef:
       name: {{ include "plethos.portal.secretName" . }}
       key: SMTP_PASSWORD
+      optional: true
 {{- end -}}

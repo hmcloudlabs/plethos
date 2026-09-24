@@ -138,7 +138,7 @@ that path to survive pod restarts.
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Must match the controller's value, the portal always provisions the highest version |
 | `SMTP_HOST` | `localhost` | SMTP server for sending member-invite and keep-alive emails (mailpit default) |
 | `SMTP_PORT` | `1025` | SMTP server port (mailpit default) |
-| `SMTP_USERNAME` | _(unset)_ | SMTP auth username |
+| `SMTP_USERNAME` | _(unset)_ | SMTP auth username, if unset no authentication is done |
 | `SMTP_PASSWORD` | _(unset)_ | SMTP auth password |
 | `SMTP_FROM_ADDRESS` | `plethos@example.com` | `From` address on invite/keep-alive emails |
 | `PORTAL_URL` | `http://localhost:8000` | Absolute base URL for links in emails sent outside a request (the cluster expiry job's keep-alive links) |
