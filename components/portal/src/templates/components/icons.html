@@ -1,7 +1,11 @@
 {% macro icon(name) -%}
 <svg class="bi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-{%- if name == "plus" -%}
+{%- if name == "menu" -%}
+  <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>
+{%- elif name == "x" -%}
+  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+{%- elif name == "plus" -%}
   <path d="M5 12h14"/><path d="M12 5v14"/>
 {%- elif name == "moon" -%}
   <path d="M12 3a6.4 6.4 0 0 0 9 9 9 9 0 1 1-9-9Z"/>

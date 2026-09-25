@@ -1,9 +1,6 @@
 {% from "components/icons.html" import icon %}
 {% from "components/confirm_modal.html" import confirm_modal %}
-{#
-  hx-trigger has a filter so the 5s poll skips while the tab is hidden and while a confirm modal here is open -
-  otherwise the outerHTML swap would rip the open modal out from under the admin.
-#}
+
 <div
   id="admin-cluster-list"
   class="p-2 p-sm-3"
@@ -13,7 +10,7 @@
 >
   {% if vcluster_claims %}
   <div class="table-responsive">
-    <table class="table align-middle">
+    <table class="table table-stack align-middle">
       <thead>
         <tr>
           <th>Name</th>
@@ -33,9 +30,9 @@
         {% set steady_running = phase == 'Running' and state == 'Running' %}
         {% set steady_sleeping = phase == 'Sleeping' and state == 'Sleeping' %}
         <tr>
-          <td class="text-body-secondary">{{ name }}</td>
-          <td class="text-body-secondary">{{ vcluster_claim.spec.owner_email }}</td>
-          <td>
+          <td class="cell-name text-body-secondary text-truncate" title="{{ name }}">{{ name }}</td>
+          <td class="cell-owner text-body-secondary text-truncate" data-label="Owner" title="{{ vcluster_claim.spec.owner_email }}">{{ vcluster_claim.spec.owner_email }}</td>
+          <td class="cell-status">
             {% if steady_running %}
             <span class="badge text-bg-success"{% if msg %} title="{{ msg }}"{% endif %}>Running</span>
             {% elif steady_sleeping %}
@@ -58,9 +55,9 @@
             <span class="text-body-secondary">-</span>
             {% endif %}
           </td>
-          <td class="text-body-secondary">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "-" }}</td>
-          <td>
-            <div class="d-inline-flex gap-2 justify-content-end w-100">
+          <td class="cell-created text-body-secondary" data-label="Created">{{ vcluster_claim.creation_timestamp[:10] if vcluster_claim.creation_timestamp else "-" }}</td>
+          <td class="cell-actions">
+            <div class="stack-actions d-flex flex-wrap gap-2 justify-content-end w-100">
               {% if steady_running %}
               <button
                 type="button"

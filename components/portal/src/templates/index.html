@@ -8,7 +8,6 @@
     A self-service platform for creating and managing Kubernetes clusters using vCluster.
   </p>
 
-  {# --- Resources: guides + source --- #}
   <h2 class="h5 fw-bold mb-3">Resources</h2>
   <div class="row g-3 mb-5">
     <div class="col-sm-6">
@@ -22,12 +21,11 @@
       </a>
     </div>
     <div class="col-sm-6">
-      {# TODO: point at the real repo URL once confirmed - see conversation #}
-      <a class="resource-link resource-tile" href="#" target="_blank" rel="noopener">
+      <a class="resource-link resource-tile" href="https://codeberg.org/hmcloudlabs/plethos" target="_blank" rel="noopener">
         {{ icon("github") }}
         <span class="resource-link__body">
           <span class="resource-link__title">Source code</span>
-          <span class="resource-link__desc">Plethos on GitHub.</span>
+          <span class="resource-link__desc">Plethos on Codeberg.</span>
         </span>
         {{ icon("arrow-up-right") }}
       </a>
@@ -37,7 +35,6 @@
   {% if user %}
   <h2 class="h5 fw-bold mb-3">Overview</h2>
   <div class="row g-3">
-    {# --- Your clusters: running / total --- #}
     <div class="col-md-6">
       <div class="bento bento--pad h-100">
         <span class="bento__label">Your clusters</span>

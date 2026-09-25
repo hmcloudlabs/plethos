@@ -12,41 +12,55 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css').path }}" />
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-    <nav class="navbar navbar-expand-lg">
+    <nav class="navbar navbar-expand-md">
       <div class="container">
         <a class="navbar-brand" href="/">
           <img class="brand-mark" src="{{ url_for('static', path='image/logo.svg').path }}" alt="plethos" />
         </a>
         {% set path = request.url.path %}
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
-              {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
-              href="/clusters">
-              {{ icon("clusters") }}
-              <span>clusters</span>
-            </a>
-          </li>
-          {% if user and user.is_admin() %}
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
-              {{ 'aria-current=page' if path.startswith('/admin') else '' }}
-              href="/admin">
-              {{ icon("admin") }}
-              <span>admin</span>
-            </a>
-          </li>
-          {% endif %}
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/guides') else '' }}"
-              {{ 'aria-current=page' if path.startswith('/guides') else '' }}
-              href="/guides">
-              {{ icon("book") }}
-              <span>guides</span>
-            </a>
-          </li>
-        </ul>
-        <ul class="navbar-nav">
+        <div class="collapse navbar-collapse" id="main-nav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/clusters') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/clusters') else '' }}
+                href="/clusters">
+                {{ icon("clusters") }}
+                <span>clusters</span>
+              </a>
+            </li>
+            {% if user and user.is_admin() %}
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/admin') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/admin') else '' }}
+                href="/admin">
+                {{ icon("admin") }}
+                <span>admin</span>
+              </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center gap-2 {{ 'active' if path.startswith('/guides') else '' }}"
+                {{ 'aria-current=page' if path.startswith('/guides') else '' }}
+                href="/guides">
+                {{ icon("book") }}
+                <span>guides</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#main-nav"
+          aria-controls="main-nav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-open">{{ icon("menu") }}</span>
+          <span class="navbar-toggler-close">{{ icon("x") }}</span>
+        </button>
+        <ul class="navbar-nav navbar-account">
           {% if user %}
             <li class="nav-item dropdown">
               <a
@@ -76,7 +90,7 @@
               <a class="btn btn-primary btn-sm px-3" href="/login">Sign in</a>
             </li>
             {% endif %}
-          </ul>
+        </ul>
       </div>
     </nav>
 
@@ -88,12 +102,11 @@
 
     <main class="container py-4">{% block content %}{% endblock %}</main>
 
-    {# Deployers can add org-specific links (imprint, privacy, ...) here. #}
     <footer class="app-footer">
-      <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="container d-flex flex-wrap align-items-center justify-content-between gap-3">
         <span class="d-flex align-items-center gap-2">
-          <img class="brand-mark--sm" src="{{ url_for('static', path='image/logo.svg').path }}" alt="" />
-          Plethos - a self-service platform for creating and managing Kubernetes clusters using vCluster.
+          <img class="brand-mark-sm" src="{{ url_for('static', path='image/logo.svg').path }}" alt="" />
+          <span class="fs-5 mb-0">Plethos</span>
         </span>
         {% if config.support_email %}
         <span>Need help? Contact your platform admin at <a href="mailto:{{ config.support_email }}">{{ config.support_email }}</a></span>
