@@ -31,8 +31,8 @@ class Config:
     # VCLUSTERCLAIMS_NAMESPACE (see components/controller/src/config.py).
     claims_namespace: str = os.getenv("VCLUSTERCLAIMS_NAMESPACE", "plethos-system")
 
-    base_domain: str = os.getenv("BASE_DOMAIN", "")
-    apps_subdomain: str = os.getenv("APPS_SUBDOMAIN", "plethos-apps")
+    # Must match the controller's EXPOSED_APPS_BASE_DOMAIN
+    exposed_apps_base_domain: str = os.getenv("EXPOSED_APPS_BASE_DOMAIN", "")
 
     cache_ttl_seconds: float = float(os.getenv("CACHE_TTL_SECONDS", "3.0"))
 

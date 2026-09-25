@@ -31,15 +31,14 @@ CreateContainerConfigError. In that case, restart:
 
 The portal will be reachable at: https://{{ .Values.portal.ingress.host }}
 {{- end }}
-{{- if .Values.baseDomain }}
+{{- if .Values.vClusterApiBaseDomain }}
 
-vClusters are exposed as <name>.{{ .Values.baseDomain }}, which requires
+vClusters are exposed as <name>.{{ .Values.vClusterApiBaseDomain }}, which requires
 an ingress controller with SSL passthrough (e.g. ingress-nginx with
 --enable-ssl-passthrough).
 {{- end }}
-{{- if and .Values.baseDomain .Values.appsSubdomain }}
-{{- $appsDomain := printf "%s.%s" .Values.appsSubdomain .Values.baseDomain }}
+{{- if .Values.exposedAppsBaseDomain }}
 
-Owner-deployed apps are exposed as <name>.{{ $appsDomain }}, which requires a
-wildcard certificate for *.{{ $appsDomain }} as the ingress controller's default certificate.
+Owner-deployed apps are exposed as <name>.{{ .Values.exposedAppsBaseDomain }}, which requires a
+wildcard certificate for *.{{ .Values.exposedAppsBaseDomain }} as the ingress controller's default certificate.
 {{- end }}

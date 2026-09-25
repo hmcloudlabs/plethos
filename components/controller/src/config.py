@@ -18,8 +18,8 @@ class Config:
     transitional_reconciliation_interval: int = int(
         os.getenv("TRANSITIONAL_RECONCILIATION_INTERVAL", "10")
     )
-    base_domain: str = os.getenv("BASE_DOMAIN", "")
-    apps_subdomain: str = os.getenv("APPS_SUBDOMAIN", "plethos-apps")
+    vcluster_api_base_domain: str = os.getenv("VCLUSTER_API_BASE_DOMAIN", "")
+    exposed_apps_base_domain: str = os.getenv("EXPOSED_APPS_BASE_DOMAIN", "")
 
     ingress_namespace: str = os.getenv("INGRESS_NAMESPACE", "ingress-nginx")
 

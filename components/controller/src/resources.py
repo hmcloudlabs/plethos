@@ -76,19 +76,15 @@ def make_role_binding(namespace: str, service_account: str, role_binding: str) -
     }
 
 
-def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: str) -> list[str]:
-    """Extra `helm` args exposing the vCluster via ingress, or `[]` if `base_domain` is unset.
+def _control_plane_ingress_helm_args(
+    vcluster_name: str, vcluster_api_base_domain: str
+) -> list[str]:
+    """Extra Helm args for exposing the vCluster's control plane via ingress."""
 
-    The control-plane path requires an ingress controller with SSL passthrough enabled,
-    since the control plane speaks mTLS directly (there's no TLS termination to do). The
-    app path (i.e. the app Service) is plain HTTP, terminated by
-    the host clusters's ingress controller.
-    """
-
-    if not base_domain:
+    if not vcluster_api_base_domain:
         return []
 
-    host = f"{vcluster_name}.{base_domain}"
+    host = f"{vcluster_name}.{vcluster_api_base_domain}"
 
     values = {
         "controlPlane": {
@@ -105,7 +101,15 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
         },
     }
 
-    # Allow external ingress to workload pods.
+    return _helm_set_args(values)
+
+
+def _app_ingress_helm_args(exposed_apps_base_domain: str, ingress_namespace: str) -> list[str]:
+    """Extra Helm args letting the host cluster's ingress controller reach the vCluster's workload pods."""
+
+    if not exposed_apps_base_domain:
+        return []
+
     workload_ingress_rule = [
         {
             "from": [
@@ -119,7 +123,6 @@ def _ingress_helm_args(vcluster_name: str, base_domain: str, ingress_namespace: 
     ]
 
     return [
-        *_helm_set_args(values),
         "--set-json",
         f"policies.networkPolicy.workload.ingress={json.dumps(workload_ingress_rule)}",
     ]
@@ -172,7 +175,8 @@ def make_helm_install_job(
     helm_install_name: str,
     vcluster_name: str,
     vcluster_version: str,
-    base_domain: str,
+    vcluster_api_base_domain: str,
+    exposed_apps_base_domain: str,
     ingress_namespace: str,
 ) -> dict:
     isolation_values = {
@@ -229,7 +233,12 @@ def make_helm_install_job(
                                 vcluster_version,
                                 *_helm_set_args(isolation_values),
                                 *_helm_set_args(image_values),
-                                *_ingress_helm_args(vcluster_name, base_domain, ingress_namespace),
+                                *_control_plane_ingress_helm_args(
+                                    vcluster_name, vcluster_api_base_domain
+                                ),
+                                *_app_ingress_helm_args(
+                                    exposed_apps_base_domain, ingress_namespace
+                                ),
                             ],
                         }
                     ],

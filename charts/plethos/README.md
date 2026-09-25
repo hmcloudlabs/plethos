@@ -5,12 +5,13 @@ VClusterClaim CRD).
 
 ## Prerequisites
 
-- A Kubernetes cluster with an ingress controller that supports SSL passthrough
-  (e.g. nginx-ingress with `--enable-ssl-passthrough`).
-- An OIDC provider for the portal to authenticate against (see
-  [components/portal/README.md](../../components/portal/README.md#logging-in)).
-- To make owner-deployed workloads publicly reachable: a wildcard certificate for
-  `*.<appsSubdomain>.<baseDomain>` (`appsSubdomain` defaults to `plethos-apps`) configured as the ingress controller's default certificate plus a DNS record pointing `*.<baseDomain>` at the ingress controller.
+- A Kubernetes cluster with an ingress controller that supports SSL passthrough (e.g. nginx-ingress with `--enable-ssl-passthrough`).
+- An OIDC provider for the portal to authenticate against (see [components/portal/README.md](../../components/portal/README.md#logging-in)).
+- A wildcard DNS record for `*.<vClusterApiBaseDomain>`, so users can reach their vCluster's API. No certificate needed, each vCluster serves its own via SSL passthrough.
+- To make owner-deployed workloads publicly reachable: a wildcard certificate for `*.<exposedAppsBaseDomain>` configured as the ingress controller's default certificat and a wildcard DNS record for `*.<exposedAppsBaseDomain>`.
+
+`vClusterApiBaseDomain` and `exposedAppsBaseDomain` are independent and don't need to share a parent domain.
+
 ## Installing
 
 1. Write your own values file (start from `values.yaml`) and set every value in it for

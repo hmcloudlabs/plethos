@@ -131,8 +131,7 @@ that path to survive pod restarts.
 | `OIDC_CLIENT_SECRET` | _(unset)_ | OAuth2 client secret |
 | `OIDC_SCOPES` | `openid email profile` | Requested OIDC scopes |
 | `VCLUSTERCLAIMS_NAMESPACE` | `plethos-system` | Namespace holding `VClusterClaim` resources, must match the controller's `VCLUSTERCLAIMS_NAMESPACE` |
-| `BASE_DOMAIN` | _(unset)_ | Only used to display each cluster's public host (must match the controller's value) |
-| `APPS_SUBDOMAIN` | `plethos-apps` | Subdomain under which the apps exposed by the users are shown under, e.g <vcluster>.plethos-apps.plethos.example.org |
+| `EXPOSED_APPS_BASE_DOMAIN` | _(unset)_ | Only used to display each cluster's public app host, `<vcluster>.<EXPOSED_APPS_BASE_DOMAIN>` (must match the controller's value) |
 | `CACHE_TTL_SECONDS` | `3.0` | TTL for the in-process caches (claim lists, settings) |
 | `SUPPORT_EMAIL` | _(unset)_ | Contact address shown in the footer. Left blank, no contact link is shown |
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Must match the controller's value, the portal always provisions the highest version |

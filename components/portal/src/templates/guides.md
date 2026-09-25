@@ -59,7 +59,7 @@ kubectl expose deployment <your-app> --name=http --namespace=default --port=80
 Works the same for a bare `Pod`, `StatefulSet` or anything else `kubectl expose` support.
 
 The portal shows the exact URL for your cluster (it looks like
-`https://<your-cluster-id>.{% if config.base_domain and config.apps_subdomain %}{{ config.apps_subdomain }}.{{ config.base_domain }}{% else %}<your-organizations-apps-domain>{% endif %}`).
+`https://<your-cluster-id>.{% if config.exposed_apps_base_domain %}{{ config.exposed_apps_base_domain }}{% else %}<your-organizations-apps-domain>{% endif %}`).
 
 _Note: If you want to expose more that a single application you can point the `http` Service at a reverse proxy of your choice and route to your apps by path. HTTPS is terminated before traffic reaches your cluster, so your proxy receives plain HTTP on port 80._
 

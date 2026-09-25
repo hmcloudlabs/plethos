@@ -9,9 +9,3 @@ class AppExposureConvention:
 
     SERVICE_NAME = "http"
     NAMESPACE = "default"
-
-
-def make_app_host(vcluster_name: str, apps_subdomain: str, base_domain: str) -> str:
-    """The public host a vCluster's app is served under."""
-
-    return f"{vcluster_name}.{apps_subdomain}.{base_domain}"

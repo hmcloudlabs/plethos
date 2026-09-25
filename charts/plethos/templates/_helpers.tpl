@@ -43,12 +43,10 @@ job signs keep-alive links the portal has to verify and sends email through the 
 {{- define "plethos.portal.env" -}}
 - name: VCLUSTERCLAIMS_NAMESPACE
   value: {{ .Release.Namespace }}
-{{- if .Values.baseDomain }}
-- name: BASE_DOMAIN
-  value: {{ .Values.baseDomain }}
+{{- if .Values.exposedAppsBaseDomain }}
+- name: EXPOSED_APPS_BASE_DOMAIN
+  value: {{ .Values.exposedAppsBaseDomain }}
 {{- end }}
-- name: APPS_SUBDOMAIN
-  value: {{ .Values.appsSubdomain | quote }}
 {{- if .Values.portal.oidc.issuer }}
 - name: OIDC_ISSUER
   value: {{ .Values.portal.oidc.issuer }}

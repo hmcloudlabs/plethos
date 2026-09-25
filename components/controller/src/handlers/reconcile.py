@@ -5,7 +5,6 @@ import kopf
 from kubernetes.client import V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
-from shared.app import make_app_host
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
 from context import ReconciliationContext
 from resources import (
@@ -203,7 +202,8 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
                     ctx.names.install_job,
                     ctx.names.vcluster,
                     vcluster_version=version,
-                    base_domain=config.base_domain,
+                    vcluster_api_base_domain=config.vcluster_api_base_domain,
+                    exposed_apps_base_domain=config.exposed_apps_base_domain,
                     ingress_namespace=config.ingress_namespace,
                 ),
             )
@@ -377,7 +377,7 @@ def ensure_app_exposure(ctx: ReconciliationContext) -> None:
     the owner has deployed behind their app Service.
     """
 
-    if not config.apps_subdomain or not config.base_domain:
+    if not config.exposed_apps_base_domain:
         return
 
     # Don't touch vCluster namespaces not provisioned/managed by this controller
@@ -392,7 +392,7 @@ def ensure_app_exposure(ctx: ReconciliationContext) -> None:
 
 
 def ensure_app_ingress(ctx: ReconciliationContext, target_service: str) -> None:
-    host = make_app_host(ctx.names.vcluster, config.apps_subdomain, config.base_domain)
+    host = f"{ctx.names.vcluster}.{config.exposed_apps_base_domain}"
 
     ingress_manifest = make_app_ingress(
         host,

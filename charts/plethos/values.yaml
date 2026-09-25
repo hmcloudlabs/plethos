@@ -8,17 +8,15 @@
 # Shared between portal and controller.
 supportedVclusterVersions: "0.35.0"
 
-# Domain each vCluster's control plane is exposed under, as <claim-name>.<baseDomain>. The portal
-# uses it only to display a cluster's app host - provisioning the actual Ingress is the
-# controller's job alone. Leave blank for a local setup.
-# Shared between portal and controller.
-baseDomain: ""
+# Domain each vCluster's control plane (Kubernetes API) is exposed under, as
+# <claim-name>.<vClusterApiBaseDomain>, e.g. vcluster.plethos.example.com. Requires an ingress
+# controller with SSL passthrough. Required.
+vClusterApiBaseDomain: ""
 
-# Subdomain owner-deployed apps are exposed under, as
-# <claim-name>.<appsSubdomain>.<baseDomain>. Only used if baseDomain is set, blank turns app
-# exposure off.
+# Domain owner-deployed apps are exposed under, as <claim-name>.<exposedAppsBaseDomain>, e.g.
+# apps.plethos.example.com. Independent of vClusterApiBaseDomain. The portal uses it only to display a cluster's app host and the controller to provision the Ingress for it. Leaving blank turns app exporsure off.
 # Shared between portal and controller.
-appsSubdomain: plethos-apps
+exposedAppsBaseDomain: ""
 
 portal:
   image:
