@@ -17,6 +17,7 @@ dist/
 # Env / secrets
 .env
 *.env
+!components/portal/dev-setup/dev.env
 
 # OS / editor
 .DS_Store
