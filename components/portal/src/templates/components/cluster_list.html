@@ -1,4 +1,4 @@
-{% from "components/cluster_table.html" import cluster_table %}
+{% from "components/cluster_table.html" import cluster_table with context %}
 {#
   hx-trigger has a filter so the 5s poll skips while the tab is hidden and while a confirm modal here is open -
   otherwise the outerHTML swap would rip the open modal out from under the user.

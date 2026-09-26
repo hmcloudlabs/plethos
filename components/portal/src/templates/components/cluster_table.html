@@ -233,7 +233,7 @@
 </div>
 {% else %}
 <div class="text-center text-body-secondary py-5">
-  <div class="mb-1" style="font-size: 1.5rem;">◇</div>
+  <img class="d-block mx-auto mb-3" src="{{ url_for('static', path='image/fish-empty.svg').path }}" alt="" width="120" />
   {{ empty_text }}
 </div>
 {% endif %}

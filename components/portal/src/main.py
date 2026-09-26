@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 import re
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
@@ -23,7 +25,7 @@ from config import config
 from kube.client import load_kube_config
 from logging_setup import setup_logging
 from pages import admin, clusters, guides, home
-from templating import STATIC_DIR
+from templating import STATIC_DIR, templates
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -31,15 +33,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    logger.info("Starting plethos portal")
+    logger.info("Starting Plethos portal")
     load_kube_config()
 
     yield
 
-    logger.info("Shutting down plethos portal")
+    logger.info("Shutting down Plethos portal")
 
 
-app = FastAPI(title="plethos Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title="Plethos Portal", lifespan=lifespan, docs_url=None, redoc_url=None)
 
 app.add_middleware(
     CSRFMiddleware, secret=config.csrf_token_secret, exempt_urls=[re.compile(r"^/auth/callback")]
@@ -80,6 +82,19 @@ async def _redirect_to_login(request: Request, _exc: NotAuthenticatedError) -> R
 async def _forbidden(request: Request, _exc: NotAuthorizedError) -> PlainTextResponse:
     logger.warning(f"Forbidden: non-admin tried to access {request.url.path}")
     return PlainTextResponse("Forbidden: admins only.", status_code=403)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _not_found(request: Request, exc: StarletteHTTPException) -> Response:
+    if exc.status_code != 404 or request.headers.get("HX-Request"):
+        return await http_exception_handler(request, exc)
+
+    return templates.TemplateResponse(
+        request,
+        "404.html",
+        {"title": "Not found", "user": get_session_user(request)},
+        status_code=404,
+    )
 
 
 @app.get("/healthz")

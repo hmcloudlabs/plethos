@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "components/icons.html" import icon %}
+
+{% block main_class %}d-flex flex-column justify-content-center{% endblock %}
+
+{% block content %}
+<div class="text-center mx-auto" style="max-width: 32rem;">
+  <img class="mb-4 img-fluid" src="{{ url_for('static', path='image/404.svg').path }}" alt="" width="320" />
+  <p class="text-body-secondary mb-4">
+    The page you're looking for doesn't exist.
+  </p>
+  <a class="btn btn-primary d-inline-flex align-items-center gap-2" href="/">
+    {{ icon("arrow-left") }}
+    <span>Back to home</span>
+  </a>
+</div>
+{% endblock %}

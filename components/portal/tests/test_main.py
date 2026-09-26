@@ -45,6 +45,21 @@ class TestAuthExceptionHandlers:
         assert "Forbidden" in res.text
 
 
+class TestNotFoundHandler:
+    def test_renders_404_page_for_unknown_route(self, client):
+        res = client.get("/does-not-exist")
+
+        assert res.status_code == 404
+        assert "text/html" in res.headers["content-type"]
+        assert "404.svg" in res.text
+
+    def test_keeps_json_response_for_htmx_requests(self, client):
+        res = client.get("/does-not-exist", headers={"HX-Request": "true"})
+
+        assert res.status_code == 404
+        assert res.json() == {"detail": "Not Found"}
+
+
 class TestLogout:
     def test_clears_session_and_redirects_home(self, client):
         user = User(sub="user-1-sub", email="bob@example.com", name="bob")
