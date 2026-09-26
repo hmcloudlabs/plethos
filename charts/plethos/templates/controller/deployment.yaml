@@ -33,6 +33,10 @@ spec:
             {{- end }}
             - name: INGRESS_NAMESPACE
               value: {{ .Values.controller.ingressNamespace }}
+            {{- if .Values.controller.ingressControllerIpRanges }}
+            - name: INGRESS_CONTROLLER_IP_RANGES
+              value: {{ join "," .Values.controller.ingressControllerIpRanges | quote }}
+            {{- end }}
             - name: RECONCILIATION_INTERVAL
               value: {{ .Values.controller.reconciliationInterval | quote }}
             - name: TRANSITIONAL_RECONCILIATION_INTERVAL

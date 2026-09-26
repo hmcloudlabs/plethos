@@ -109,7 +109,8 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 | `SUPPORTED_VCLUSTER_VERSIONS` | `0.35.0` | Comma-separated vCluster versions the controller may install, must be >=`0.35.0` |
 | `VCLUSTER_API_BASE_DOMAIN` | _(required)_ | Domain the vCluster control planes are exposed under, as `<vcluster-name>.<VCLUSTER_API_BASE_DOMAIN>`; requires an ingress controller with SSL passthrough. |
 | `EXPOSED_APPS_BASE_DOMAIN` | _(unset)_ | Domain public user apps are exposed under, as `<vcluster-name>.<EXPOSED_APPS_BASE_DOMAIN>`, see [Public apps](#public-apps) section. Unset, app exposure is off. |
-| `INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in - each vCluster's NetworkPolicy needs an explicit exception to let it through, since network isolation blocks everything else. |
+| `INGRESS_NAMESPACE` | `ingress-nginx` | Namespace the ingress controller runs in. Each vCluster's NetworkPolicy needs an explicit exception to let it through. If the ingress controller runs with `hostNetwork: true` see, use `INGRESS_CONTROLLER_IP_RANGES` instead (see below). |
+| `INGRESS_CONTROLLER_IP_RANGES` | _(unset)_ | Comma-separated IP ranges in CIDR notation each vCluster's NetworkPolicy additionally lets through to its workloads. Only needed if the ingress controller runs with `hostNetwork: true`, since its traffic then comes from node IPs, which `INGRESS_NAMESPACE` can't match. Set it to the range covering every node the ingress controller may run on, e.g. `192.168.10.0/24`. |
 
 ## Public apps
 
@@ -120,6 +121,8 @@ port 80, it becomes publicly reachable at `https://<vcluster-name>.<EXPOSED_APPS
 Each vCluster gets exactly **one** host.
 
 The apps domain is independent from the control-plane host, which is `<vcluster-name>.<VCLUSTER_API_BASE_DOMAIN>` and needs SSL passthrough.
+
+The environment variables `INGRESS_NAMESPACE` and `INGRESS_CONTROLLER_IP_RANGES` ensure that the workload is reachable from outside the cluster. One of the two must be set, depending whether the ingress controller runs with `hostNetwork: true`.
 
 ## Phases
 

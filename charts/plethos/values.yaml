@@ -76,6 +76,11 @@ controller:
   # Namespace the ingress controller runs in, each vCluster's NetworkPolicy lets it through.
   ingressNamespace: ingress-nginx
 
+  # Only needed if the ingress controller runs with `hostNetwork: true`: its traffic then comes from
+  # node IPs, which the namespace above can't match. List the IP ranges (CIDR notation) covering
+  # every node it may run on, e.g. ["192.168.10.0/24"]
+  ingressControllerIpRanges: []
+
   # Seconds between drift-correcting reconciliations of every VClusterClaim. This is the
   # fallback, not the path a user waits on.
   reconciliationInterval: 10800 # 3hrs

@@ -8,7 +8,7 @@ VClusterClaim CRD).
 - A Kubernetes cluster with an ingress controller that supports SSL passthrough (e.g. nginx-ingress with `--enable-ssl-passthrough`).
 - An OIDC provider for the portal to authenticate against (see [components/portal/README.md](../../components/portal/README.md#logging-in)).
 - A wildcard DNS record for `*.<vClusterApiBaseDomain>`, so users can reach their vCluster's API. No certificate needed, each vCluster serves its own via SSL passthrough.
-- To make owner-deployed workloads publicly reachable: a wildcard certificate for `*.<exposedAppsBaseDomain>` configured as the ingress controller's default certificat and a wildcard DNS record for `*.<exposedAppsBaseDomain>`.
+- To make owner-deployed workloads publicly reachable: a wildcard certificate for `*.<exposedAppsBaseDomain>` configured as the ingress controller's default certificat and a wildcard DNS record for `*.<exposedAppsBaseDomain>`. If the ingress controller runs with `hostNetwork: true`, also set `controller.ingressControllerIpRanges` to the node IP range, or the vClusters' NetworkPolicies block it from reaching the apps.
 
 `vClusterApiBaseDomain` and `exposedAppsBaseDomain` are independent and don't need to share a parent domain.
 

@@ -104,8 +104,18 @@ def _control_plane_ingress_helm_args(
     return _helm_set_args(values)
 
 
-def _app_ingress_helm_args(exposed_apps_base_domain: str, ingress_namespace: str) -> list[str]:
-    """Extra Helm args letting the host cluster's ingress controller reach the vCluster's workload pods."""
+def _app_ingress_helm_args(
+    exposed_apps_base_domain: str,
+    ingress_namespace: str,
+    ingress_controller_ip_ranges: tuple[str, ...],
+) -> list[str]:
+    """
+    Extra Helm args letting the host cluster's ingress controller reach the vCluster's workload pods.
+
+    The `namespaceSelector` only matches a controller running with its own pod IPs. A controller
+    with `hostNetwork: true` sends from its node's IP instead, which only
+    `ingress_controller_ip_ranges` can match.
+    """
 
     if not exposed_apps_base_domain:
         return []
@@ -117,7 +127,8 @@ def _app_ingress_helm_args(exposed_apps_base_domain: str, ingress_namespace: str
                     "namespaceSelector": {
                         "matchLabels": {"kubernetes.io/metadata.name": ingress_namespace}
                     }
-                }
+                },
+                *({"ipBlock": {"cidr": ip_range}} for ip_range in ingress_controller_ip_ranges),
             ],
         }
     ]
@@ -130,10 +141,9 @@ def _app_ingress_helm_args(exposed_apps_base_domain: str, ingress_namespace: str
 
 def make_app_ingress(host: str, namespace: str, target_service_name: str) -> dict:
     """
-    The `Ingress` routing a vCluster's app host (see `ensure_app_ingress`) to its
-    app Service.
-
-    TLS is terminated here by the host cluster's ingress controller, not passed through.
+    The `Ingress` routing a vCluster's app host (see `ensure_app_ingress`) to its app Service.
+    This manifest will be used if the controller detects a Service named `http` in the default
+    namespace.
     """
 
     return {
@@ -178,6 +188,7 @@ def make_helm_install_job(
     vcluster_api_base_domain: str,
     exposed_apps_base_domain: str,
     ingress_namespace: str,
+    ingress_controller_ip_ranges: tuple[str, ...],
 ) -> dict:
     isolation_values = {
         "policies": {
@@ -237,7 +248,9 @@ def make_helm_install_job(
                                     vcluster_name, vcluster_api_base_domain
                                 ),
                                 *_app_ingress_helm_args(
-                                    exposed_apps_base_domain, ingress_namespace
+                                    exposed_apps_base_domain,
+                                    ingress_namespace,
+                                    ingress_controller_ip_ranges,
                                 ),
                             ],
                         }

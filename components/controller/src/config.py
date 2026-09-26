@@ -22,6 +22,9 @@ class Config:
     exposed_apps_base_domain: str = os.getenv("EXPOSED_APPS_BASE_DOMAIN", "")
 
     ingress_namespace: str = os.getenv("INGRESS_NAMESPACE", "ingress-nginx")
+    ingress_controller_ip_ranges: tuple[str, ...] = tuple(
+        c.strip() for c in os.getenv("INGRESS_CONTROLLER_IP_RANGES", "").split(",") if c.strip()
+    )
 
 
 config = Config()

@@ -205,6 +205,7 @@ def provision_vcluster(ctx: ReconciliationContext) -> None:
                     vcluster_api_base_domain=config.vcluster_api_base_domain,
                     exposed_apps_base_domain=config.exposed_apps_base_domain,
                     ingress_namespace=config.ingress_namespace,
+                    ingress_controller_ip_ranges=config.ingress_controller_ip_ranges,
                 ),
             )
             ctx.logger.info(f"Created Job {ctx.names.install_job}.")
