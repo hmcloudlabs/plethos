@@ -113,12 +113,17 @@
 body {
   font-family: var(--font-sans);
   letter-spacing: -0.01em;
-  /* Column layout so the footer sticks to the bottom on short pages. */
   display: flex;
   flex-direction: column;
 }
 main {
   flex: 1 0 auto;
+}
+
+@media (max-width: 575.98px) {
+  .container {
+    --bs-gutter-x: 2.5rem;
+  }
 }
 
 /* --- Footer --- */
