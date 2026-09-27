@@ -37,6 +37,10 @@ class VClusterNames:
         return "helm-installer-rb"
 
     @property
+    def app_ingress(self) -> str:
+        return "app"
+
+    @property
     def install_job(self) -> str:
         return f"helm-install-{self.name}"
 

@@ -36,7 +36,7 @@ rules:
     verbs: ["list", "delete", "deletecollection"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
-    verbs: ["create"]
+    verbs: ["get", "create", "patch"]
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["get", "create"]

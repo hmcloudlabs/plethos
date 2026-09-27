@@ -139,18 +139,18 @@ def _app_ingress_helm_args(
     ]
 
 
-def make_app_ingress(host: str, namespace: str, target_service_name: str) -> dict:
+def make_app_ingress(
+    host: str, namespace: str, ingress_name: str, target_service_name: str
+) -> dict:
     """
     The `Ingress` routing a vCluster's app host (see `ensure_app_ingress`) to its app Service.
-    This manifest will be used if the controller detects a Service named `http` in the default
-    namespace.
     """
 
     return {
         "apiVersion": "networking.k8s.io/v1",
         "kind": "Ingress",
         "metadata": {
-            "name": "app",
+            "name": ingress_name,
             "namespace": namespace,
         },
         "spec": {

@@ -4,19 +4,15 @@ import kubernetes
 from kubernetes import client
 from kubernetes.client import V1Job
 from kubernetes.client import V1Namespace
-from kubernetes.client import V1ServiceList
 from kubernetes.client import V1StatefulSet
 
 from shared.app import AppExposureConvention
 from shared.vclusterclaim import GROUP, Phase
-from context import VClusterNames
 
 
 # Set by vCluster's syncer on every object it copies to the host cluster, recording which
-# vCluster synced it and its name/namespace inside the virtual cluster.
+# vCluster synced it.
 VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
-VCLUSTER_OBJECT_NAME_ANNOTATION = "vcluster.loft.sh/object-name"
-VCLUSTER_OBJECT_NAMESPACE_ANNOTATION = "vcluster.loft.sh/object-namespace"
 
 # Set by us (not vCluster) when sleeping a vCluster, to remember what to scale it back up to
 SCALED_DOWN_REPLICAS_ANNOTATION = f"{GROUP}/scaled-down-replicas"
@@ -92,39 +88,19 @@ def is_transitional(status, **_: object) -> bool:
     return (status or {}).get("phase") in TRANSITIONAL_PHASES
 
 
-def find_app_service_name(core: client.CoreV1Api, names: VClusterNames) -> str | None:
+def app_service_host_name(vcluster_name: str) -> str:
     """
-    Finds the host-cluster name of the owner's app Service, which they deploy inside their
-    vCluster as `AppExposureConvention.SERVICE_NAME` in `AppExposureConvention.NAMESPACE`, by
-    matching the labels/annotations vCluster sets on every object it syncs. Returns `None` if no
-    such Service exists yet.
+    The host-cluster name of the vClusters's app Service, which an owner deploys inside their
+    vCluster as `AppExposureConvention.SERVICE_NAME` in `AppExposureConvention.NAMESPACE`.
+    vCluster's syncer renames synced objects to `<name>-x-<namespace>-x-<vcluster>` and only
+    hashes names longer than 63 characters, which the claim's name length limit rules out.
     """
 
-    host_synced_services = cast(
-        V1ServiceList,
-        core.list_namespaced_service(
-            namespace=names.namespace,
-            label_selector=f"{VCLUSTER_MANAGED_BY_LABEL}={names.vcluster}",
-        ),
-    )
-
-    for service in host_synced_services.items or []:
-        if service.metadata is None:
-            continue
-
-        annotations = service.metadata.annotations or {}
-        if (
-            annotations.get(VCLUSTER_OBJECT_NAME_ANNOTATION) == AppExposureConvention.SERVICE_NAME
-            and annotations.get(VCLUSTER_OBJECT_NAMESPACE_ANNOTATION)
-            == AppExposureConvention.NAMESPACE
-        ):
-            return service.metadata.name
-
-    return None
+    return f"{AppExposureConvention.SERVICE_NAME}-x-{AppExposureConvention.NAMESPACE}-x-{vcluster_name}"
 
 
 def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:
-    """Whether this controller created a given `namespace`."""
+    """Whether a given `namespace` was created by the Plethos controller."""
 
     ns = cast(V1Namespace, core.read_namespace(name=namespace))
     if ns.metadata is None:

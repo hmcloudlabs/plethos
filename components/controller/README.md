@@ -39,7 +39,7 @@ it to this ClusterRole, so the Jobs get exactly the permissions the `vCluster` c
 
 ## Running the controller
 
-**Note:** Run everything from the root directory of this project.
+Run everything from the root directory of this project.
 
 ```bash
 uv run kopf run components/controller/src/main.py --namespace plethos-system --verbose
@@ -115,10 +115,8 @@ Each claim pins its vCluster version via the immutable `spec.vClusterVersion` fi
 ## Public apps
 
 An app is whatever workload an owner exposes from their vCluster, over HTTP only (no other
-protocols can be exposed). If an owner deploys a `Service` named `http` in their vCluster's `default` namespace on
-port 80, it becomes publicly reachable at `https://<vcluster-name>.<EXPOSED_APPS_BASE_DOMAIN>`. Requires `EXPOSED_APPS_BASE_DOMAIN` to be set.
-
-Each vCluster gets exactly **one** host.
+protocols can be exposed). For every claim the controller keeps an Ingress for
+`https://<vcluster-name>.<EXPOSED_APPS_BASE_DOMAIN>` pointing at the `Service` named `http` in the vCluster's `default` namespace on port `80`. Once an owner deploys it, it is publicly reachable. Requires `EXPOSED_APPS_BASE_DOMAIN` to be set.
 
 The apps domain is independent from the control-plane host, which is `<vcluster-name>.<VCLUSTER_API_BASE_DOMAIN>` and needs SSL passthrough.
 

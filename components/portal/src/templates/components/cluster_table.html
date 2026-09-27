@@ -97,45 +97,6 @@
               {{ icon("download") }} Kubeconfig
             </a>
 
-            {% if public_url %}
-            <button
-              type="button"
-              class="btn btn-sm btn-secondary {{ '' if can_connect else 'disabled' }}"
-              title="{{ 'Public URL' if can_connect else 'Available once the cluster is ready' }}"
-              {% if can_connect %}
-              data-bs-toggle="modal"
-              data-bs-target="#url-modal-{{ obj }}"
-              {% else %}
-              aria-disabled="true" tabindex="-1"
-              {% endif %}
-            >
-              {{ icon("link") }} URL
-            </button>
-            {% if can_connect %}
-            <div class="modal fade" id="url-modal-{{ obj }}" tabindex="-1" aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title">Public URL</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <p class="mb-3">
-                      Reachable once you deploy a plain <code>Service</code> named <code>http</code> in the
-                      <code>default</code> namespace inside this cluster, listening on port 80. See the
-                      <a href="/guides#exposing-an-application-publicly">guide</a> for details.
-                    </p>
-                    <a href="{{ public_url }}" target="_blank" rel="noopener">{{ public_url }}</a>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endif %}
-            {% endif %}
-
             <a
               class="btn btn-sm btn-warning {{ '' if steady_running else 'disabled' }}"
               title="{{ 'Download mounted volume data' if steady_running else 'Available while the cluster is running' }}"
@@ -178,6 +139,71 @@
               {%- elif phase in ['Sleeping', 'Waking'] %}{{ icon("sun") }} Wake
               {%- else %}{{ icon("moon") }} Sleep{% endif %}
             </button>
+            {% endif %}
+
+            {% if public_url %}
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary {{ '' if can_connect else 'disabled' }}"
+              title="{{ 'Expose application' if can_connect else 'Available once the cluster is ready' }}"
+              aria-label="Expose application"
+              {% if can_connect %}
+              data-bs-toggle="modal"
+              data-bs-target="#url-modal-{{ obj }}"
+              {% else %}
+              aria-disabled="true" tabindex="-1"
+              {% endif %}
+            >
+              {{ icon("globe") }}
+            </button>
+            {% if can_connect %}
+            <div class="modal fade" id="url-modal-{{ obj }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Expose your application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p class="docs-content">
+                      Make an HTTP application running in <strong>{{ name }}</strong> reachable from the internet
+                      under this cluster's public URL.
+                    </p>
+
+                    <span class="bento__label">Public URL</span>
+                    <div class="d-flex align-items-center gap-2 mt-1 mb-4 p-2 border rounded bg-body-tertiary">
+                      <span class="flex-grow-1 text-truncate font-monospace small" title="{{ public_url }}">{{ public_url }}</span>
+                      <a class="btn btn-sm btn-secondary flex-shrink-0" href="{{ public_url }}" target="_blank" rel="noopener">
+                        {{ icon("arrow-up-right") }} Visit
+                      </a>
+                    </div>
+
+                    <div class="docs-content">
+                      <span class="bento__label">How to expose it</span>
+                      <p class="mt-2">
+                        Deploy your app inside the cluster and create a Service for it named <code>http</code> in the
+                        <code>default</code> namespace, listening on port <code>80</code>. Set <code>--target-port</code>
+                        to the port your app listens on:
+                      </p>
+                      <pre><code>kubectl expose deployment &lt;your-app&gt; --name=http --namespace=default --port=80 --target-port=&lt;app-port&gt;</code></pre>
+                      <p>
+                        Your app is usually reachable at the URL above within a few seconds of creating the Service.
+                      </p>
+
+                      {% if not steady_running %}
+                      <div class="alert alert-warning small py-2 mb-3">
+                        Your app is only reachable while the cluster is running. Wake it up or wait until it has finished waking.
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
             {% endif %}
 
             {% if not shared %}

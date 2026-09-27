@@ -2,7 +2,7 @@ from collections.abc import Callable
 from datetime import datetime, UTC
 from typing import cast
 import kopf
-from kubernetes.client import V1PodList, V1StatefulSet
+from kubernetes.client import V1Ingress, V1PodList, V1StatefulSet
 from kubernetes.client.exceptions import ApiException
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, ConditionType, Phase, State
@@ -22,7 +22,7 @@ from kube import (
     get_statefulset,
     is_transitional,
     unwrap_statefulset,
-    find_app_service_name,
+    app_service_host_name,
     is_namespace_managed,
     SCALED_DOWN_REPLICAS_ANNOTATION,
     VCLUSTER_MANAGED_BY_LABEL,
@@ -75,13 +75,13 @@ def reconcile(ctx: ReconciliationContext) -> None:
     ensure_namespace(ctx)
     ensure_service_account(ctx)
     ensure_rbac(ctx)
+    ensure_app_ingress(ctx)
 
     vc_set = get_vcluster(ctx)
     if not vc_set:
         provision_vcluster(ctx)
     else:
         reconcile_vcluster(ctx, vc_set)
-        ensure_app_exposure(ctx)
 
     sync_ready_condition(ctx)
 
@@ -372,10 +372,10 @@ def sync_ready_condition(ctx: ReconciliationContext) -> None:
         )
 
 
-def ensure_app_exposure(ctx: ReconciliationContext) -> None:
+def ensure_app_ingress(ctx: ReconciliationContext) -> None:
     """
-    Makes the vCluster's app host (see `AppExposureConvention`) reach whatever
-    the owner has deployed behind their app Service.
+    Keeps the Ingress routing a vCluster's app Service (see `AppExposureConvention`).
+    An existing Ingress with a different host is patched to the current one.
     """
 
     if not config.exposed_apps_base_domain:
@@ -385,32 +385,55 @@ def ensure_app_exposure(ctx: ReconciliationContext) -> None:
     if not is_namespace_managed(ctx.clients.core, ctx.names.namespace):
         return
 
-    app_service_on_host = find_app_service_name(ctx.clients.core, ctx.names)
-    if not app_service_on_host:
-        return
-
-    ensure_app_ingress(ctx, app_service_on_host)
-
-
-def ensure_app_ingress(ctx: ReconciliationContext, target_service: str) -> None:
     host = f"{ctx.names.vcluster}.{config.exposed_apps_base_domain}"
 
     ingress_manifest = make_app_ingress(
         host,
         ctx.names.namespace,
-        target_service,
+        ctx.names.app_ingress,
+        app_service_host_name(ctx.names.name),
     )
 
     try:
-        ctx.clients.networking.create_namespaced_ingress(
-            namespace=ctx.names.namespace, body=ingress_manifest
+        ingress = cast(
+            V1Ingress,
+            ctx.clients.networking.read_namespaced_ingress(
+                name=ctx.names.app_ingress, namespace=ctx.names.namespace
+            ),
         )
-        ctx.logger.info(f"Created app Ingress in {ctx.names.namespace}.")
     except ApiException as e:
-        if e.status != 409:
+        if e.status != 404:
             ctx.patch.status["phase"] = Phase.ERROR
-            ctx.patch.status["message"] = f"Failed to create app Ingress: {e.reason}"
+            ctx.patch.status["message"] = f"Failed to read app Ingress: {e.reason}"
             raise
+
+        try:
+            ctx.clients.networking.create_namespaced_ingress(
+                namespace=ctx.names.namespace, body=ingress_manifest
+            )
+            ctx.logger.info(f"Created app Ingress for {host} in {ctx.names.namespace}.")
+        except ApiException as e:
+            if e.status != 409:
+                ctx.patch.status["phase"] = Phase.ERROR
+                ctx.patch.status["message"] = f"Failed to create app Ingress: {e.reason}"
+                raise
+        return
+
+    # Check if the host changed, if so patch it below
+    if ingress.spec and ingress.spec.rules and ingress.spec.rules[0].host == host:
+        return
+
+    try:
+        ctx.clients.networking.patch_namespaced_ingress(
+            name=ctx.names.app_ingress,
+            namespace=ctx.names.namespace,
+            body={"spec": ingress_manifest["spec"]},
+        )
+        ctx.logger.info(f"Moved app Ingress in {ctx.names.namespace} to {host}.")
+    except ApiException as e:
+        ctx.patch.status["phase"] = Phase.ERROR
+        ctx.patch.status["message"] = f"Failed to update app Ingress: {e.reason}"
+        raise
 
 
 def set_condition(

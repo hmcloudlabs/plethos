@@ -1,3 +1,4 @@
+import os
 import time
 import pytest
 from kubernetes import client
@@ -5,6 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from conftest import (
     NAMESPACE,
+    TIMEOUT,
     wait_for_404,
     wait_for_job,
     wait_for_job_recreation,
@@ -393,3 +395,31 @@ class TestUpdate:
                 body={"spec": {"vClusterVersion": "0.19.0"}},
             )
         assert exc_info.value.status == 422
+
+
+class TestAppExposure:
+    def _wait_for_app_ingress(self, clients, names, timeout=TIMEOUT):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                return clients.networking.read_namespaced_ingress(
+                    name=names.app_ingress, namespace=names.namespace
+                )
+            except ApiException as e:
+                if e.status != 404:
+                    raise
+                time.sleep(2)
+
+        raise TimeoutError(f"App Ingress in '{names.namespace}' did not appear after {timeout}s.")
+
+    def test_creates_app_ingress(self, operator, clients, create_vcluster_claim, resource_name):
+        """The app Ingress should point the default app host at the synced app Service."""
+
+        names = VClusterNames(resource_name)
+
+        create_vcluster_claim()
+
+        ingress = self._wait_for_app_ingress(clients, names)
+        rule = ingress.spec.rules[0]
+        assert rule.host == f"{names.vcluster}.{os.environ['EXPOSED_APPS_BASE_DOMAIN']}"
+        assert rule.http.paths[0].backend.service.name == f"http-x-default-x-{names.vcluster}"
