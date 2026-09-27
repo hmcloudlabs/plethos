@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import timedelta
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -7,7 +8,7 @@ from auth import User, require_user
 from config import config
 from kube.settings_service import SettingsService, get_settings_service
 from kube.vclusterclaim_model import ExpiryAnnotation, VClusterClaim
-from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError
+from kube.vclusterclaim_repository import VClusterClaimAlreadyExistsError, VolumeExportError
 from kube.vclusterclaim_service import (
     AccessType,
     VClusterClaimUserService,
@@ -16,6 +17,8 @@ from mailer import EmailDeliveryError, send_email
 from shared.vclusterclaim import State
 from templating import templates
 from utils import FlashLevel, app_host, is_valid_email, pop_flash, set_flash
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -317,7 +320,15 @@ def download_data(
     user: User = Depends(require_user),
     vcc_service: VClusterClaimUserService = Depends(get_vcc_user_service),
 ) -> Response:
-    result = vcc_service.get_mounted_volume_contents(object_name, user.sub, user.email)
+    try:
+        result = vcc_service.get_mounted_volume_contents(object_name, user.sub, user.email)
+    except VolumeExportError:
+        logger.exception(f"Data export of cluster '{object_name}' failed")
+        set_flash(
+            request, "Could not export the cluster's data. Please try again later.", level="error"
+        )
+        return RedirectResponse("/clusters", status_code=303)
+
     if result is None:
         set_flash(request, "No data available to download.", level="warning")
         return RedirectResponse("/clusters", status_code=303)

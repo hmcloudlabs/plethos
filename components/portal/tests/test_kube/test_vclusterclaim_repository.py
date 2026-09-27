@@ -1,4 +1,4 @@
-from unittest.mock import Mock, create_autospec
+from unittest.mock import Mock, create_autospec, patch
 import base64
 
 import pytest
@@ -368,3 +368,32 @@ class TestReadControlPlaneLogs:
             tail_lines=50,
             _preload_content=False,
         )
+
+
+class TestGetMountedVolumeContents:
+    def test_returns_none_for_no_running_workloads(self, repo, core_api):
+        core_api.list_namespaced_pod.return_value.items = []
+
+        assert repo.get_mounted_volume_contents("u123-test-cluster") is None
+
+    def test_returns_none_for_no_pvcs(self, repo, core_api):
+        pod = client.V1Pod(
+            metadata=client.V1ObjectMeta(name="scratch-writer"),
+            spec=client.V1PodSpec(
+                containers=[
+                    client.V1Container(
+                        name="writer",
+                        volume_mounts=[client.V1VolumeMount(name="scratch", mount_path="/scratch")],
+                    )
+                ],
+                volumes=[
+                    client.V1Volume(name="scratch", empty_dir=client.V1EmptyDirVolumeSource())
+                ],
+            ),
+        )
+        core_api.list_namespaced_pod.return_value.items = [pod]
+
+        with patch("kube.vclusterclaim_repository.stream") as stream:
+            assert repo.get_mounted_volume_contents("u123-test-cluster") is None
+
+        stream.assert_not_called()

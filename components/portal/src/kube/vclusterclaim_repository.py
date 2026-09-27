@@ -28,6 +28,7 @@ from ttl_cache import TTLCache
 
 _OWNER_LABEL = f"{GROUP}/owner-subject-hash"
 _MEMBER_LABEL_PREFIX = f"{GROUP}/member-"
+_VCLUSTER_MANAGED_BY_LABEL = "vcluster.loft.sh/managed-by"
 
 _vclusterclaim_cache: TTLCache[list[VClusterClaim]] = TTLCache(config.cache_ttl_seconds)
 
@@ -46,6 +47,10 @@ def vcluster_namespace(object_name: str) -> str:
 
 class VClusterClaimAlreadyExistsError(Exception):
     """Raised when a VClusterClaim with the requested object name already exists."""
+
+
+class VolumeExportError(Exception):
+    """Raised when the volumes of a vCluster's workload pods couldn't be read."""
 
 
 class VClusterClaimRepository:
@@ -340,24 +345,31 @@ class VClusterClaimRepository:
         return ansi_escape_re.sub("", text)
 
     def get_mounted_volume_contents(self, object_name: str) -> bytes | None:
-        """Tars up volumes mounted by the vCluster's workload pods if there are any."""
+        """Tars up volumes mounted by the vCluster's running workload pods if there are any."""
 
         namespace = vcluster_namespace(object_name)
-        pods = cast(Any, self._core.list_namespaced_pod(namespace=namespace)).items
-
-        workload_pods = [
-            pod
-            for pod in pods
-            if not pod.metadata.owner_references
-            or pod.metadata.owner_references[0].kind != "StatefulSet"
-        ]
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             has_data = False
-            for pod in workload_pods:
-                pod_dir = os.path.join(tmp_dir, pod.metadata.name)
-                if self._extract_pvc_mounts(pod, namespace, pod_dir):
-                    has_data = True
+            try:
+                # Find pods that are synced to the host and running
+                workload_pods = cast(
+                    Any,
+                    self._core.list_namespaced_pod(
+                        namespace=namespace,
+                        label_selector=f"{_VCLUSTER_MANAGED_BY_LABEL}={object_name}",
+                        field_selector="status.phase=Running",
+                    ),
+                ).items
+
+                for pod in workload_pods:
+                    pod_dir = os.path.join(tmp_dir, pod.metadata.name)
+                    if self._extract_pvc_mounts(pod, namespace, pod_dir):
+                        has_data = True
+            except Exception as e:
+                raise VolumeExportError(
+                    f"Failed to export the volumes of {object_name}: {e}"
+                ) from e
 
             if not has_data:
                 return None

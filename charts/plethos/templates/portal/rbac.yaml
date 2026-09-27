@@ -24,7 +24,7 @@ rules:
     verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods/exec"]
-    verbs: ["create"]
+    verbs: ["get", "create"]
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: ["{{ include "plethos.portal.fullname" . }}-settings"]
