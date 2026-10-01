@@ -1,3 +1,6 @@
+
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15131/badge)](https://www.bestpractices.dev/projects/15131)
+
 <p align="center">
   <img src="assets/plethos-logo-framed.svg" alt="Plethos logo" width="180" />
 </p>
