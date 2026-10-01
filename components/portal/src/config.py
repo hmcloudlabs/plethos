@@ -3,11 +3,18 @@ from dataclasses import dataclass
 
 
 def _require_secret(name: str) -> str:
-    """Checks required secret env var and fails on startup if it's unset or empty."""
+    """Checks required secret env var and fails on startup if it's unset or too short."""
+
+    min_secret_length = 32
 
     value = os.getenv(name)
     if not value:
         raise RuntimeError(f"Environment variable {name} must be set.")
+    if len(value) < min_secret_length:
+        raise RuntimeError(
+            f"Environment variable {name} must be at least {min_secret_length} characters long, "
+            "e.g. generated with `openssl rand -hex 32`."
+        )
     return value
 
 

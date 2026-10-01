@@ -121,8 +121,8 @@ that path to survive pod restarts.
 |---|---|---|
 | `PORTAL_HOST` | `0.0.0.0` | uvicorn bind host |
 | `PORTAL_PORT` | `8000` | uvicorn bind port |
-| `PORTAL_SESSION_SECRET` | _(required)_ | Signs the session cookie and emailed links, e.g. `openssl rand -hex 32` |
-| `CSRF_TOKEN_SECRET` | _(required)_ | Signs CSRF tokens, e.g. `openssl rand -hex 32` |
+| `PORTAL_SESSION_SECRET` | _(required)_ | Signs the session cookie and emailed links. Must be at least 32 characters, e.g. `openssl rand -hex 32` |
+| `CSRF_TOKEN_SECRET` | _(required)_ | Signs CSRF tokens. Must be at least 32 characters, e.g. `openssl rand -hex 32` |
 | `TOKEN_MAX_AGE_SECONDS` | `604800` (7 days) | How long signed links (member invites, keep-alive) stay valid |
 | `LOG_LEVEL` | `INFO` | Root log level (see [Logging](#logging)) |
 | `LOG_DIR` | _(unset)_ | Directory to also write rotating log files to. Left unset, logging is console-only |
