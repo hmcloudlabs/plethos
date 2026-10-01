@@ -1,0 +1,129 @@
+when:
+  - event: pull_request
+    branch: main
+  - event: manual
+
+variables:
+  - &uv_image ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  - &uv_env
+    UV_CACHE_DIR: /woodpecker/.uv-cache
+  - &registry_env
+    CODEBERG_USER:
+      from_secret: codeberg_user
+    CODEBERG_TOKEN:
+      from_secret: codeberg_token
+  - &buildah_step
+    image: quay.io/buildah/stable:latest
+    environment:
+      <<: *registry_env
+      STORAGE_DRIVER: vfs
+      BUILDAH_ISOLATION: chroot
+
+steps:
+  lint:
+    image: *uv_image
+    environment: *uv_env
+    when:
+      - event: pull_request
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT != "chart"'
+    commands:
+      - uv sync --frozen --all-packages
+      - uv run ruff check .
+      - uv run ruff format --check .
+      - uv run pyright
+
+  test-shared:
+    image: *uv_image
+    environment: *uv_env
+    when:
+      - event: pull_request
+    commands:
+      - uv sync --frozen --all-packages
+      - cd components/shared && uv run pytest
+
+  test-portal:
+    image: *uv_image
+    environment: *uv_env
+    when:
+      - event: pull_request
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT == "portal"'
+    commands:
+      - uv sync --frozen --all-packages
+      - cd components/portal && uv run pytest
+
+  # test-controller needs a kind cluster, i.e. access to a Docker daemon, which isn't
+  # available on Codeberg's shared Woodpecker runners.
+
+  # test-controller:
+  #   image: *uv_image
+  #   environment:
+  #     <<: *uv_env
+  #     KIND_VERSION: "v0.24.0"
+  #     KUBECTL_VERSION: "v1.31.0"
+  #   network_mode: host
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   when:
+  #     - event: pull_request
+  #     - event: manual
+  #       evaluate: 'RELEASE_COMPONENT == "controller"'
+  #   commands:
+  #     - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
+  #     - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-amd64" && chmod +x /usr/local/bin/kind
+  #     - curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl" && chmod +x /usr/local/bin/kubectl
+  #     - uv sync --frozen --all-packages
+  #     - cd components/controller && uv run pytest
+
+  build-portal:
+    <<: *buildah_step
+    when:
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT == "portal"'
+    commands:
+      - . .woodpecker/release-helpers.sh
+      - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
+      - echo "$VERSION" > .release-version
+      - build_and_push portal "$VERSION"
+
+  build-controller:
+    <<: *buildah_step
+    when:
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT == "controller"'
+    commands:
+      - . .woodpecker/release-helpers.sh
+      - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
+      - echo "$VERSION" > .release-version
+      - build_and_push controller "$VERSION"
+
+  build-chart:
+    image: alpine/helm:3.15.4
+    environment: *registry_env
+    when:
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT == "chart"'
+    commands:
+      - . .woodpecker/release-helpers.sh
+      - 'VERSION=$(grep -m1 "^version:" charts/plethos/Chart.yaml | sed -E "s/version: *(.+)/\1/")'
+      - echo "$VERSION" > .release-version
+      - helm lint charts/plethos
+      - helm package charts/plethos --destination /tmp/chart-out
+      - echo "$CODEBERG_TOKEN" | helm registry login "$REGISTRY" --username "$CODEBERG_USER" --password-stdin
+      - helm push "/tmp/chart-out/plethos-$VERSION.tgz" "oci://$REGISTRY_IMAGE"
+
+  release:
+    image: alpine:3.20
+    environment: *registry_env
+    when:
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT in ["portal", "controller", "chart"]'
+    commands:
+      - apk add --no-cache curl jq
+      - TAG="$RELEASE_COMPONENT-v$(cat .release-version)"
+      - |
+        curl --fail --request POST "$CI_FORGE_URL/api/v1/repos/$CI_REPO/releases" \
+          --header "Authorization: token $CODEBERG_TOKEN" --header "Content-Type: application/json" \
+          --data "$(jq -n --arg tag "$TAG" --arg ref "$CI_COMMIT_SHA" \
+                    '{tag_name:$tag, target_commitish:$ref, name:($tag | sub("-v"; " v"))}')"
