@@ -1,7 +1,7 @@
 {{- /*
   The portal's admin UI edits these settings at runtime, so the chart values are only initial defaults.
 */}}
-{{- $name := printf "%s-settings" (include "plethos.portal.fullname" .) }}
+{{- $name := "plethos-portal-settings" }}
 {{- $existing := lookup "v1" "ConfigMap" .Release.Namespace $name }}
 apiVersion: v1
 kind: ConfigMap

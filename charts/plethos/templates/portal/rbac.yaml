@@ -27,7 +27,7 @@ rules:
     verbs: ["get", "create"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    resourceNames: ["{{ include "plethos.portal.fullname" . }}-settings"]
+    resourceNames: ["plethos-portal-settings"]
     verbs: ["get", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
