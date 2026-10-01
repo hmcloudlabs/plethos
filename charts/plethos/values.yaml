@@ -4,7 +4,7 @@
 
 
 # Versions of vCluster the controller can provision. Must be a comma-separated list.
-# the portal always provisions new vCluster with the latest version in that list.
+# The portal always provisions new vCluster with the latest version in that list.
 # Shared between portal and controller.
 supportedVclusterVersions: "0.35.0"
 
@@ -14,7 +14,7 @@ supportedVclusterVersions: "0.35.0"
 vClusterApiBaseDomain: ""
 
 # Domain owner-deployed apps are exposed under, as <claim-name>.<exposedAppsBaseDomain>, e.g.
-# apps.plethos.example.com. Independent of vClusterApiBaseDomain. The portal uses it only to display a cluster's app host and the controller to provision the Ingress for it. Leaving blank turns app exporsure off.
+# apps.plethos.example.com. Independent of vClusterApiBaseDomain. The portal uses it only to display a cluster's app host and the controller to provision the Ingress for it. Leaving it blank turns app exposure off.
 # Shared between portal and controller.
 exposedAppsBaseDomain: ""
 
@@ -50,7 +50,7 @@ portal:
     maxVclustersPerUser: 5
     maxTeamSize: 5
 
-  # OICD configuration, override with yours
+  # OIDC configuration, override with yours
   oidc:
     issuer: ""
     clientId: plethos-portal
