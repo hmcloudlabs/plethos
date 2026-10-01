@@ -15,7 +15,12 @@ from conftest import (
 from context import VClusterNames
 from shared.vclusterclaim import Phase, GROUP, PLURAL, VERSION
 
-from kube import get_statefulset, unwrap_statefulset, VCLUSTER_MANAGED_BY_LABEL
+from kube import (
+    app_service_host_name,
+    get_statefulset,
+    unwrap_statefulset,
+    VCLUSTER_MANAGED_BY_LABEL,
+)
 
 
 class TestCreate:
@@ -422,4 +427,22 @@ class TestAppExposure:
         ingress = self._wait_for_app_ingress(clients, names)
         rule = ingress.spec.rules[0]
         assert rule.host == f"{names.vcluster}.{os.environ['EXPOSED_APPS_BASE_DOMAIN']}"
-        assert rule.http.paths[0].backend.service.name == f"http-x-default-x-{names.vcluster}"
+        assert rule.http.paths[0].backend.service.name == app_service_host_name(names.vcluster)
+
+    def test_app_service_host_name_matches_vcluster(self):
+        """
+        The app Service name should match vCluster's: plain up to 63 characters, else cut to 52
+        plus the first 10 hex chars of the full name's sha256.
+        """
+
+        assert app_service_host_name("short") == "http-x-default-x-short"
+
+        # 63 characters exactly, still plain
+        name_at_limit = "u0123456789abcdef-" + "a" * 28
+        assert app_service_host_name(name_at_limit) == f"http-x-default-x-{name_at_limit}"
+
+        # Longest name the portal creates: u<16 hex owner hash>-<32 chars>
+        assert (
+            app_service_host_name("u0123456789abcdef-" + "a" * 32)
+            == "http-x-default-x-u0123456789abcdef-aaaaaaaaaaaaaaaaa-c1c9ef155e"
+        )

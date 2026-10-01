@@ -1,4 +1,5 @@
 from enum import StrEnum
+import hashlib
 from typing import cast
 import kubernetes
 from kubernetes import client
@@ -92,11 +93,21 @@ def app_service_host_name(vcluster_name: str) -> str:
     """
     The host-cluster name of the vClusters's app Service, which an owner deploys inside their
     vCluster as `AppExposureConvention.SERVICE_NAME` in `AppExposureConvention.NAMESPACE`.
-    vCluster's syncer renames synced objects to `<name>-x-<namespace>-x-<vcluster>` and only
-    hashes names longer than 63 characters, which the claim's name length limit rules out.
+    vCluster's syncer renames synced objects to `<name>-x-<namespace>-x-<vcluster>`. Once longer
+    than 63 characters, it cuts that to 52 characters plus a hash of the full name, ported from
+    vCluster's `translate.SafeConcatName` (v0.35.0).
+
+    Note: This function is tightly coupled with vCluster's internal implementation and must be watched carefully.
+    Newer vCluster versions might break this. In this case we might fall back to finding Services on the host by
+    their vCluster annotations instead.
     """
 
-    return f"{AppExposureConvention.SERVICE_NAME}-x-{AppExposureConvention.NAMESPACE}-x-{vcluster_name}"
+    full_name = f"{AppExposureConvention.SERVICE_NAME}-x-{AppExposureConvention.NAMESPACE}-x-{vcluster_name}"
+    if len(full_name) <= 63:
+        return full_name
+
+    digest = hashlib.sha256(full_name.encode()).hexdigest()
+    return f"{full_name[:52]}-{digest[:10]}".replace(".-", "-")
 
 
 def is_namespace_managed(core: client.CoreV1Api, namespace: str) -> bool:

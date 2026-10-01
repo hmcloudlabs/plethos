@@ -391,7 +391,7 @@ def ensure_app_ingress(ctx: ReconciliationContext) -> None:
         host,
         ctx.names.namespace,
         ctx.names.app_ingress,
-        app_service_host_name(ctx.names.name),
+        app_service_host_name(ctx.names.vcluster),
     )
 
     try:
