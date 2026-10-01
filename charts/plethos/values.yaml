@@ -44,7 +44,8 @@ portal:
   # reachable URL in production, not the default localhost one, or those links will be broken.
   baseUrl: "http://localhost:8000"
 
-  # Portal admin settings ConfigMap
+  # Portal admin settings ConfigMap. These are initial defaults only: they are applied on the first
+  # install, afterwards the live values (editable in the portal's admin UI) are kept on upgrades.
   settings:
     adminEmails: "admin@example.com"
     maxVclustersPerUser: 5

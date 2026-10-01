@@ -1,11 +1,16 @@
+{{- /*
+  The portal's admin UI edits these settings at runtime, so the chart values are only initial defaults.
+*/}}
+{{- $name := printf "%s-settings" (include "plethos.portal.fullname" .) }}
+{{- $existing := lookup "v1" "ConfigMap" .Release.Namespace $name }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "plethos.portal.fullname" . }}-settings
+  name: {{ $name }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "plethos.labels" . | nindent 4 }}
 data:
-  adminEmails: {{ .Values.portal.settings.adminEmails | quote }}
-  maxVclustersPerUser: {{ .Values.portal.settings.maxVclustersPerUser | quote }}
-  maxTeamSize: {{ .Values.portal.settings.maxTeamSize | quote }}
+  adminEmails: {{ dig "data" "adminEmails" .Values.portal.settings.adminEmails $existing | quote }}
+  maxVclustersPerUser: {{ dig "data" "maxVclustersPerUser" .Values.portal.settings.maxVclustersPerUser $existing | quote }}
+  maxTeamSize: {{ dig "data" "maxTeamSize" .Values.portal.settings.maxTeamSize $existing | quote }}
