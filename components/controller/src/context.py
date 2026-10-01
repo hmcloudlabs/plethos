@@ -42,11 +42,11 @@ class VClusterNames:
 
     @property
     def install_job(self) -> str:
-        return f"helm-install-{self.name}"
+        return "helm-install"
 
     @property
     def uninstall_job(self) -> str:
-        return f"helm-uninstall-{self.name}"
+        return "helm-uninstall"
 
 
 @dataclass(slots=True)
