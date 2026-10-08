@@ -152,12 +152,14 @@ kubectl wait --for=condition=Ready vcc/my-cluster -n plethos-system
 
 ## Testing
 
-The test suite is end-to-end and runs against a real cluster, so it additionally needs
-**Docker** and **kind**.
+There are two test suites:
 
 ```bash
 cd components/controller
-uv run pytest
+uv run pytest       # integration tests (tests/)
+uv run pytest e2e   # end-to-end tests (e2e/)
 ```
 
-The suite reuses a running **kind** cluster.
+- **Integration tests** (`tests/`): runs against only the Kubernetes API of `k3s`, so no Pods run
+  and the vCluster install is faked. These run by default with `uv run pytest` and are used in CI.
+- **End-to-end tests** (`e2e/`): runs against a full `k3s` cluster inside Docker via `k3d` and installs real vClusters. These don't run in CI, instead run them locally with `cd components/controller && uv run pytest e2e` when submitting a PR.

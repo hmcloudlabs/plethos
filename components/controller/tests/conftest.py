@@ -7,11 +7,10 @@ import pytest
 from kopf.testing import KopfRunner
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from shared.vclusterclaim import GROUP, PLURAL, VERSION
+from shared.vclusterclaim import GROUP, PLURAL, VERSION, State
 
 from context import KubernetesClients
 
-CLUSTER_NAME = "e2e-testing-cluster"
 NAMESPACE = os.environ["VCLUSTERCLAIMS_NAMESPACE"]
 TIMEOUT = int(os.getenv("TEST_TIMEOUT", "90"))
 
@@ -25,61 +24,111 @@ ROLE_PATH = (
     / "controller"
     / "vcluster-installer-rbac.yaml"
 )
-OPERATOR_PATH = PROJECT_ROOT / "components" / "controller" / "src" / "main.py"
+CONTROLLER_PATH = PROJECT_ROOT / "components" / "controller" / "src" / "main.py"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def kind_cluster():
+def cluster(tmp_path_factory):
     """
-    Reuses an existing kind cluster if one is already running (speeds up local
-    dev), or creates a fresh one if not. Either way, installs the CRDs before.
+    Runs only the k3s API server and controller-manager, without kubelet or container
+    runtime, so no Docker is needed but also means that no Pod ever runs. Disables much
+    of k3s functionality to make the cluster more lightweight.
     """
 
-    existing = subprocess.run(["kind", "get", "clusters"], capture_output=True, text=True)
-    already_exists = CLUSTER_NAME in existing.stdout.splitlines()
+    data_dir = tmp_path_factory.mktemp("k3s")
+    kubeconfig = data_dir / "kubeconfig"
+    log_path = data_dir / "k3s.log"
 
-    if not already_exists:
+    k3s = subprocess.Popen(
+        [
+            "k3s",
+            "server",
+            "--disable-agent",
+            f"--data-dir={data_dir}",
+            f"--write-kubeconfig={kubeconfig}",
+            f"--log={log_path}",
+            "--https-listen-port=16443",
+            "--disable=coredns,servicelb,traefik,local-storage,metrics-server",
+            "--disable-scheduler",
+            "--disable-cloud-controller",
+            "--disable-helm-controller",
+            "--disable-network-policy",
+            # Deactivate StatefulSet and Job controllers since they depend on running Pods
+            "--kube-controller-manager-arg=controllers=*,-statefulset,-job",
+            "--kube-controller-manager-arg=secure-port=0",
+        ]
+    )
+
+    try:
+        wait_for_api_server(k3s, kubeconfig, log_path)
+
+        config.kube_config.KUBE_CONFIG_DEFAULT_LOCATION = str(kubeconfig)
+        config.load_kube_config(config_file=str(kubeconfig))
+
+        core = client.CoreV1Api()
+        core.create_namespace(body=client.V1Namespace(metadata=client.V1ObjectMeta(name=NAMESPACE)))
+
         subprocess.run(
-            ["kind", "create", "cluster", "--name", CLUSTER_NAME, "--wait", "60s"],
+            ["k3s", "kubectl", "--kubeconfig", kubeconfig, "apply", "-f", CRD_PATH], check=True
+        )
+        subprocess.run(
+            [
+                "k3s",
+                "kubectl",
+                "--kubeconfig",
+                kubeconfig,
+                "wait",
+                "--for=condition=Established",
+                "-f",
+                CRD_PATH,
+            ],
             check=True,
         )
 
-    kube_context = f"kind-{CLUSTER_NAME}"
-    config.load_kube_config(context=kube_context)
+        subprocess.run(
+            ["k3s", "kubectl", "--kubeconfig", kubeconfig, "apply", "-f", ROLE_PATH], check=True
+        )
 
-    core = client.CoreV1Api()
-    try:
-        core.create_namespace(body=client.V1Namespace(metadata=client.V1ObjectMeta(name=NAMESPACE)))
-    except Exception:
-        pass
+        yield
+    finally:
+        k3s.terminate()
+        k3s.wait(timeout=30)
 
-    # Apply VClusterClaim CRD to cluster
-    subprocess.run(["kubectl", "--context", kube_context, "apply", "-f", CRD_PATH], check=True)
-    time.sleep(1)
 
-    # Apply plethos-vcluster-installer ClusterRole to cluster
-    subprocess.run(["kubectl", "--context", kube_context, "apply", "-f", ROLE_PATH], check=True)
+def wait_for_api_server(k3s, kubeconfig, log_path, timeout=60):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if k3s.poll() is not None:
+            raise RuntimeError(f"k3s exited with {k3s.returncode}:\n{log_path.read_text()[-3000:]}")
 
-    yield
+        ready = subprocess.run(
+            ["k3s", "kubectl", f"--kubeconfig={kubeconfig}", "get", "--raw", "/readyz"],
+            capture_output=True,
+        )
+        if ready.returncode == 0:
+            return
 
-    if not already_exists:
-        subprocess.run(["kind", "delete", "cluster", "--name", CLUSTER_NAME], check=True)
+        time.sleep(1)
+
+    raise TimeoutError(
+        f"k3s API server not ready after {timeout}s:\n{log_path.read_text()[-3000:]}"
+    )
 
 
 @pytest.fixture(scope="session")
-def clients(kind_cluster):
+def clients(cluster):
     return KubernetesClients()
 
 
 @pytest.fixture
-def operator(kind_cluster):
-    """Runs the operator for the duration of a single test, then shut it down cleanly."""
+def controller(cluster):
+    """Runs the controller for the duration of a single test, then shut it down cleanly."""
 
-    with KopfRunner(["run", "--standalone", str(OPERATOR_PATH)]) as runner:
-        time.sleep(2)  # give the operator time to start and load kube config
+    with KopfRunner(["run", "--standalone", str(CONTROLLER_PATH)]) as runner:
+        time.sleep(2)
         yield runner
 
-    assert runner.exception is None, f"Operator crashed: {runner.exception}"
+    assert runner.exception is None, f"Controller crashed: {runner.exception}"
 
 
 @pytest.fixture
@@ -98,13 +147,7 @@ def cleanup(clients, resource_name):
 
     def delete():
         try:
-            clients.custom.delete_namespaced_custom_object(
-                group=GROUP,
-                version=VERSION,
-                plural=PLURAL,
-                namespace=NAMESPACE,
-                name=resource_name,
-            )
+            delete_vcluster_claim(clients, resource_name)
         except Exception:
             pass
 
@@ -128,14 +171,134 @@ def cleanup(clients, resource_name):
     delete()
 
 
-def wait_for_phase(custom_api, name, expected_phase, timeout=TIMEOUT):
+def fake_vcluster_install(clients, names, vcluster_version="0.35.0", replicas=1):
     """
-    Polls the VClusterClaim status until it reaches `expected_phase` or times out.
-    Raises AssertionError immediately if the resource enters Error phase (unless that's what we want).
+    Waits for the controller's helm install Job, then creates the ready vCluster
+    StatefulSet the Job would have, since without a kubelet it never runs.
+    """
+
+    wait_for_job(clients.batch, names.namespace, names.install_job)
+
+    selector_labels = {"app": "vcluster", "release": names.vcluster}
+
+    clients.apps.create_namespaced_stateful_set(
+        namespace=names.namespace,
+        body={
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "metadata": {
+                "name": names.vcluster,
+                "namespace": names.namespace,
+                "labels": {**selector_labels, "chart": f"vcluster-{vcluster_version}"},
+                "annotations": {
+                    "meta.helm.sh/release-name": names.vcluster,
+                    "meta.helm.sh/release-namespace": names.namespace,
+                },
+            },
+            "spec": {
+                "replicas": replicas,
+                "selector": {"matchLabels": selector_labels},
+                "template": {
+                    "metadata": {"labels": selector_labels},
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "syncer",
+                                "image": f"ghcr.io/loft-sh/vcluster-oss:{vcluster_version}",
+                            }
+                        ],
+                    },
+                },
+            },
+        },
+    )
+
+    # What the StatefulSet controller would report when the control plane Pods are ready
+    clients.apps.patch_namespaced_stateful_set_status(
+        name=names.vcluster,
+        namespace=names.namespace,
+        body={
+            "status": {
+                "replicas": replicas,
+                "readyReplicas": replicas,
+                "availableReplicas": replicas,
+            }
+        },
+    )
+
+
+def fake_vcluster_uninstall(clients, names):
+    """
+    Waits for the controller's helm uninstall Job, then does what it would on success: removes the
+    vCluster StatefulSet and marks the Job `Complete`.
+    """
+
+    wait_for_job(clients.batch, names.namespace, names.uninstall_job)
+
+    clients.apps.delete_namespaced_stateful_set(name=names.vcluster, namespace=names.namespace)
+
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    clients.batch.patch_namespaced_job_status(
+        name=names.uninstall_job,
+        namespace=names.namespace,
+        body={
+            "status": {
+                "startTime": now,
+                "completionTime": now,
+                "active": 0,
+                "ready": 0,
+                "succeeded": 1,
+                "failed": 0,
+                "conditions": [
+                    {
+                        "type": "SuccessCriteriaMet",
+                        "status": "True",
+                        "reason": "CompletionsReached",
+                        "lastTransitionTime": now,
+                    },
+                    {
+                        "type": "Complete",
+                        "status": "True",
+                        "reason": "CompletionsReached",
+                        "lastTransitionTime": now,
+                    },
+                ],
+            }
+        },
+    )
+
+
+def delete_vcluster_claim(clients, resource_name):
+    clients.custom.delete_namespaced_custom_object(
+        group=GROUP,
+        version=VERSION,
+        plural=PLURAL,
+        namespace=NAMESPACE,
+        name=resource_name,
+    )
+
+
+def set_vcluster_state(clients, resource_name, state: State):
+    clients.custom.patch_namespaced_custom_object(
+        group=GROUP,
+        version=VERSION,
+        plural=PLURAL,
+        namespace=NAMESPACE,
+        name=resource_name,
+        body={"spec": {"state": state}},
+    )
+
+
+def wait_for_phase(custom_api, name, expected_phase, expected_message=None, timeout=TIMEOUT):
+    """
+    Polls the VClusterClaim status until it reaches `expected_phase` (and `expected_message`,
+    if given) or times out. Raises AssertionError immediately if the resource enters Error
+    phase (unless that's what we want).
     """
 
     deadline = time.time() + timeout
     last_phase = None
+    last_message = None
 
     while time.time() < deadline:
         try:
@@ -151,8 +314,9 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=TIMEOUT):
             continue
 
         last_phase = obj.get("status", {}).get("phase")
+        last_message = obj.get("status", {}).get("message")
 
-        if last_phase == expected_phase:
+        if last_phase == expected_phase and expected_message in (None, last_message):
             return obj
 
         if last_phase == "Error" and expected_phase != "Error":
@@ -162,7 +326,8 @@ def wait_for_phase(custom_api, name, expected_phase, timeout=TIMEOUT):
         time.sleep(2)
 
     raise TimeoutError(
-        f"Timed out after {timeout}s waiting for phase '{expected_phase}', last observed: '{last_phase}'."
+        f"Timed out after {timeout}s waiting for phase '{expected_phase}', "
+        f"last observed: '{last_phase}' ({last_message})."
     )
 
 

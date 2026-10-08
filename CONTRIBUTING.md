@@ -32,8 +32,7 @@ and its `CHANGELOG.md` is the repository's root, since the Helm chart bundles th
 
 ## Set up for local development
 
-Prerequisites: `uv`, `kubectl`, Docker and [kind](https://kind.sigs.k8s.io/) (the controller's
-test suite specifically drives a `kind` cluster).
+Prerequisites: `uv`, `kubectl`, Docker and a Kubernetes distribution, for example `k3s`, `kind` or `minikube` (the tests use `k3s` and `k3d` so you can use one of them here as well)
 
 Install dependencies:
 
@@ -128,13 +127,20 @@ Please run these before opening a PR.
 
 ## Tests
 
-Tests live in `components/controller/tests/`, `components/portal/tests/` and `components/shared/tests/`. Run them from inside a component:
+Each component has its tests in `components/<component>/tests/`. Run them from inside the component:
 
 ```bash
-cd components/portal      && uv run pytest
-cd components/controller  && uv run pytest
-cd components/shared      && uv run pytest
+cd components/portal     && uv run pytest
+cd components/shared     && uv run pytest
+cd components/controller && uv run pytest
+cd components/controller && uv run pytest e2e
 ```
+
+The controller has two test suites for which you need to install [k3s](https://k3s.io/) and [k3d](https://k3d.io):
+
+- **Integration tests** (`tests/`): runs against only the Kubernetes API of `k3s`, so no Pods run
+  and the vCluster install is faked. These run by default with `uv run pytest` and are used in CI.
+- **End-to-end tests** (`e2e/`): runs against a full `k3s` cluster inside Docker via `k3d` and installs real vClusters. These don't run in CI, instead run them locally with `cd components/controller && uv run pytest e2e` when submitting a PR.
 
 ## Commit messages
 

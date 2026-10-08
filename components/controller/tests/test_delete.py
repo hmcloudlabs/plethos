@@ -1,13 +1,21 @@
 import time
 
 from shared.vclusterclaim import GROUP, PLURAL, VERSION, Phase
-from conftest import NAMESPACE, wait_for_phase, wait_for_404, wait_for_job
+from conftest import (
+    NAMESPACE,
+    delete_vcluster_claim,
+    fake_vcluster_install,
+    fake_vcluster_uninstall,
+    wait_for_phase,
+    wait_for_404,
+    wait_for_job,
+)
 from context import VClusterNames
 
 
 class TestDelete:
     def test_delete_removes_vcluster_resources(
-        self, operator, clients, create_vcluster_claim, resource_name
+        self, controller, clients, create_vcluster_claim, resource_name
     ):
         """
         Deleting a VClusterClaim should run the uninstall job and then remove
@@ -17,16 +25,12 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
+        fake_vcluster_install(clients, names)
         wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
-        # Remove VClusterClaim resource
-        clients.custom.delete_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            plural=PLURAL,
-            namespace=NAMESPACE,
-            name=resource_name,
-        )
+        delete_vcluster_claim(clients, resource_name)
+
+        fake_vcluster_uninstall(clients, names)
 
         # Expects the claim and namespace to disappear (the ServiceAccount and its
         # RoleBinding are namespaced, so they go with it)
@@ -46,7 +50,7 @@ class TestDelete:
         )
 
     def test_delete_when_namespace_already_gone(
-        self, operator, clients, create_vcluster_claim, resource_name
+        self, controller, clients, create_vcluster_claim, resource_name
     ):
         """
         If the vcluster namespace is already gone (e.g. deleted manually), on_delete should
@@ -57,6 +61,7 @@ class TestDelete:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
+        fake_vcluster_install(clients, names)
         wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
         # Manually delete the namespace before deleting the claim
@@ -66,13 +71,7 @@ class TestDelete:
             resource_type="Namespace",
         )
 
-        clients.custom.delete_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            plural=PLURAL,
-            namespace=NAMESPACE,
-            name=resource_name,
-        )
+        delete_vcluster_claim(clients, resource_name)
 
         wait_for_404(
             lambda: clients.custom.get_namespaced_custom_object(
@@ -88,7 +87,7 @@ class TestDelete:
 
 class TestDeleteFailure:
     def test_uninstall_job_failure_sets_error_phase(
-        self, operator, clients, create_vcluster_claim, resource_name
+        self, controller, clients, create_vcluster_claim, resource_name
     ):
         """
         If the helm uninstall Job fails, phase should move to ERROR and the
@@ -98,23 +97,21 @@ class TestDeleteFailure:
         names = VClusterNames(resource_name)
 
         create_vcluster_claim()
+        fake_vcluster_install(clients, names)
         wait_for_phase(clients.custom, resource_name, Phase.RUNNING)
 
-        clients.custom.delete_namespaced_custom_object(
-            group=GROUP,
-            version=VERSION,
-            plural=PLURAL,
-            namespace=NAMESPACE,
-            name=resource_name,
-        )
+        delete_vcluster_claim(clients, resource_name)
 
         wait_for_job(clients.batch, names.namespace, names.uninstall_job)
 
+        # Force the Job into a terminally-failed state. Without a kubelet the Job never
+        # started, so its startTime (required for a finished Job) is faked as well.
         clients.batch.patch_namespaced_job_status(
             name=names.uninstall_job,
             namespace=names.namespace,
             body={
                 "status": {
+                    "startTime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "active": 0,
                     "ready": 0,
                     "failed": 1,
