@@ -53,28 +53,20 @@ steps:
       - uv sync --frozen --all-packages
       - cd components/portal && uv run pytest
 
-  # test-controller needs a kind cluster, i.e. access to a Docker daemon, which isn't
-  # available on Codeberg's shared Woodpecker runners.
-
-  # test-controller:
-  #   image: *uv_image
-  #   environment:
-  #     <<: *uv_env
-  #     KIND_VERSION: "v0.24.0"
-  #     KUBECTL_VERSION: "v1.31.0"
-  #   network_mode: host
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   when:
-  #     - event: pull_request
-  #     - event: manual
-  #       evaluate: 'RELEASE_COMPONENT == "controller"'
-  #   commands:
-  #     - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates docker.io && rm -rf /var/lib/apt/lists/*
-  #     - curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-amd64" && chmod +x /usr/local/bin/kind
-  #     - curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl" && chmod +x /usr/local/bin/kubectl
-  #     - uv sync --frozen --all-packages
-  #     - cd components/controller && uv run pytest
+  test-controller:
+    image: *uv_image
+    environment:
+      <<: *uv_env
+      K3S_VERSION: "v1.36.5+k3s1"
+    when:
+      - event: pull_request
+      - event: manual
+        evaluate: 'RELEASE_COMPONENT == "controller"'
+    commands:
+      - python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/k3s-io/k3s/releases/download/$K3S_VERSION/k3s', '/usr/local/bin/k3s')"
+      - chmod +x /usr/local/bin/k3s
+      - uv sync --frozen --all-packages
+      - cd components/controller && uv run pytest
 
   build-portal:
     <<: *buildah_step
@@ -121,9 +113,5 @@ steps:
         evaluate: 'RELEASE_COMPONENT in ["portal", "controller", "chart"]'
     commands:
       - apk add --no-cache curl jq
-      - TAG="$RELEASE_COMPONENT-v$(cat .release-version)"
-      - |
-        curl --fail --request POST "$CI_FORGE_URL/api/v1/repos/$CI_REPO/releases" \
-          --header "Authorization: token $CODEBERG_TOKEN" --header "Content-Type: application/json" \
-          --data "$(jq -n --arg tag "$TAG" --arg ref "$CI_COMMIT_SHA" \
-                    '{tag_name:$tag, target_commitish:$ref, name:($tag | sub("-v"; " v"))}')"
+      - . .woodpecker/release-helpers.sh
+      - create_release "$RELEASE_COMPONENT" "$(cat .release-version)"

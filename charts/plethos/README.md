@@ -14,14 +14,20 @@ VClusterClaim CRD).
 
 ## Installing
 
-1. Write your own values file (start from `values.yaml`) and set every value in it for
-   your environment (several are placeholders, like `example.com` addresses, `admin@example.com`, `localhost` SMTP/base URL) that fail silently rather than error if left unset.
-   
-2. Install:
+The chart is published at `oci://codeberg.org/hmcloudlabs/plethos`. Replace `<version>` below
+with the chart version you want to install.
+
+1. Write your own values file, starting from the chart's defaults:
    ```bash
-   helm install plethos ./charts/plethos \
+   helm show values oci://codeberg.org/hmcloudlabs/plethos --version <version> > values.yaml
+   ```
+   Set every value in it for your environment (several are placeholders, like `example.com` addresses, `admin@example.com`, `localhost` URLs which _must_ be changed).
+
+2. Install using your values file (you can choose your own namespace name):
+   ```bash
+   helm install plethos oci://codeberg.org/hmcloudlabs/plethos --version <version> \
      --namespace plethos-system --create-namespace \
-     -f my-values.yaml
+     -f values.yaml
    ```
 
 3. Create the secret the portal reads OIDC/session/SMTP credentials from:
@@ -37,8 +43,7 @@ VClusterClaim CRD).
    `SMTP_USERNAME` and `SMTP_PASSWORD` are optional, leave them out if your SMTP server doesn't
    require authentication.
 
-  If the portal pod started before the secret existed, it'll be stuck in a
-  `CreateContainerConfigError`. In that case, restart:
+  If the portal pod started before the secret existed you must restart:
 
    ```bash
    kubectl rollout restart deployment/plethos-portal -n plethos-system
@@ -47,14 +52,15 @@ VClusterClaim CRD).
 ## Upgrading
 
 ```bash
-helm upgrade plethos ./charts/plethos -n plethos-system -f my-values.yaml
+helm upgrade plethos oci://codeberg.org/hmcloudlabs/plethos --version <version> \
+  -n plethos-system -f values.yaml
 ```
 
 Note: the CRD in `crds/vclusterclaim.yaml` is installed on first `helm install`
-but **not** updated by `helm upgrade` (that's a Helm limitation for the `crds/` directory). If it changes, re-apply it manually:
+but **not** updated by `helm upgrade` (that's a Helm limitation for the `crds/` directory). If it changes, re-apply it manually before upgrading:
 
 ```bash
-kubectl apply -f charts/plethos/crds/vclusterclaim.yaml
+helm show crds oci://codeberg.org/hmcloudlabs/plethos --version <version> | kubectl apply -f -
 ```
 
 ## Values

@@ -20,10 +20,8 @@ exposedAppsBaseDomain: ""
 
 portal:
   image:
-    repository: some.registry.com/plethos-portal
-    # Defaults to Chart.yaml's appVersion when unset (only override to pin a
-    # different tag than the chart ships by default).
-    tag: ""
+    repository: codeberg.org/hmcloudlabs/plethos-portal
+    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
   replicas: 1
@@ -66,10 +64,8 @@ portal:
 
 controller:
   image:
-    repository: some.registry.com/plethos-controller
-    # Defaults to Chart.yaml's appVersion when unset (only override to pin a
-    # different tag than the chart ships by default).
-    tag: ""
+    repository: codeberg.org/hmcloudlabs/plethos-controller
+    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
   replicas: 1
