@@ -1,0 +1,62 @@
+when:
+  - event: manual
+
+depends_on:
+  - ci
+
+variables:
+  - &registry_env
+    CODEBERG_USER:
+      from_secret: codeberg_user
+    CODEBERG_TOKEN:
+      from_secret: codeberg_token
+  - &kaniko_settings
+    registry: codeberg.org
+    username:
+      from_secret: codeberg_user
+    password:
+      from_secret: codeberg_token
+
+steps:
+  prepare-release:
+    image: alpine:3.20
+    environment: *registry_env
+    commands:
+      - apk add --no-cache curl jq
+      - . .woodpecker/release-helpers.sh
+      - release_version > .release-version
+      - check_version_bump "$(cat .release-version)"
+      - echo "$(cat .release-version),latest" > .tags
+
+  build-portal:
+    image: woodpeckerci/plugin-kaniko:2.3.3
+    settings:
+      <<: *kaniko_settings
+      repo: ${CI_REPO_OWNER,,}/plethos-portal
+      dockerfile: components/portal/Dockerfile
+
+  build-controller:
+    image: woodpeckerci/plugin-kaniko:2.3.3
+    settings:
+      <<: *kaniko_settings
+      repo: ${CI_REPO_OWNER,,}/plethos-controller
+      dockerfile: components/controller/Dockerfile
+
+  build-chart:
+    image: alpine/helm:3.15.4
+    environment: *registry_env
+    commands:
+      - . .woodpecker/release-helpers.sh
+      - VERSION=$(cat .release-version)
+      - helm lint charts/plethos
+      - helm package charts/plethos --destination /tmp/chart-out
+      - echo "$CODEBERG_TOKEN" | helm registry login "$REGISTRY" --username "$CODEBERG_USER" --password-stdin
+      - helm push "/tmp/chart-out/plethos-$VERSION.tgz" "oci://$REGISTRY_IMAGE"
+
+  release:
+    image: alpine:3.20
+    environment: *registry_env
+    commands:
+      - apk add --no-cache curl jq
+      - . .woodpecker/release-helpers.sh
+      - create_release "$(cat .release-version)"

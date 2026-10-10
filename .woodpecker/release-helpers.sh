@@ -27,6 +27,32 @@ release_version() {
   echo "$version"
 }
 
+# Checks that the new version bumps the previous version correctly
+check_version_bump() {
+  status=$(curl --silent --output /tmp/latest-release.json --write-out '%{http_code}' \
+    --header "Authorization: token $CODEBERG_TOKEN" "$CI_FORGE_URL/api/v1/repos/$CI_REPO/releases/latest")
+  if [ "$status" = 404 ]; then return 0; fi
+  if [ "$status" != 200 ]; then
+    echo "Couldn't fetch the latest release (HTTP $status)" >&2
+    return 1
+  fi
+
+  previous=$(jq -r .tag_name /tmp/latest-release.json)
+  previous=${previous##*-v}
+  major=${previous%%.*}
+  minor=${previous#*.}
+  minor=${minor%%.*}
+  patch=${previous##*.}
+
+  next_major="$((major + 1)).0.0"
+  next_minor="$major.$((minor + 1)).0"
+  next_patch="$major.$minor.$((patch + 1))"
+  if [ "$1" != "$next_major" ] && [ "$1" != "$next_minor" ] && [ "$1" != "$next_patch" ]; then
+    echo "$1 isn't a valid bump of the latest release $previous" >&2
+    return 1
+  fi
+}
+
 # Creates the release and its tag for the given version
 create_release() {
   tag="plethos-v$1"
