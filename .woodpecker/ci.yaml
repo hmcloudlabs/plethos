@@ -12,21 +12,27 @@ variables:
       from_secret: codeberg_user
     CODEBERG_TOKEN:
       from_secret: codeberg_token
-  - &buildah_step
-    image: quay.io/buildah/stable:latest
-    environment:
-      <<: *registry_env
-      STORAGE_DRIVER: vfs
-      BUILDAH_ISOLATION: chroot
+  - &kaniko_settings
+    registry: codeberg.org
+    username:
+      from_secret: codeberg_user
+    password:
+      from_secret: codeberg_token
 
 steps:
+  # Runs first on a release so mismatched versions or a missing CHANGELOG entry fail before anything is built
+  prepare-release:
+    image: alpine:3.20
+    when:
+      - event: manual
+    commands:
+      - . .woodpecker/release-helpers.sh
+      - release_version > .release-version
+      - echo "$(cat .release-version),latest" > .tags
+
   lint:
     image: *uv_image
     environment: *uv_env
-    when:
-      - event: pull_request
-      - event: manual
-        evaluate: 'RELEASE_COMPONENT != "chart"'
     commands:
       - uv sync --frozen --all-packages
       - uv run ruff check .
@@ -36,8 +42,6 @@ steps:
   test-shared:
     image: *uv_image
     environment: *uv_env
-    when:
-      - event: pull_request
     commands:
       - uv sync --frozen --all-packages
       - cd components/shared && uv run pytest
@@ -45,10 +49,6 @@ steps:
   test-portal:
     image: *uv_image
     environment: *uv_env
-    when:
-      - event: pull_request
-      - event: manual
-        evaluate: 'RELEASE_COMPONENT == "portal"'
     commands:
       - uv sync --frozen --all-packages
       - cd components/portal && uv run pytest
@@ -58,10 +58,6 @@ steps:
     environment:
       <<: *uv_env
       K3S_VERSION: "v1.36.5+k3s1"
-    when:
-      - event: pull_request
-      - event: manual
-        evaluate: 'RELEASE_COMPONENT == "controller"'
     commands:
       - python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/k3s-io/k3s/releases/download/$K3S_VERSION/k3s', '/usr/local/bin/k3s')"
       - chmod +x /usr/local/bin/k3s
@@ -69,37 +65,31 @@ steps:
       - cd components/controller && uv run pytest
 
   build-portal:
-    <<: *buildah_step
+    image: woodpeckerci/plugin-kaniko:2.3.3
     when:
       - event: manual
-        evaluate: 'RELEASE_COMPONENT == "portal"'
-    commands:
-      - . .woodpecker/release-helpers.sh
-      - VERSION=$(grep -m1 '^version' components/portal/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
-      - echo "$VERSION" > .release-version
-      - build_and_push portal "$VERSION"
+    settings:
+      <<: *kaniko_settings
+      repo: ${CI_REPO_OWNER,,}/plethos-portal
+      dockerfile: components/portal/Dockerfile
 
   build-controller:
-    <<: *buildah_step
+    image: woodpeckerci/plugin-kaniko:2.3.3
     when:
       - event: manual
-        evaluate: 'RELEASE_COMPONENT == "controller"'
-    commands:
-      - . .woodpecker/release-helpers.sh
-      - VERSION=$(grep -m1 '^version' components/controller/pyproject.toml | sed -E 's/version = "([^"]+)"/\1/')
-      - echo "$VERSION" > .release-version
-      - build_and_push controller "$VERSION"
+    settings:
+      <<: *kaniko_settings
+      repo: ${CI_REPO_OWNER,,}/plethos-controller
+      dockerfile: components/controller/Dockerfile
 
   build-chart:
     image: alpine/helm:3.15.4
     environment: *registry_env
     when:
       - event: manual
-        evaluate: 'RELEASE_COMPONENT == "chart"'
     commands:
       - . .woodpecker/release-helpers.sh
-      - 'VERSION=$(grep -m1 "^version:" charts/plethos/Chart.yaml | sed -E "s/version: *(.+)/\1/")'
-      - echo "$VERSION" > .release-version
+      - VERSION=$(cat .release-version)
       - helm lint charts/plethos
       - helm package charts/plethos --destination /tmp/chart-out
       - echo "$CODEBERG_TOKEN" | helm registry login "$REGISTRY" --username "$CODEBERG_USER" --password-stdin
@@ -110,8 +100,7 @@ steps:
     environment: *registry_env
     when:
       - event: manual
-        evaluate: 'RELEASE_COMPONENT in ["portal", "controller", "chart"]'
     commands:
       - apk add --no-cache curl jq
       - . .woodpecker/release-helpers.sh
-      - create_release "$RELEASE_COMPONENT" "$(cat .release-version)"
+      - create_release "$(cat .release-version)"

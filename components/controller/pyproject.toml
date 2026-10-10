@@ -1,6 +1,6 @@
 [project]
 name = "controller"
-version = "0.1.0"
+dynamic = ["version"]
 description = "KOPF-based Kubernetes operator for the VClusterClaim CRD"
 requires-python = ">=3.12"
 dependencies = [
@@ -19,10 +19,10 @@ shared = { workspace = true }
 pythonpath = ["src"]
 testpaths = ["tests"]
 env = [
-    "VCLUSTERCLAIMS_NAMESPACE=e2e-testing-namespace",
+    "VCLUSTERCLAIMS_NAMESPACE=testing-namespace",
     "RECONCILIATION_INTERVAL=5",
     "TRANSITIONAL_RECONCILIATION_INTERVAL=5",
-    "EXPOSED_APPS_BASE_DOMAIN=apps.e2e.test",
+    "EXPOSED_APPS_BASE_DOMAIN=apps.test.com",
     "TEST_TIMEOUT=90"
 ]
 

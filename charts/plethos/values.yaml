@@ -21,7 +21,7 @@ exposedAppsBaseDomain: ""
 portal:
   image:
     repository: codeberg.org/hmcloudlabs/plethos-portal
-    tag: "0.1.0"
+    tag: "" # defaults to the chart's appVersion
     pullPolicy: IfNotPresent
 
   replicas: 1
@@ -65,7 +65,7 @@ portal:
 controller:
   image:
     repository: codeberg.org/hmcloudlabs/plethos-controller
-    tag: "0.1.0"
+    tag: "" # defaults to the chart's appVersion
     pullPolicy: IfNotPresent
 
   replicas: 1

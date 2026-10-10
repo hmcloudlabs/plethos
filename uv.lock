@@ -353,7 +353,6 @@ wheels = [
 
 [[package]]
 name = "controller"
-version = "0.1.0"
 source = { virtual = "components/controller" }
 dependencies = [
     { name = "kopf" },
@@ -957,7 +956,6 @@ wheels = [
 
 [[package]]
 name = "portal"
-version = "0.1.0"
 source = { virtual = "components/portal" }
 dependencies = [
     { name = "authlib" },

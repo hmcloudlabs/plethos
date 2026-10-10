@@ -25,10 +25,13 @@ This is a `uv` workspace with two apps and a shared library:
 
 ## Versioning and releases
 
-Plethos has three independently versioned release artifacts: the portal image, the controller image and the `plethos` Helm chart. Each follows [Semantic Versioning](https://semver.org/) and has its own version number and changelog. 
+Each release publishes the portal image, the controller image and the `plethos` Helm chart under one shared version, following [Semantic Versioning](https://semver.org/). Releases are tagged `plethos-vX.Y.Z` and documented in the root `CHANGELOG.md`.
 
-The portal's and controller's version lives in their `pyproject.toml` and both have a `CHANGELOG.md` in their workspace directory. The chart's version lives in `charts/plethos/Chart.yaml`,
-and its `CHANGELOG.md` is the repository's root, since the Helm chart bundles the portal and the controller together and is the main artifact people actually install.
+The version lives only in `charts/plethos/Chart.yaml`, as both `version` and `appVersion`. The portal's and controller's `pyproject.toml` deliberately don't carry one. To create a release:
+
+1. Bump `version` and `appVersion` in `charts/plethos/Chart.yaml`.
+2. Move the `[Unreleased]` entries of `CHANGELOG.md` into a section for the new version.
+3. Trigger a manual run of the CI pipeline. It fails before building anything if `version` and `appVersion` don't match or `CHANGELOG.md` has no section for the version.
 
 ## Set up for local development
 
